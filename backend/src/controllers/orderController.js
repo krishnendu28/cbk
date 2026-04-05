@@ -1,0 +1,73 @@
+import { getIO } from "../config/socket.js";
+import {
+  createOrder,
+  deleteOrder,
+  listOrders,
+  updateOrderStatus,
+} from "../services/orderService.js";
+
+const validStatuses = ["Preparing", "Ready", "Delivered"];
+
+export async function createOrderHandler(req, res) {
+  try {
+    const { customerName, phone, address, items } = req.body;
+    if (!customerName || !phone || !address || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Invalid order payload." });
+    }
+
+    const order = await createOrder(req.body);
+    getIO().emit("new_order", order);
+    return res.status(201).json(order);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to place order." });
+  }
+}
+
+export async function listOrdersHandler(req, res) {
+  try {
+    const orders = await listOrders();
+    return res.json(orders);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to fetch orders." });
+  }
+}
+
+export async function updateOrderStatusHandler(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status." });
+    }
+
+    const updatedOrder = await updateOrderStatus(id, status);
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    getIO().emit("order_updated", updatedOrder);
+    return res.json(updatedOrder);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to update order status." });
+  }
+}
+
+export async function deleteOrderHandler(req, res) {
+  try {
+    const { id } = req.params;
+    const deletedOrder = await deleteOrder(id);
+    if (!deletedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    getIO().emit("order_deleted", { _id: id });
+    return res.json({ ok: true, _id: id });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to delete order." });
+  }
+}

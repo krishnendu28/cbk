@@ -7,7 +7,7 @@
     "icon": "./assets/images/logo.jpeg",
     "scheme": "app",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "jsEngine": "hermes",
     "ios": {
       "supportsTablet": true

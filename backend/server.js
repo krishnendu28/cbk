@@ -13,16 +13,27 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = [
+app.set("trust proxy", 1);
+
+const defaultAllowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
   "http://localhost:5176",
 ];
 
+const envAllowedOrigins = String(process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
+const allowRenderPreviewOrigins = String(process.env.ALLOW_RENDER_PREVIEWS || "true").toLowerCase() === "true";
+
 function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
+  if (allowRenderPreviewOrigins && /^https:\/\/[a-z0-9-]+\.onrender\.com$/i.test(origin)) return true;
   return /^http:\/\/localhost:\d+$/.test(origin);
 }
 
@@ -376,6 +387,9 @@ app.delete("/api/orders/:id", async (req, res) => {
 
 const PORT = Number(process.env.PORT) || 5000;
 const MONGO_URI = process.env.MONGO_URI;
+
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 
 async function startServer() {
   try {

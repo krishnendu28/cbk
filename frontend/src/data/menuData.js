@@ -1,4 +1,4 @@
-import { getFoodImage } from "../utils/getFoodImage";
+import { getFoodImage } from "../utils/getFoodImage.js";
 
 const rawMenuCategories = [
   {

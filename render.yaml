@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: cbk-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGO_URI
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ALLOW_RENDER_PREVIEWS
+        value: "true"
+
+  - type: cron
+    name: cbk-backend-keepwarm
+    env: node
+    plan: free
+    rootDir: backend
+    schedule: "*/10 * * * *"
+    buildCommand: npm ci
+    startCommand: >-
+      node -e "const url = process.env.BACKEND_HEALTHCHECK_URL;
+      if (!url) { console.error('BACKEND_HEALTHCHECK_URL is missing'); process.exit(1); }
+      fetch(url, { headers: { 'user-agent': 'cbk-render-keepalive' } })
+        .then((res) => { if (!res.ok) throw new Error('Healthcheck failed: ' + res.status); console.log('Keepalive success'); })
+        .catch((err) => { console.error(err.message); process.exit(1); });"
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: BACKEND_HEALTHCHECK_URL
+        sync: false

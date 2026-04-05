@@ -13,9 +13,10 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.krishnendu28.cbkapp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-          "foregroundImage": "./assets/images/logo.jpeg",
+        "foregroundImage": "./assets/images/logo.jpeg",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -33,7 +34,8 @@
         {
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
@@ -53,6 +55,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "61fb6e90-f726-4d1b-bc27-7e7e94de17e3"
+      }
+    },
+    "owner": "krishnendu28"
   }
 }

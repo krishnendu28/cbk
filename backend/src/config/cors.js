@@ -16,11 +16,13 @@ const envAllowedOrigins = String(process.env.ALLOWED_ORIGINS || "")
 
 const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
 const allowRenderPreviewOrigins = String(process.env.ALLOW_RENDER_PREVIEWS || "true").toLowerCase() === "true";
+const allowVercelPreviewOrigins = String(process.env.ALLOW_VERCEL_PREVIEWS || "true").toLowerCase() === "true";
 
 export function isAllowedOrigin(origin) {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
   if (allowRenderPreviewOrigins && /^https:\/\/[a-z0-9-]+\.onrender\.com$/i.test(origin)) return true;
+  if (allowVercelPreviewOrigins && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
   return /^http:\/\/localhost:\d+$/.test(origin);
 }
 

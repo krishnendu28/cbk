@@ -15,6 +15,7 @@ Render deployment for backend
 - Optional: set ENFORCE_ADMIN_AUTH=true to strictly require admin keys for protected routes
   - If false (default), protected routes are temporarily allowed when ADMIN_API_KEYS is not configured
 - ALLOW_RENDER_PREVIEWS defaults to true and allows *.onrender.com origins
+- ALLOW_VERCEL_PREVIEWS defaults to true and allows *.vercel.app origins
 
 3. Configure cron keepalive env var
 - Service: cbk-backend-keepwarm

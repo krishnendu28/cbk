@@ -219,7 +219,7 @@ export default function MenuScreen() {
         <Image source={{ uri: heroSlides[0].image }} style={styles.loginBg} />
         <View style={styles.loginOverlay} />
         <View style={styles.loginCard}>
-          <Image source={require("@/assets/images/icon.png")} style={styles.logo} />
+          <Image source={require("@/assets/images/logo.jpeg")} style={styles.logo} />
           <Text style={styles.loginTitle}>Chakhna By Kilo</Text>
           <Text style={styles.loginSubtitle}>Premium food ordering in your pocket.</Text>
           <TextInput value={loginName} onChangeText={setLoginName} placeholder="Your name" placeholderTextColor="#999" style={styles.input} />
@@ -236,7 +236,7 @@ export default function MenuScreen() {
     <View style={[styles.container, { paddingTop: insets.top + 6, paddingHorizontal: horizontalSafePadding }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.header}>
-          <Image source={require("@/assets/images/icon.png")} style={styles.headerLogo} />
+          <Image source={require("@/assets/images/logo.jpeg")} style={styles.headerLogo} />
           <View style={{ flex: 1 }}>
             <Text style={styles.brand}>Chakhna By Kilo</Text>
             <Text style={styles.tagline}>By Kilo, By Choice, By Taste</Text>

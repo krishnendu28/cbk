@@ -21,17 +21,25 @@ function App() {
   const [isOwnerLoggedIn, setIsOwnerLoggedIn] = useState(() => localStorage.getItem(OWNER_SESSION_KEY) === "1");
   const [ownerCreds, setOwnerCreds] = useState({ username: "", password: "" });
   const [orders, setOrders] = useState([]);
+  const [loadError, setLoadError] = useState("");
   const audioRef = useRef(null);
 
   useEffect(() => {
     if (!isOwnerLoggedIn) return undefined;
 
     const loadOrders = async () => {
-      const response = await axios.get(`${API_BASE_URL}/api/orders`);
-      setOrders(response.data);
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/orders`);
+        setOrders(Array.isArray(response.data) ? response.data : []);
+        setLoadError("");
+      } catch (error) {
+        const status = error?.response?.status;
+        setLoadError(status ? `Failed to load orders (HTTP ${status})` : "Failed to load orders");
+      }
     };
 
     loadOrders();
+    const pollId = window.setInterval(loadOrders, 8000);
 
     socket.on("new_order", (order) => {
       setOrders((prev) => [order, ...prev]);
@@ -46,6 +54,7 @@ function App() {
     });
 
     return () => {
+      window.clearInterval(pollId);
       socket.off("new_order");
       socket.off("order_updated");
     };
@@ -123,6 +132,7 @@ function App() {
         <div>
           <h1>Chakhna Admin Dashboard</h1>
           <p>Live orders from user app + real-time kitchen feed</p>
+          {loadError ? <p style={{ color: "#ff9b9b", marginTop: 6 }}>{loadError}</p> : null}
         </div>
 
         <div className="header-actions">

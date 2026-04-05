@@ -1,10 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Playfair+Display:wght@600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700;800&display=swap");
+@import "tailwindcss";
 
 :root {
-  --crimson: #8b0000;
-  --gold: #d4a017;
-  --charcoal: #1a1a1a;
-  --offwhite: #fff7e8;
+  --cbk-bg: #121212;
+  --cbk-crimson: #8b0000;
+  --cbk-gold: #d4a017;
+  --cbk-text: #f5efe4;
 }
 
 * {
@@ -14,19 +15,25 @@
 html,
 body,
 #root {
-  margin: 0;
   min-height: 100%;
+  margin: 0;
 }
 
 body {
-  font-family: "DM Sans", sans-serif;
-  background: var(--charcoal);
-  color: var(--offwhite);
+  background: var(--cbk-bg);
+  color: var(--cbk-text);
+  font-family: "Inter", sans-serif;
 }
 
-h1,
-h2,
-h3,
-h4 {
+.font-heading {
   font-family: "Playfair Display", serif;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

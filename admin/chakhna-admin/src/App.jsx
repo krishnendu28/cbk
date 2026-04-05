@@ -92,7 +92,7 @@ function App() {
     return (
       <div className="admin-login-screen">
         <div className="admin-login-card">
-          <img src="http://localhost:5173/logo.png" alt="Chakhna logo" className="admin-login-logo" />
+          <img src="http://localhost:5173/logo.jpeg" alt="Chakhna logo" className="admin-login-logo" />
           <h1>Owner Login</h1>
           <p>Sign in to manage live orders and kitchen tickets.</p>
           <form className="admin-login-form" onSubmit={handleOwnerLogin}>

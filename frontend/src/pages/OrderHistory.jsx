@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock3, PackageCheck, UtensilsCrossed } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const socket = io(API_BASE_URL, { autoConnect: true });
 const orderSteps = ["Preparing", "Ready", "Delivered"];
 

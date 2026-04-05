@@ -12,15 +12,6 @@ export function listMenu(_req, res) {
 
 export function addMenuItem(req, res) {
   try {
-    const { categoryTitle, name } = req.body;
-    if (!String(name || "").trim()) {
-      return res.status(400).json({ message: "Item name is required." });
-    }
-
-    if (!String(req.body.categoryId || "").trim() && !String(categoryTitle || "").trim()) {
-      return res.status(400).json({ message: "Category is required." });
-    }
-
     const payload = createMenuItem(req.body);
     getIO().emit("menu_created", payload);
     return res.status(201).json(payload);
@@ -32,10 +23,7 @@ export function addMenuItem(req, res) {
 
 export function editMenuItem(req, res) {
   try {
-    const itemId = Number(req.params.id);
-    if (!Number.isFinite(itemId)) {
-      return res.status(400).json({ message: "Invalid menu item id." });
-    }
+    const itemId = req.params.id;
 
     const payload = updateMenuItem(itemId, req.body);
     if (!payload) {
@@ -52,10 +40,7 @@ export function editMenuItem(req, res) {
 
 export function removeMenuItem(req, res) {
   try {
-    const itemId = Number(req.params.id);
-    if (!Number.isFinite(itemId)) {
-      return res.status(400).json({ message: "Invalid menu item id." });
-    }
+    const itemId = req.params.id;
 
     const deleted = deleteMenuItem(itemId);
     if (!deleted) {

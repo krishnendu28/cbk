@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const socket = io(API_BASE_URL);
 const statuses = ["Preparing", "Ready", "Delivered"];
 const OWNER_SESSION_KEY = "cbk_owner_session";

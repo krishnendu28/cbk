@@ -6,15 +6,8 @@ import {
   updateOrderStatus,
 } from "../services/orderService.js";
 
-const validStatuses = ["Preparing", "Ready", "Delivered"];
-
 export async function createOrderHandler(req, res) {
   try {
-    const { customerName, phone, address, items } = req.body;
-    if (!customerName || !phone || !address || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "Invalid order payload." });
-    }
-
     const order = await createOrder(req.body);
     getIO().emit("new_order", order);
     return res.status(201).json(order);
@@ -38,10 +31,6 @@ export async function updateOrderStatusHandler(req, res) {
   try {
     const { id } = req.params;
     const { status } = req.body;
-
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status." });
-    }
 
     const updatedOrder = await updateOrderStatus(id, status);
     if (!updatedOrder) {

@@ -19,7 +19,7 @@ import CategoryBar from "../components/CategoryBar";
 import MenuCard from "../components/MenuCard";
 import { menuCategories as fallbackMenuCategories } from "../data/menuData";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const socket = io(API_BASE_URL, { autoConnect: true });
 
 const heroSlides = [

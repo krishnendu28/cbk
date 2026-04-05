@@ -15,6 +15,8 @@ export function getApiBaseUrl() {
   const configured = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (configured) return configured;
 
+  if (!__DEV__) return "https://cbk-4dmf.onrender.com";
+
   const host = resolveHost();
   if (host === "localhost") return "http://localhost:5000";
   return `http://${host}:5000`;

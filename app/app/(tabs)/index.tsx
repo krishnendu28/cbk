@@ -89,6 +89,8 @@ export default function MenuScreen() {
   const [flatNo, setFlatNo] = useState("");
   const [roomFloor, setRoomFloor] = useState("");
   const [landmark, setLandmark] = useState("");
+  const [loadingMenu, setLoadingMenu] = useState(false);
+  const [menuError, setMenuError] = useState("");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -99,15 +101,21 @@ export default function MenuScreen() {
 
   useEffect(() => {
     async function loadMenu() {
+      setLoadingMenu(true);
+      setMenuError("");
       try {
         const response = await axios.get(`${API_BASE_URL}/api/menu`);
         const categories = Array.isArray(response.data) ? response.data : [];
         setMenuCategories(categories);
+        setMenuError("");
         if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
           setActiveCategory(categories[0].id);
         }
-      } catch {
+      } catch (error) {
         setMenuCategories([]);
+        setMenuError("Failed to load menu. Please check your internet connection.");
+      } finally {
+        setLoadingMenu(false);
       }
     }
 
@@ -333,17 +341,60 @@ export default function MenuScreen() {
           </View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
-          {menuCategories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              onPress={() => setActiveCategory(category.id)}
-              style={[styles.categoryBtn, activeCategory === category.id && styles.categoryBtnActive]}>
-              <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>{category.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {loadingMenu && (
+          <View style={styles.loaderContainer}>
+            <View style={styles.spinnerWrap}>
+              <Ionicons name="reload" size={48} color="#D4A017" style={styles.spinner} />
+            </View>
+            <Text style={styles.loaderText}>Loading menu...</Text>
+          </View>
+        )}
 
+        {menuError && !loadingMenu && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="warning-outline" size={40} color="#EF5350" />
+            <Text style={styles.errorTitle}>Oops!</Text>
+            <Text style={styles.errorMessage}>{menuError}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => {
+              setLoadingMenu(true);
+              setMenuError("");
+              async function retry() {
+                try {
+                  const response = await axios.get(`${API_BASE_URL}/api/menu`);
+                  const categories = Array.isArray(response.data) ? response.data : [];
+                  setMenuCategories(categories);
+                  setMenuError("");
+                  if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
+                    setActiveCategory(categories[0].id);
+                  }
+                } catch (error) {
+                  setMenuCategories([]);
+                  setMenuError("Failed to load menu. Please check your internet connection.");
+                } finally {
+                  setLoadingMenu(false);
+                }
+              }
+              retry();
+            }}>
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!loadingMenu && !menuError && menuCategories.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
+            {menuCategories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                onPress={() => setActiveCategory(category.id)}
+                style={[styles.categoryBtn, activeCategory === category.id && styles.categoryBtnActive]}>
+                <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>{category.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        {!loadingMenu && !menuError && menuCategories.length > 0 && (
         <FlatList
           data={activeCategoryData?.items || []}
           keyExtractor={(item) => `${activeCategoryData?.id}-${item.id}`}
@@ -376,6 +427,7 @@ export default function MenuScreen() {
             );
           }}
         />
+        )}
       </ScrollView>
 
       {cartItems.length > 0 && (
@@ -545,4 +597,13 @@ const styles = StyleSheet.create({
   billTotal: { color: "#D4A017", fontWeight: "700" },
   placeBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingVertical: 12, marginTop: 4 },
   placeBtnText: { color: "#121212", textAlign: "center", fontWeight: "800" },
+  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 100 },
+  spinnerWrap: { marginBottom: 16 },
+  spinner: { ...(Platform.OS !== "web" && { textShadowColor: "rgba(0,0,0,0.2)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }) },
+  loaderText: { color: "#D4A017", fontSize: 16, fontWeight: "600" },
+  errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 100, paddingHorizontal: 24 },
+  errorTitle: { color: "#EF5350", fontSize: 20, fontWeight: "700", marginTop: 12 },
+  errorMessage: { color: "#D0D0D0", fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },
+  retryBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10, marginTop: 16 },
+  retryBtnText: { color: "#121212", fontWeight: "700", textAlign: "center" },
 });

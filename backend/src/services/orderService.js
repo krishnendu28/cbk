@@ -35,7 +35,7 @@ export function isMongoEnabled() {
   return useMongo;
 }
 
-export async function createOrder({ customerName, phone, address, items, total, deliveryCharge }) {
+export async function createOrder({ customerName, phone, dateOfBirth, address, items, total, deliveryCharge }) {
   const normalizedItems = items.map((item) => ({
     name: item.name,
     variant: item.variant || "Regular",
@@ -47,6 +47,7 @@ export async function createOrder({ customerName, phone, address, items, total, 
   const payload = {
     customerName,
     phone,
+    dateOfBirth,
     address,
     items: normalizedItems,
     total: Number(total) || 0,

@@ -15,6 +15,7 @@ const orderSchema = new mongoose.Schema(
   {
     customerName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
+    dateOfBirth: { type: String, trim: true },
     address: { type: String, required: true, trim: true },
     items: { type: [orderItemSchema], required: true },
     total: { type: Number, required: true, min: 0 },

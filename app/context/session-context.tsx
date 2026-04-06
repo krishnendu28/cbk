@@ -6,12 +6,13 @@ const USER_SESSION_KEY = "cbk_user_session_mobile";
 type Session = {
   name: string;
   phone: string;
+  dateOfBirth: string;
 } | null;
 
 type SessionContextType = {
   session: Session;
   isHydrated: boolean;
-  login: (name: string, phone: string) => void;
+  login: (name: string, phone: string, dateOfBirth: string) => void;
   logout: () => void;
 };
 
@@ -27,7 +28,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(USER_SESSION_KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as Session;
-          if (parsed?.name && parsed?.phone) {
+          if (parsed?.name && parsed?.phone && parsed?.dateOfBirth) {
             setSession(parsed);
           }
         }
@@ -45,8 +46,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       isHydrated,
-      login: (name: string, phone: string) => {
-        const nextSession = { name: name.trim(), phone: phone.trim() };
+      login: (name: string, phone: string, dateOfBirth: string) => {
+        const nextSession = { name: name.trim(), phone: phone.trim(), dateOfBirth: dateOfBirth.trim() };
         setSession(nextSession);
         AsyncStorage.setItem(USER_SESSION_KEY, JSON.stringify(nextSession)).catch(() => null);
       },

@@ -15,6 +15,7 @@ export const orderIdParamSchema = z.object({
 export const createOrderSchema = z.object({
   customerName: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(7).max(25),
+  dateOfBirth: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   address: z.string().trim().min(5).max(300),
   items: z.array(orderItemSchema).min(1),
   total: z.coerce.number().nonnegative(),

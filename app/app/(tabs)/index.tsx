@@ -10,6 +10,7 @@ import {
   Image,
   Animated,
   type ImageSourcePropType,
+  KeyboardAvoidingView,
   Linking,
   Modal,
   Platform,
@@ -543,9 +544,12 @@ export default function MenuScreen() {
         </TouchableOpacity>
       )}
 
-      <Modal visible={cartVisible} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { paddingLeft: horizontalSafePadding, paddingRight: horizontalSafePadding }]}>
+      <Modal visible={cartVisible} animationType="fade" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalBackdrop}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={insets.top + 12}>
+          <View style={[styles.modalCard, { marginTop: insets.top + 12, paddingLeft: horizontalSafePadding, paddingRight: horizontalSafePadding }]}>
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>Your Cart</Text>
@@ -586,7 +590,7 @@ export default function MenuScreen() {
               <Text style={styles.placeBtnText}>{placingOrder ? "Placing..." : "Place Order"}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -725,8 +729,8 @@ const styles = StyleSheet.create({
   addBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
   checkoutPill: { position: "absolute", bottom: 16, right: 16, left: 16, backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E7507", shadowOpacity: 0.14, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
   checkoutPillText: { color: "#121212", fontWeight: "800" },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.42)" },
-  modalCard: { backgroundColor: "#171717", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14, gap: 10, borderTopWidth: 1, borderColor: "rgba(255,255,255,0.08)", shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 0, height: -6 }, shadowRadius: 18, elevation: 8 },
+  modalBackdrop: { flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.42)" },
+  modalCard: { backgroundColor: "#171717", borderRadius: 20, padding: 14, gap: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 0, height: 6 }, shadowRadius: 18, elevation: 8, maxHeight: "84%" },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
   modalTitle: { color: "#F5EFE4", fontSize: 20, fontWeight: "700" },
   modalSubtitle: { color: "#AA9F91", fontSize: 12, marginTop: 3 },

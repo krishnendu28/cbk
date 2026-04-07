@@ -2,10 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import {
   Alert,
   FlatList,
+  ImageBackground,
   Image,
+  Animated,
+  type ImageSourcePropType,
   Linking,
   Modal,
   Platform,
@@ -20,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
+import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 
 type MenuItem = {
   id: number;
@@ -45,24 +50,74 @@ type CartItem = {
 
 const heroSlides = [
   {
-    image: "https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop",
+    image: getMenuImageByFileName("Chicken butter masala combo.jpg"),
     title: "Curated Indian Flavors",
     subtitle: "Chef-crafted signatures with premium delivery finish.",
   },
   {
-    image: "https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop",
+    image: getMenuImageByFileName("chicken-handi-biryani.jpg"),
     title: "Biryani And Tandoor Nights",
     subtitle: "Bold aromas and smoky textures delivered hot.",
   },
   {
-    image: "https://images.pexels.com/photos/9609850/pexels-photo-9609850.jpeg?auto=compress&cs=tinysrgb&w=1400&h=900&fit=crop",
-    title: "Street Classics Reimagined",
-    subtitle: "From quick bites to royal plates, all in one app.",
+    image: getMenuImageByFileName("Tandoori-Chicken.jpg"),
+    title: "Smoky Tandoor Specials",
+    subtitle: "Charred perfection with authentic spice layers.",
   },
 ];
 
 const RESTAURANT_PHONE_LABEL = "+91 8420252042";
 const RESTAURANT_PHONE_DIAL = "+918420252042";
+const FALLBACK_IMAGE = require("@/assets/images/logo.jpeg");
+
+function ResilientImage({
+  primarySource,
+  secondarySource,
+  style,
+  animateOnChange = false,
+}: {
+  primarySource: ImageSourcePropType;
+  secondarySource?: ImageSourcePropType;
+  style: any;
+  animateOnChange?: boolean;
+}) {
+  const [source, setSource] = useState<ImageSourcePropType>(primarySource);
+  const [step, setStep] = useState(0);
+  const fade = useMemo(() => new Animated.Value(1), []);
+
+  useEffect(() => {
+    if (!animateOnChange) {
+      setSource(primarySource);
+      setStep(0);
+      return;
+    }
+
+    fade.setValue(0);
+    setSource(primarySource);
+    setStep(0);
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 420,
+      useNativeDriver: true,
+    }).start();
+  }, [animateOnChange, fade, primarySource]);
+
+  return (
+    <Animated.Image
+      source={source}
+      style={[style, animateOnChange && { opacity: fade }]}
+      onError={() => {
+        if (step === 0 && secondarySource) {
+          setSource(secondarySource);
+          setStep(1);
+          return;
+        }
+        setSource(FALLBACK_IMAGE);
+        setStep(2);
+      }}
+    />
+  );
+}
 
 function formatDateOfBirth(date: Date) {
   const year = date.getFullYear();
@@ -77,7 +132,7 @@ export default function MenuScreen() {
   const horizontalSafePadding = Math.max(14, Math.max(insets.left, insets.right) + 10);
   const [loginName, setLoginName] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
-  const [loginDobDate, setLoginDobDate] = useState<Date>(new Date(2000, 0, 1));
+  const [loginDobDate, setLoginDobDate] = useState<Date | null>(null);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState("");
@@ -111,7 +166,7 @@ export default function MenuScreen() {
         if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
           setActiveCategory(categories[0].id);
         }
-      } catch (error) {
+      } catch {
         setMenuCategories([]);
         setMenuError("Failed to load menu. Please check your internet connection.");
       } finally {
@@ -132,20 +187,145 @@ export default function MenuScreen() {
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryCharge = cartItems.length ? 20 : 0;
   const grandTotal = subtotal + deliveryCharge;
-  const loginDob = useMemo(() => formatDateOfBirth(loginDobDate), [loginDobDate]);
+  const loginDob = useMemo(() => (loginDobDate ? formatDateOfBirth(loginDobDate) : ""), [loginDobDate]);
+
+  const menuHeader = (
+    <View>
+      <View style={styles.header}>
+        <Image source={require("@/assets/images/logo.jpeg")} style={styles.headerLogo} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.brand}>Chakhna By Kilo</Text>
+          <Text style={styles.tagline}>By Kilo, By Choice, By Taste</Text>
+        </View>
+        <TouchableOpacity onPress={callRestaurant} style={styles.callIconBtn} activeOpacity={0.85}>
+          <Ionicons name="call-outline" size={17} color="#F5EFE4" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.85}>
+          <Ionicons name="log-out-outline" size={18} color="#F5EFE4" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.heroWrap}>
+        <ResilientImage primarySource={heroSlides[heroIndex].image} style={styles.heroImage} animateOnChange />
+        <View style={styles.heroOverlayTop} />
+        <View style={styles.heroOverlayBottom} />
+        <View style={styles.heroContent}>
+          <View style={styles.heroBadgeRow}>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>Premium Dining At Home</Text>
+            </View>
+            <View style={styles.heroLivePill}>
+              <View style={styles.heroLiveDot} />
+              <Text style={styles.heroLiveText}>Live Kitchen</Text>
+            </View>
+          </View>
+          <Text style={styles.heroEyebrow}>{heroSlides[heroIndex].title}</Text>
+          <Text style={styles.heroTitle}>Crafted flavors with a luxury finish</Text>
+          <Text style={styles.heroSubtitle}>{heroSlides[heroIndex].subtitle}</Text>
+          <View style={styles.heroInfoRow}>
+            <View style={styles.heroInfoPill}>
+              <Ionicons name="star" size={13} color="#F3D48B" />
+              <Text style={styles.heroInfoText}>4.8 Rating</Text>
+            </View>
+            <View style={styles.heroInfoPill}>
+              <Ionicons name="time-outline" size={13} color="#F3D48B" />
+              <Text style={styles.heroInfoText}>25-35 min</Text>
+            </View>
+            <View style={styles.heroInfoPill}>
+              <Ionicons name="flame-outline" size={13} color="#F3D48B" />
+              <Text style={styles.heroInfoText}>Hot & Fresh</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.heroDotsRow}>
+          {heroSlides.map((_, idx) => (
+            <View key={`hero-dot-${idx}`} style={[styles.heroDot, idx === heroIndex && styles.heroDotActive]} />
+          ))}
+        </View>
+      </View>
+
+      {loadingMenu && (
+        <View style={styles.loaderContainer}>
+          <View style={styles.spinnerWrap}>
+            <Ionicons name="reload" size={48} color="#D4A017" style={styles.spinner} />
+          </View>
+          <Text style={styles.loaderText}>Loading menu...</Text>
+        </View>
+      )}
+
+      {menuError && !loadingMenu && (
+        <View style={styles.errorContainer}>
+          <Ionicons name="warning-outline" size={40} color="#EF5350" />
+          <Text style={styles.errorTitle}>Oops!</Text>
+          <Text style={styles.errorMessage}>{menuError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => {
+            setLoadingMenu(true);
+            setMenuError("");
+            async function retry() {
+              try {
+                const response = await axios.get(`${API_BASE_URL}/api/menu`);
+                const categories = Array.isArray(response.data) ? response.data : [];
+                setMenuCategories(categories);
+                setMenuError("");
+                if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
+                  setActiveCategory(categories[0].id);
+                }
+              } catch {
+                setMenuCategories([]);
+                setMenuError("Failed to load menu. Please check your internet connection.");
+              } finally {
+                setLoadingMenu(false);
+              }
+            }
+            retry();
+          }}>
+            <Text style={styles.retryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!loadingMenu && !menuError && menuCategories.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
+          {menuCategories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              onPress={() => setActiveCategory(category.id)}
+              activeOpacity={0.86}
+              style={[styles.categoryBtn, activeCategory === category.id && styles.categoryBtnActive]}>
+              <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>{category.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    if (Platform.OS === "android") {
-      setShowDobPicker(false);
-    }
+    if (event.type === "dismissed") return;
 
-    if (event.type === "dismissed") {
+    const pickedDate = selectedDate ?? (event.nativeEvent?.timestamp ? new Date(event.nativeEvent.timestamp) : undefined);
+    if (pickedDate && !Number.isNaN(pickedDate.getTime())) setLoginDobDate(pickedDate);
+  };
+
+  const openDobPicker = () => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: loginDobDate ?? new Date(2000, 0, 1),
+        mode: "date",
+        maximumDate: new Date(),
+        minimumDate: new Date(1900, 0, 1),
+        onChange: (event, selectedDate) => {
+          if (event.type !== "set") return;
+          const pickedDate = selectedDate ?? (event.nativeEvent?.timestamp ? new Date(event.nativeEvent.timestamp) : undefined);
+          if (pickedDate && !Number.isNaN(pickedDate.getTime())) {
+            setLoginDobDate(pickedDate);
+          }
+        },
+      });
       return;
     }
 
-    if (selectedDate) {
-      setLoginDobDate(selectedDate);
-    }
+    setShowDobPicker((prev) => !prev);
   };
 
   const handleLogin = () => {
@@ -268,8 +448,7 @@ export default function MenuScreen() {
 
   if (!session) {
     return (
-      <View style={[styles.loginContainer, { paddingTop: insets.top + 10, paddingHorizontal: horizontalSafePadding }]}>
-        <Image source={{ uri: heroSlides[0].image }} style={styles.loginBg} />
+      <ImageBackground source={heroSlides[0].image} style={[styles.loginContainer, { paddingTop: insets.top + 10, paddingHorizontal: horizontalSafePadding }]}>
         <View style={styles.loginOverlay} />
         <View style={styles.loginCard}>
           <Image source={require("@/assets/images/logo.jpeg")} style={styles.logo} />
@@ -277,16 +456,16 @@ export default function MenuScreen() {
           <Text style={styles.loginSubtitle}>Premium food ordering in your pocket.</Text>
           <TextInput value={loginName} onChangeText={setLoginName} placeholder="Your name" placeholderTextColor="#999" style={styles.input} />
           <TextInput value={loginPhone} onChangeText={setLoginPhone} placeholder="Phone number" placeholderTextColor="#999" style={styles.input} keyboardType="phone-pad" />
-          <TouchableOpacity style={styles.dobToggleBtn} onPress={() => setShowDobPicker((prev) => !prev)}>
+          <TouchableOpacity style={styles.dobToggleBtn} onPress={openDobPicker} activeOpacity={0.86}>
             <Text style={styles.dobToggleLabel}>{showDobPicker ? "Hide DOB Calendar" : "Select Date of Birth"}</Text>
-            <Text style={styles.dobToggleValue}>{loginDob}</Text>
+            <Text style={styles.dobToggleValue}>{loginDob || "Tap to choose"}</Text>
           </TouchableOpacity>
-          {showDobPicker ? (
+          {Platform.OS === "ios" && showDobPicker ? (
             <View style={styles.dobPickerWrap}>
               <DateTimePicker
-                value={loginDobDate}
+                value={loginDobDate ?? new Date(2000, 0, 1)}
                 mode="date"
-                display={Platform.OS === "ios" ? "inline" : "default"}
+                display="inline"
                 onChange={handleDateChange}
                 maximumDate={new Date()}
                 minimumDate={new Date(1900, 0, 1)}
@@ -301,137 +480,64 @@ export default function MenuScreen() {
             <Text style={styles.loginBtnText}>Continue</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ImageBackground>
     );
   }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 6, paddingHorizontal: horizontalSafePadding }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={styles.header}>
-          <Image source={require("@/assets/images/logo.jpeg")} style={styles.headerLogo} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.brand}>Chakhna By Kilo</Text>
-            <Text style={styles.tagline}>By Kilo, By Choice, By Taste</Text>
-          </View>
-          <TouchableOpacity onPress={callRestaurant} style={styles.callIconBtn}>
-            <Ionicons name="call-outline" size={17} color="#F5EFE4" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={18} color="#F5EFE4" />
-          </TouchableOpacity>
-        </View>
+      <FlatList
+        data={!loadingMenu && !menuError ? activeCategoryData?.items || [] : []}
+        keyExtractor={(item) => `${activeCategoryData?.id}-${item.id}`}
+        ListHeaderComponent={menuHeader}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS !== "web"}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        renderItem={({ item }) => {
+          const variants = Object.keys(item.prices || {});
+          const selectedVariant = variantSelections[item.name] || variants[0] || "Regular";
+          const price = Number(item.prices?.[selectedVariant] || 0);
+          const menuImage = getMenuItemImage(item.name, activeCategoryData?.title, item.image);
 
-        <View style={styles.heroWrap}>
-          <Image source={{ uri: heroSlides[heroIndex].image }} style={styles.heroImage} />
-          <View style={styles.heroOverlayTop} />
-          <View style={styles.heroOverlayBottom} />
-          <View style={styles.heroContent}>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Premium Delivery Experience</Text>
-            </View>
-            <Text style={styles.heroEyebrow}>{heroSlides[heroIndex].title}</Text>
-            <Text style={styles.heroTitle}>Crafted flavors, delivered with finesse</Text>
-            <Text style={styles.heroSubtitle}>{heroSlides[heroIndex].subtitle}</Text>
-          </View>
-          <View style={styles.heroDotsRow}>
-            {heroSlides.map((_, idx) => (
-              <View key={`hero-dot-${idx}`} style={[styles.heroDot, idx === heroIndex && styles.heroDotActive]} />
-            ))}
-          </View>
-        </View>
-
-        {loadingMenu && (
-          <View style={styles.loaderContainer}>
-            <View style={styles.spinnerWrap}>
-              <Ionicons name="reload" size={48} color="#D4A017" style={styles.spinner} />
-            </View>
-            <Text style={styles.loaderText}>Loading menu...</Text>
-          </View>
-        )}
-
-        {menuError && !loadingMenu && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="warning-outline" size={40} color="#EF5350" />
-            <Text style={styles.errorTitle}>Oops!</Text>
-            <Text style={styles.errorMessage}>{menuError}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={() => {
-              setLoadingMenu(true);
-              setMenuError("");
-              async function retry() {
-                try {
-                  const response = await axios.get(`${API_BASE_URL}/api/menu`);
-                  const categories = Array.isArray(response.data) ? response.data : [];
-                  setMenuCategories(categories);
-                  setMenuError("");
-                  if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
-                    setActiveCategory(categories[0].id);
-                  }
-                } catch (error) {
-                  setMenuCategories([]);
-                  setMenuError("Failed to load menu. Please check your internet connection.");
-                } finally {
-                  setLoadingMenu(false);
-                }
-              }
-              retry();
-            }}>
-              <Text style={styles.retryBtnText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!loadingMenu && !menuError && menuCategories.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
-            {menuCategories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                onPress={() => setActiveCategory(category.id)}
-                style={[styles.categoryBtn, activeCategory === category.id && styles.categoryBtnActive]}>
-                <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>{category.title}</Text>
+          return (
+            <View style={styles.card}>
+              <ResilientImage primarySource={menuImage} style={styles.cardImage} />
+              <Text style={styles.itemName}>{item.name}</Text>
+              <Text style={styles.price}>Rs {price}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {variants.map((variant) => (
+                  <TouchableOpacity
+                    key={variant}
+                    onPress={() => setVariantSelections((prev) => ({ ...prev, [item.name]: variant }))}
+                    style={[styles.variantBtn, selectedVariant === variant && styles.variantBtnActive]}>
+                    <Text style={[styles.variantText, selectedVariant === variant && styles.variantTextActive]}>{variant}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(item)} activeOpacity={0.88}>
+                <Text style={styles.addBtnText}>Add to Cart</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-
-        {!loadingMenu && !menuError && menuCategories.length > 0 && (
-        <FlatList
-          data={activeCategoryData?.items || []}
-          keyExtractor={(item) => `${activeCategoryData?.id}-${item.id}`}
-          scrollEnabled={false}
-          contentContainerStyle={{ gap: 12 }}
-          renderItem={({ item }) => {
-            const variants = Object.keys(item.prices || {});
-            const selectedVariant = variantSelections[item.name] || variants[0] || "Regular";
-            const price = Number(item.prices?.[selectedVariant] || 0);
-
-            return (
-              <View style={styles.card}>
-                <Image source={{ uri: item.image || heroSlides[0].image }} style={styles.cardImage} />
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.price}>Rs {price}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {variants.map((variant) => (
-                    <TouchableOpacity
-                      key={variant}
-                      onPress={() => setVariantSelections((prev) => ({ ...prev, [item.name]: variant }))}
-                      style={[styles.variantBtn, selectedVariant === variant && styles.variantBtnActive]}>
-                      <Text style={[styles.variantText, selectedVariant === variant && styles.variantTextActive]}>{variant}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(item)}>
-                  <Text style={styles.addBtnText}>Add to Cart</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }}
-        />
-        )}
-      </ScrollView>
+            </View>
+          );
+        }}
+        ListEmptyComponent={
+          !loadingMenu && !menuError ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateTitle}>{menuCategories.length ? "No items in this category" : "Loading menu..."}</Text>
+              <Text style={styles.emptyStateText}>{menuCategories.length ? "Try another category." : "Please wait a moment."}</Text>
+            </View>
+          ) : null
+        }
+      />
 
       {cartItems.length > 0 && (
-        <TouchableOpacity style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding }]} onPress={() => setCartVisible(true)}>
+        <TouchableOpacity activeOpacity={0.88} style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding }]} onPress={() => setCartVisible(true)}>
           <Ionicons name="cart" size={16} color="#121212" />
           <Text style={styles.checkoutPillText}>Checkout Cart ({cartItems.length})</Text>
         </TouchableOpacity>
@@ -441,9 +547,12 @@ export default function MenuScreen() {
         <View style={styles.modalBackdrop}>
           <View style={[styles.modalCard, { paddingLeft: horizontalSafePadding, paddingRight: horizontalSafePadding }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Your Cart</Text>
-              <TouchableOpacity onPress={() => setCartVisible(false)}>
-                <Ionicons name="close" size={24} color="#F5EFE4" />
+              <View>
+                <Text style={styles.modalTitle}>Your Cart</Text>
+                <Text style={styles.modalSubtitle}>Review items before placing the order.</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.82} onPress={() => setCartVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#D7CEC0" />
               </TouchableOpacity>
             </View>
 
@@ -509,67 +618,102 @@ const styles = StyleSheet.create({
   logoutBtn: { backgroundColor: "#8B0000", borderRadius: 18, padding: 8 },
   heroWrap: {
     marginHorizontal: 2,
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: "hidden",
-    height: 228,
+    height: 240,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(255,255,255,0.14)",
     shadowColor: "#000",
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 18,
-    elevation: 8,
+    elevation: 5,
   },
   heroImage: { width: "100%", height: "100%" },
-  heroOverlayTop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(14,14,14,0.26)" },
+  heroOverlayTop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(10,10,10,0.22)" },
   heroOverlayBottom: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 160,
-    backgroundColor: "rgba(18,18,18,0.74)",
+    height: 176,
+    backgroundColor: "rgba(16,16,16,0.72)",
   },
   heroContent: {
     position: "absolute",
     left: 14,
     right: 14,
-    bottom: 18,
-    gap: 6,
+    bottom: 14,
+    gap: 7,
+    backgroundColor: "rgba(18,18,18,0.28)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(245,239,228,0.16)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  heroBadgeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   heroBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(212,160,23,0.18)",
+    backgroundColor: "rgba(212,160,23,0.2)",
     borderWidth: 1,
-    borderColor: "rgba(212,160,23,0.45)",
+    borderColor: "rgba(243,212,139,0.54)",
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+  },
+  heroBadgeText: { color: "#F3D48B", fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
+  heroLivePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(34,197,94,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(94,234,212,0.4)",
+    borderRadius: 999,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
-  heroBadgeText: { color: "#F3D48B", fontSize: 10, fontWeight: "700", letterSpacing: 0.4 },
-  heroEyebrow: { color: "#E5D3A7", fontSize: 12, fontWeight: "600" },
-  heroTitle: { color: "#F5EFE4", fontSize: 22, lineHeight: 27, fontWeight: "800", maxWidth: 300 },
-  heroSubtitle: { color: "#D6CEC0", fontSize: 12.5, lineHeight: 18, maxWidth: 290 },
+  heroLiveDot: { width: 6, height: 6, borderRadius: 999, backgroundColor: "#34D399" },
+  heroLiveText: { color: "#B4F6E0", fontSize: 10, fontWeight: "700", letterSpacing: 0.3 },
+  heroEyebrow: { color: "#E5D3A7", fontSize: 12, fontWeight: "600", letterSpacing: 0.3 },
+  heroTitle: { color: "#F5EFE4", fontSize: 23, lineHeight: 29, fontWeight: "800", maxWidth: 300 },
+  heroSubtitle: { color: "#DCD2C3", fontSize: 12.5, lineHeight: 18, maxWidth: 294 },
+  heroInfoRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 2 },
+  heroInfoPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(243,212,139,0.4)",
+    backgroundColor: "rgba(20,20,20,0.45)",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  heroInfoText: { color: "#EEE4D2", fontSize: 11, fontWeight: "600" },
   heroDotsRow: {
     position: "absolute",
     right: 12,
-    top: 12,
+    bottom: 12,
     flexDirection: "row",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    gap: 7,
+    backgroundColor: "rgba(8,8,8,0.34)",
     borderRadius: 999,
-    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 9,
     paddingVertical: 6,
   },
-  heroDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.45)" },
-  heroDotActive: { width: 18, backgroundColor: "#D4A017" },
-  categoriesRow: { paddingHorizontal: 14, gap: 8, paddingBottom: 10 },
-  categoryBtn: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#232323", borderWidth: 1, borderColor: "#303030" },
-  categoryBtnActive: { backgroundColor: "#8B0000", borderColor: "#D4A017" },
-  categoryText: { color: "#CBCBCB", fontSize: 12 },
+  heroDot: { width: 6, height: 6, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.45)" },
+  heroDotActive: { width: 20, backgroundColor: "#E3B447" },
+  categoriesRow: { paddingHorizontal: 14, gap: 8, paddingBottom: 10, paddingTop: 2 },
+  categoryBtn: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+  categoryBtnActive: { backgroundColor: "rgba(139,0,0,0.9)", borderColor: "rgba(212,160,23,0.72)" },
+  categoryText: { color: "#C6C0B6", fontSize: 12, letterSpacing: 0.1 },
   categoryTextActive: { color: "#F5EFE4", fontWeight: "700" },
-  card: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "#2D2D2D", gap: 8 },
+  card: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", gap: 8, shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 5 }, shadowRadius: 8, elevation: 1 },
   cardImage: { width: "100%", height: 150, borderRadius: 10 },
   itemName: { color: "#F5EFE4", fontWeight: "700", fontSize: 15 },
   price: { color: "#D4A017", fontWeight: "700" },
@@ -579,20 +723,22 @@ const styles = StyleSheet.create({
   variantTextActive: { color: "#F5EFE4", fontWeight: "700" },
   addBtn: { backgroundColor: "#8B0000", borderRadius: 10, paddingVertical: 10 },
   addBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
-  checkoutPill: { position: "absolute", bottom: 16, right: 16, left: 16, backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 12, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+  checkoutPill: { position: "absolute", bottom: 16, right: 16, left: 16, backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E7507", shadowOpacity: 0.14, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
   checkoutPillText: { color: "#121212", fontWeight: "800" },
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.55)" },
-  modalCard: { backgroundColor: "#171717", borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 14, gap: 8, borderTopWidth: 1, borderColor: "#2C2C2C" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.42)" },
+  modalCard: { backgroundColor: "#171717", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 14, gap: 10, borderTopWidth: 1, borderColor: "rgba(255,255,255,0.08)", shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 0, height: -6 }, shadowRadius: 18, elevation: 8 },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
   modalTitle: { color: "#F5EFE4", fontSize: 20, fontWeight: "700" },
-  cartRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#202020", borderRadius: 10, padding: 10 },
+  modalSubtitle: { color: "#AA9F91", fontSize: 12, marginTop: 3 },
+  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  cartRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
   cartItemName: { color: "#F5EFE4", fontWeight: "600" },
-  cartVariant: { color: "#A5A5A5", fontSize: 12 },
+  cartVariant: { color: "#A5A5A5", fontSize: 12, marginTop: 2 },
   qtyWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
-  qtyBtn: { backgroundColor: "#2A2A2A", borderRadius: 6, width: 24, height: 24, justifyContent: "center", alignItems: "center" },
+  qtyBtn: { backgroundColor: "#2A2A2A", borderRadius: 8, width: 26, height: 26, justifyContent: "center", alignItems: "center" },
   qtyLabel: { color: "#F5EFE4", fontWeight: "700" },
   qtyValue: { color: "#F5EFE4" },
-  billBox: { backgroundColor: "#1F1F1F", borderRadius: 10, padding: 10, gap: 3 },
+  billBox: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 10, gap: 3, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
   billText: { color: "#D0D0D0" },
   billTotal: { color: "#D4A017", fontWeight: "700" },
   placeBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingVertical: 12, marginTop: 4 },

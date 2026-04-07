@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "app",
+    "name": "Chakhna By Kilo",
     "slug": "app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.jpeg",
+    "icon": "./assets/images/icon-chakhna.png",
     "scheme": "app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,9 +15,8 @@
     "android": {
       "package": "com.krishnendu28.cbkapp",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/logo.jpeg",
-        "backgroundImage": "./assets/images/android-icon-background.png",
+        "backgroundColor": "#173226",
+        "foregroundImage": "./assets/images/android-icon-foreground-chakhna.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,

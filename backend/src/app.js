@@ -7,6 +7,7 @@ import { corsOptions } from "./config/cors.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import menuRoutes from "./routes/menuRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import shopRoutes from "./routes/shopRoutes.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
 import { requestContext } from "./middlewares/request-context.js";
 import { requestLogger } from "./middlewares/request-logger.js";
@@ -33,6 +34,7 @@ app.use(apiRateLimiter);
 app.use("/api/health", healthRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/shop", shopRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

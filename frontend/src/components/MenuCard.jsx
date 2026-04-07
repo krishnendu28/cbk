@@ -5,7 +5,7 @@ function formatINR(value) {
   return `Rs ${value}`;
 }
 
-function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd }) {
+function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd, orderingOpen = true }) {
   const variants = Object.keys(item.prices);
   const currentVariant = selectedVariant || variants[0];
   const currentPrice = item.prices[currentVariant];
@@ -59,10 +59,11 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
         <motion.button
           type="button"
           whileTap={{ scale: 0.97 }}
+          disabled={!orderingOpen}
           onClick={(event) => onAdd(item, imageSrc, event)}
-          className="w-full rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[#5f0000] px-4 py-2.5 text-sm font-semibold tracking-wide text-[var(--cbk-text)]"
+          className="w-full rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[#5f0000] px-4 py-2.5 text-sm font-semibold tracking-wide text-[var(--cbk-text)] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Add to Cart
+          {orderingOpen ? "Add to Cart" : "Ordering Closed"}
         </motion.button>
       </div>
     </motion.article>

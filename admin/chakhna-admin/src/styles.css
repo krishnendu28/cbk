@@ -95,6 +95,42 @@ body {
   gap: 10px;
 }
 
+.ordering-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ordering-toggle:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.ordering-toggle.open {
+  background: rgba(30, 142, 62, 0.26);
+  border-color: rgba(105, 228, 147, 0.6);
+  color: #bff6d0;
+}
+
+.ordering-toggle.closed {
+  background: rgba(139, 0, 0, 0.33);
+  border-color: rgba(255, 130, 130, 0.52);
+  color: #ffd0d0;
+}
+
+.toggle-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
 .header-actions button,
 .status-btn {
   border: none;

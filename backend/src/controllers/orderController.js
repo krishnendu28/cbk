@@ -5,9 +5,17 @@ import {
   listOrders,
   updateOrderStatus,
 } from "../services/orderService.js";
+import { getOrderingStatus } from "../services/shopService.js";
 
 export async function createOrderHandler(req, res) {
   try {
+    const orderingStatus = await getOrderingStatus();
+    if (!orderingStatus.isOrderingOpen) {
+      return res.status(403).json({
+        message: "Ordering is currently closed. Please try again during opening hours.",
+      });
+    }
+
     const order = await createOrder(req.body);
     getIO().emit("new_order", order);
     return res.status(201).json(order);

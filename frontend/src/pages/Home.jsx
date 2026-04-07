@@ -55,6 +55,7 @@ function Home({ userSession, onLogout, onOpenHistory }) {
   const [variantSelections, setVariantSelections] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [isOrderingOpen, setIsOrderingOpen] = useState(true);
   const [cartItems, setCartItems] = useState([]);
   const [flyItem, setFlyItem] = useState(null);
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
@@ -101,17 +102,31 @@ function Home({ userSession, onLogout, onOpenHistory }) {
       }
     }
 
+    async function loadOrderingStatus() {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/shop/ordering-status`);
+        setIsOrderingOpen(Boolean(response.data?.isOrderingOpen));
+      } catch {
+        // Keep ordering enabled on transient API failures to avoid blocking users by mistake.
+        setIsOrderingOpen(true);
+      }
+    }
+
     loadMenu();
+    loadOrderingStatus();
     const onMenuChanged = () => loadMenu();
+    const onOrderingStatusChanged = (status) => setIsOrderingOpen(Boolean(status?.isOrderingOpen));
 
     socket.on("menu_created", onMenuChanged);
     socket.on("menu_updated", onMenuChanged);
     socket.on("menu_deleted", onMenuChanged);
+    socket.on("ordering_status_updated", onOrderingStatusChanged);
 
     return () => {
       socket.off("menu_created", onMenuChanged);
       socket.off("menu_updated", onMenuChanged);
       socket.off("menu_deleted", onMenuChanged);
+      socket.off("ordering_status_updated", onOrderingStatusChanged);
     };
   }, [activeCategory]);
 
@@ -130,6 +145,11 @@ function Home({ userSession, onLogout, onOpenHistory }) {
   };
 
   const addToCart = (item, imageSrc, event) => {
+    if (!isOrderingOpen) {
+      toast.error("Ordering is closed right now.");
+      return;
+    }
+
     const variants = Object.entries(item.prices);
     const selectedVariant = variantSelections[item.name] || variants[0][0];
     const selectedPrice = item.prices[selectedVariant];
@@ -196,6 +216,11 @@ function Home({ userSession, onLogout, onOpenHistory }) {
   };
 
   const placeOrder = async () => {
+    if (!isOrderingOpen) {
+      toast.error("Ordering is currently closed. Please come back when the shop reopens.");
+      return;
+    }
+
     if (!customer.customerName || !customer.phone || !customer.flatNo || !customer.roomOrFloor || !customer.landmark) {
       toast.error("Please complete flat number, room/floor, and nearby landmark.");
       return;
@@ -326,6 +351,12 @@ function Home({ userSession, onLogout, onOpenHistory }) {
       </section>
 
       <main id="menu" className="mx-auto max-w-7xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
+        {!isOrderingOpen && (
+          <div className="rounded-xl border border-red-300/35 bg-[rgba(139,0,0,.28)] px-4 py-3 text-sm text-red-100">
+            Ordering is closed for now. You can browse the menu, but checkout is disabled.
+          </div>
+        )}
+
         <CategoryBar categories={menuCategories} activeCategory={activeCategory} onSelect={setActiveCategory} />
 
         <AnimatePresence mode="wait">
@@ -346,6 +377,7 @@ function Home({ userSession, onLogout, onOpenHistory }) {
                 selectedVariant={variantSelections[item.name]}
                 onVariantChange={handleVariantChange}
                 onAdd={addToCart}
+                orderingOpen={isOrderingOpen}
               />
             ))}
           </motion.section>
@@ -356,10 +388,11 @@ function Home({ userSession, onLogout, onOpenHistory }) {
         ref={cartButtonRef}
         type="button"
         onClick={() => setCartOpen(true)}
+        disabled={!isOrderingOpen}
         animate={{ scale: [1, 1.04, 1] }}
         transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         className={[
-          "fixed right-4 z-50 rounded-full border border-[var(--cbk-gold)]/50 bg-[rgba(139,0,0,.82)] px-5 py-3 text-sm font-semibold shadow-[0_12px_30px_rgba(0,0,0,.45)] backdrop-blur md:bottom-6",
+          "fixed right-4 z-50 rounded-full border border-[var(--cbk-gold)]/50 bg-[rgba(139,0,0,.82)] px-5 py-3 text-sm font-semibold shadow-[0_12px_30px_rgba(0,0,0,.45)] backdrop-blur disabled:cursor-not-allowed disabled:opacity-50 md:bottom-6",
           showMobileCartActions ? "bottom-20 inline-flex" : "hidden md:inline-flex md:bottom-6",
         ].join(" ")}
       >
@@ -523,12 +556,12 @@ function Home({ userSession, onLogout, onOpenHistory }) {
 
                 <button
                   type="button"
-                  disabled={placingOrder}
+                  disabled={placingOrder || !isOrderingOpen}
                   onClick={placeOrder}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-gold)] to-[#bf8d15] px-4 py-3 font-semibold text-black disabled:opacity-70"
                 >
                   <MapPinned size={16} />
-                  {placingOrder ? "Processing Checkout..." : "Checkout Cart"}
+                  {placingOrder ? "Processing Checkout..." : isOrderingOpen ? "Checkout Cart" : "Ordering Closed"}
                   {!placingOrder && <ChevronRight size={16} />}
                 </button>
               </div>

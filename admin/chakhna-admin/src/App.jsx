@@ -22,6 +22,8 @@ function App() {
   const [isOwnerLoggedIn, setIsOwnerLoggedIn] = useState(() => localStorage.getItem(OWNER_SESSION_KEY) === "1");
   const [ownerCreds, setOwnerCreds] = useState({ username: "", password: "" });
   const [orders, setOrders] = useState([]);
+  const [orderingStatus, setOrderingStatus] = useState({ isOrderingOpen: true, updatedAt: null });
+  const [updatingOrderingStatus, setUpdatingOrderingStatus] = useState(false);
   const [loadError, setLoadError] = useState("");
   const audioRef = useRef(null);
 
@@ -39,7 +41,21 @@ function App() {
       }
     };
 
+    const loadOrderingStatus = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/shop/ordering-status`);
+        const isOrderingOpen = Boolean(response.data?.isOrderingOpen);
+        setOrderingStatus({
+          isOrderingOpen,
+          updatedAt: response.data?.updatedAt || null,
+        });
+      } catch {
+        setLoadError("Failed to load shop status");
+      }
+    };
+
     loadOrders();
+    loadOrderingStatus();
     const pollId = window.setInterval(loadOrders, 8000);
 
     socket.on("new_order", (order) => {
@@ -54,10 +70,18 @@ function App() {
       setOrders((prev) => prev.map((order) => (order._id === updated._id ? updated : order)));
     });
 
+    socket.on("ordering_status_updated", (status) => {
+      setOrderingStatus({
+        isOrderingOpen: Boolean(status?.isOrderingOpen),
+        updatedAt: status?.updatedAt || null,
+      });
+    });
+
     return () => {
       window.clearInterval(pollId);
       socket.off("new_order");
       socket.off("order_updated");
+      socket.off("ordering_status_updated");
     };
   }, [isOwnerLoggedIn]);
 
@@ -85,6 +109,25 @@ function App() {
     localStorage.removeItem(OWNER_SESSION_KEY);
     setIsOwnerLoggedIn(false);
     setOwnerCreds({ username: "", password: "" });
+  };
+
+  const toggleOrderingStatus = async () => {
+    const nextStatus = !orderingStatus.isOrderingOpen;
+    setUpdatingOrderingStatus(true);
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/api/shop/ordering-status`, {
+        isOrderingOpen: nextStatus,
+      });
+
+      setOrderingStatus({
+        isOrderingOpen: Boolean(response.data?.isOrderingOpen),
+        updatedAt: response.data?.updatedAt || null,
+      });
+    } catch {
+      window.alert("Unable to update ordering status. Please try again.");
+    } finally {
+      setUpdatingOrderingStatus(false);
+    }
   };
 
   const updateStatus = async (order) => {
@@ -137,6 +180,18 @@ function App() {
         </div>
 
         <div className="header-actions">
+          <button
+            className={`ordering-toggle ${orderingStatus.isOrderingOpen ? "open" : "closed"}`}
+            onClick={toggleOrderingStatus}
+            disabled={updatingOrderingStatus}
+          >
+            <span className="toggle-dot" />
+            {updatingOrderingStatus
+              ? "Updating..."
+              : orderingStatus.isOrderingOpen
+                ? "Ordering Open"
+                : "Ordering Closed"}
+          </button>
           <button onClick={logout}>Logout</button>
           <span>{activeCount} active orders</span>
         </div>

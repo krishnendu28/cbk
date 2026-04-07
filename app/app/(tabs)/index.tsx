@@ -147,6 +147,7 @@ export default function MenuScreen() {
   const [landmark, setLandmark] = useState("");
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState("");
+  const [isOrderingOpen, setIsOrderingOpen] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -179,6 +180,31 @@ export default function MenuScreen() {
       loadMenu();
     }
   }, [activeCategory, session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    let isMounted = true;
+
+    const loadOrderingStatus = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/shop/ordering-status`);
+        if (!isMounted) return;
+        setIsOrderingOpen(Boolean(response.data?.isOrderingOpen));
+      } catch {
+        if (!isMounted) return;
+        setIsOrderingOpen(true);
+      }
+    };
+
+    loadOrderingStatus();
+    const intervalId = setInterval(loadOrderingStatus, 15000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [session]);
 
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
@@ -352,6 +378,11 @@ export default function MenuScreen() {
   };
 
   const addToCart = (item: MenuItem) => {
+    if (!isOrderingOpen) {
+      Alert.alert("Ordering closed", "The shop is currently closed. Please try again later.");
+      return;
+    }
+
     const variants = Object.keys(item.prices || {});
     const selectedVariant = variantSelections[item.name] || variants[0] || "Regular";
     const selectedPrice = Number(item.prices?.[selectedVariant] || 0);
@@ -404,6 +435,11 @@ export default function MenuScreen() {
   const placeOrder = async () => {
     if (!session) return;
 
+    if (!isOrderingOpen) {
+      Alert.alert("Ordering closed", "The shop is currently closed. Please place your order when it reopens.");
+      return;
+    }
+
     if (!flatNo.trim() || !roomFloor.trim()) {
       Alert.alert("Address required", "Please add Flat No and Room/Floor.");
       return;
@@ -432,8 +468,12 @@ export default function MenuScreen() {
       setRoomFloor("");
       setLandmark("");
       setCartVisible(false);
-    } catch {
-      Alert.alert("Order failed", "Please try again.");
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        Alert.alert("Ordering closed", error?.response?.data?.message || "Ordering is currently closed.");
+      } else {
+        Alert.alert("Order failed", "Please try again.");
+      }
     } finally {
       setPlacingOrder(false);
     }
@@ -521,8 +561,8 @@ export default function MenuScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-              <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(item)} activeOpacity={0.88}>
-                <Text style={styles.addBtnText}>Add to Cart</Text>
+                <TouchableOpacity style={[styles.addBtn, !isOrderingOpen && styles.addBtnDisabled]} onPress={() => addToCart(item)} activeOpacity={0.88}>
+                  <Text style={styles.addBtnText}>{isOrderingOpen ? "Add to Cart" : "Ordering Closed"}</Text>
               </TouchableOpacity>
             </View>
           );
@@ -586,11 +626,16 @@ export default function MenuScreen() {
               <Text style={styles.billTotal}>Payable: Rs {grandTotal}</Text>
             </View>
 
-            <TouchableOpacity style={styles.placeBtn} disabled={placingOrder} onPress={placeOrder}>
-              <Text style={styles.placeBtnText}>{placingOrder ? "Placing..." : "Place Order"}</Text>
+            <TouchableOpacity style={[styles.placeBtn, !isOrderingOpen && styles.placeBtnDisabled]} disabled={placingOrder || !isOrderingOpen} onPress={placeOrder}>
+              <Text style={styles.placeBtnText}>{placingOrder ? "Placing..." : isOrderingOpen ? "Place Order" : "Ordering Closed"}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+            {!isOrderingOpen && (
+              <View style={[styles.orderingClosedBanner, { left: horizontalSafePadding, right: horizontalSafePadding, top: insets.top + 8 }]}>
+                <Text style={styles.orderingClosedText}>Ordering is closed now. Menu browsing is available.</Text>
+              </View>
+            )}
       </Modal>
     </View>
   );
@@ -726,7 +771,10 @@ const styles = StyleSheet.create({
   variantText: { color: "#BDBDBD", fontSize: 12 },
   variantTextActive: { color: "#F5EFE4", fontWeight: "700" },
   addBtn: { backgroundColor: "#8B0000", borderRadius: 10, paddingVertical: 10 },
+  addBtnDisabled: { opacity: 0.6 },
   addBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
+  orderingClosedBanner: { position: "absolute", backgroundColor: "rgba(139, 0, 0, 0.9)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, zIndex: 2 },
+  orderingClosedText: { color: "#F5EFE4", textAlign: "center", fontWeight: "600", fontSize: 12 },
   checkoutPill: { position: "absolute", bottom: 16, right: 16, left: 16, backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E7507", shadowOpacity: 0.14, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
   checkoutPillText: { color: "#121212", fontWeight: "800" },
   modalBackdrop: { flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.42)" },
@@ -746,6 +794,7 @@ const styles = StyleSheet.create({
   billText: { color: "#D0D0D0" },
   billTotal: { color: "#D4A017", fontWeight: "700" },
   placeBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingVertical: 12, marginTop: 4 },
+  placeBtnDisabled: { opacity: 0.6 },
   placeBtnText: { color: "#121212", textAlign: "center", fontWeight: "800" },
   loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 100 },
   spinnerWrap: { marginBottom: 16 },

@@ -180,22 +180,30 @@ function App() {
         </div>
 
         <div className="header-actions">
-          <button
-            className={`ordering-toggle ${orderingStatus.isOrderingOpen ? "open" : "closed"}`}
-            onClick={toggleOrderingStatus}
-            disabled={updatingOrderingStatus}
-          >
-            <span className="toggle-dot" />
-            {updatingOrderingStatus
-              ? "Updating..."
-              : orderingStatus.isOrderingOpen
-                ? "Ordering Open"
-                : "Ordering Closed"}
-          </button>
           <button onClick={logout}>Logout</button>
           <span>{activeCount} active orders</span>
         </div>
       </header>
+
+      <section className="settings-panel">
+        <div>
+          <h2 className="section-title">Settings</h2>
+          <p className="settings-description">Use this switch to stop new orders from the website and app when the shop is closed.</p>
+        </div>
+
+        <button
+          className={`ordering-toggle ${orderingStatus.isOrderingOpen ? "open" : "closed"}`}
+          onClick={toggleOrderingStatus}
+          disabled={updatingOrderingStatus}
+        >
+          <span className="toggle-dot" />
+          {updatingOrderingStatus
+            ? "Updating..."
+            : orderingStatus.isOrderingOpen
+              ? "Ordering Open"
+              : "Ordering Closed"}
+        </button>
+      </section>
 
       <div className="view-columns">
         <section>

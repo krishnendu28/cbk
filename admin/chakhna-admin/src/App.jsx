@@ -24,6 +24,8 @@ function App() {
   const [orders, setOrders] = useState([]);
   const [orderingStatus, setOrderingStatus] = useState({ isOrderingOpen: true, updatedAt: null });
   const [updatingOrderingStatus, setUpdatingOrderingStatus] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
   const [loadError, setLoadError] = useState("");
   const audioRef = useRef(null);
 
@@ -141,6 +143,25 @@ function App() {
     setOrders((prev) => prev.map((row) => (row._id === order._id ? response.data : row)));
   };
 
+  const sendBroadcastNotification = async () => {
+    const message = notificationMessage.trim();
+    if (!message) {
+      window.alert("Please type a notification message first.");
+      return;
+    }
+
+    setSendingNotification(true);
+    try {
+      await axios.post(`${API_BASE_URL}/api/notifications/broadcast`, { message });
+      setNotificationMessage("");
+      window.alert("Notification sent to all connected app users.");
+    } catch {
+      window.alert("Unable to send notification. Please try again.");
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
   if (!isOwnerLoggedIn) {
     return (
       <div className="admin-login-screen">
@@ -203,6 +224,26 @@ function App() {
               ? "Ordering Open"
               : "Ordering Closed"}
         </button>
+      </section>
+
+      <section className="notification-panel">
+        <div>
+          <h2 className="section-title">Broadcast Notification</h2>
+          <p className="settings-description">Type a message and send it to every connected app user instantly.</p>
+        </div>
+        <div className="notification-controls">
+          <input
+            className="notification-input"
+            type="text"
+            placeholder="Type notification for all users"
+            value={notificationMessage}
+            onChange={(event) => setNotificationMessage(event.target.value)}
+            maxLength={220}
+          />
+          <button className="notification-send-btn" onClick={sendBroadcastNotification} disabled={sendingNotification}>
+            {sendingNotification ? "Sending..." : "Send Notification"}
+          </button>
+        </div>
       </section>
 
       <div className="view-columns">

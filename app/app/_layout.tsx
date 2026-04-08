@@ -5,8 +5,10 @@ import 'react-native-reanimated';
 import { Alert, Linking } from 'react-native';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io } from 'socket.io-client';
 import { SessionProvider } from '@/context/session-context';
 import { checkForGithubReleaseUpdate } from '@/utils/update-check';
+import { API_BASE_URL } from '@/utils/api';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -15,6 +17,7 @@ export const unstable_settings = {
 };
 
 const LAST_DISMISSED_RELEASE_KEY = 'cbk_last_dismissed_release_tag';
+const socket = io(API_BASE_URL, { autoConnect: true });
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -58,6 +61,21 @@ export default function RootLayout() {
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onBroadcastNotification = (payload: { message?: string }) => {
+      const message = String(payload?.message || '').trim();
+      if (!message) return;
+
+      Alert.alert('Message From Chakhna', message);
+    };
+
+    socket.on('broadcast_notification', onBroadcastNotification);
+
+    return () => {
+      socket.off('broadcast_notification', onBroadcastNotification);
     };
   }, []);
 

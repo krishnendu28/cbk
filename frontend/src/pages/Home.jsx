@@ -252,6 +252,10 @@ function Home({ userSession, onLogout, onOpenHistory }) {
         phone: customer.phone,
         address: buildDeliveryAddress(customer),
         items: cartItems,
+        subtotal,
+        discountEnabled,
+        discountRate,
+        discountAmount,
         deliveryCharge,
         total: grandTotal,
       };

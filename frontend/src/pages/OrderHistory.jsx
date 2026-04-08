@@ -167,9 +167,17 @@ function OrderHistory({ userSession, onBack }) {
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm">
                   <p className="text-white/70">Delivery: {order.address}</p>
-                  <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 font-semibold text-[var(--cbk-gold)]">
-                    <PackageCheck size={14} />
-                    Total {formatINR(order.total || 0)}
+                  <div className="space-y-1 text-right">
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 font-semibold text-[var(--cbk-gold)]">
+                      <PackageCheck size={14} />
+                      Total {formatINR(order.total || 0)}
+                    </div>
+                    {Number(order.discountAmount || 0) > 0 && (
+                      <p className="text-xs font-medium text-emerald-300">
+                        You saved {formatINR(Number(order.discountAmount || 0))}
+                        {Number(order.discountRate || 0) > 0 ? ` (${Number(order.discountRate || 0)}%)` : ""}
+                      </p>
+                    )}
                   </div>
                 </div>
               </motion.article>

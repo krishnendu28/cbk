@@ -498,6 +498,10 @@ export default function MenuScreen() {
         dateOfBirth: session.dateOfBirth,
         address: `Flat: ${flatNo}, Room/Floor: ${roomFloor}${landmark.trim() ? `, Landmark: ${landmark}` : ""}`,
         items: cartItems,
+        subtotal,
+        discountEnabled,
+        discountRate,
+        discountAmount,
         deliveryCharge,
         total: grandTotal,
       });

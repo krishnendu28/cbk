@@ -13,6 +13,8 @@ type Order = {
   phone: string;
   address: string;
   status: "Preparing" | "Ready" | "Delivered";
+  discountRate?: number;
+  discountAmount?: number;
   total: number;
   createdAt: string;
   items: { name: string; quantity: number; variant: string }[];
@@ -123,7 +125,15 @@ export default function OrdersScreen() {
               </View>
 
               <View style={styles.rowBetween}>
-                <Text style={styles.meta}>Total: Rs {item.total}</Text>
+                <View>
+                  <Text style={styles.meta}>Total: Rs {item.total}</Text>
+                  {Number(item.discountAmount || 0) > 0 ? (
+                    <Text style={styles.savedText}>
+                      You saved Rs {Number(item.discountAmount || 0)}
+                      {Number(item.discountRate || 0) > 0 ? ` (${Number(item.discountRate || 0)}%)` : ""}
+                    </Text>
+                  ) : null}
+                </View>
                 <Ionicons name="checkmark-done-circle" size={18} color="#D4A017" />
               </View>
             </View>
@@ -146,6 +156,7 @@ const styles = StyleSheet.create({
   statusPill: { backgroundColor: "rgba(139,0,0,0.45)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: "#D4A017" },
   statusText: { color: "#F5EFE4", fontSize: 12, fontWeight: "700" },
   meta: { color: "#B6B6B6", fontSize: 12 },
+  savedText: { color: "#78D79C", fontSize: 12, fontWeight: "600", marginTop: 4 },
   progressRow: { flexDirection: "row", gap: 10 },
   progressStep: { flexDirection: "row", alignItems: "center", gap: 5 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#3A3A3A" },

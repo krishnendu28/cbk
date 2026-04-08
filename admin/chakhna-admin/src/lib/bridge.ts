@@ -73,6 +73,11 @@ async function buildRequestError(response: Response, fallbackMessage: string) {
 
 export type BridgeOrderStatus = "Preparing" | "Ready" | "Delivered";
 
+export type BridgeOrderingStatus = {
+  isOrderingOpen: boolean;
+  updatedAt?: string;
+};
+
 export type BridgeOrderItem = {
   name: string;
   variant: string;
@@ -736,6 +741,53 @@ export async function fetchBridgeOrders(): Promise<BridgeOrder[]> {
   if (!response.ok) throw new Error("Failed to fetch bridge orders");
   const data = await response.json();
   return Array.isArray(data) ? data : [];
+}
+
+export async function fetchOrderingStatus(): Promise<BridgeOrderingStatus> {
+  if (isDemoSessionActive()) {
+    return {
+      isOrderingOpen: true,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/shop/ordering-status`);
+  if (!response.ok) {
+    throw await buildRequestError(response, "Failed to fetch ordering status");
+  }
+
+  const data = await response.json();
+  return {
+    isOrderingOpen: Boolean(data?.isOrderingOpen),
+    updatedAt: typeof data?.updatedAt === "string" ? data.updatedAt : undefined,
+  };
+}
+
+export async function updateOrderingStatus(isOrderingOpen: boolean): Promise<BridgeOrderingStatus> {
+  if (isDemoSessionActive()) {
+    return {
+      isOrderingOpen,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/shop/ordering-status`, {
+    method: "PATCH",
+    headers: buildAdminHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify({ isOrderingOpen }),
+  });
+
+  if (!response.ok) {
+    throw await buildRequestError(response, "Failed to update ordering status");
+  }
+
+  const data = await response.json();
+  return {
+    isOrderingOpen: Boolean(data?.isOrderingOpen),
+    updatedAt: typeof data?.updatedAt === "string" ? data.updatedAt : undefined,
+  };
 }
 
 export async function patchBridgeOrderStatus(orderId: string, status: BridgeOrderStatus): Promise<BridgeOrder> {

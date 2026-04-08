@@ -18,6 +18,10 @@ export const createOrderSchema = z.object({
   dateOfBirth: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   address: z.string().trim().min(5).max(300),
   items: z.array(orderItemSchema).min(1),
+  subtotal: z.coerce.number().nonnegative().optional(),
+  discountEnabled: z.boolean().optional(),
+  discountRate: z.coerce.number().min(0).max(100).optional(),
+  discountAmount: z.coerce.number().nonnegative().optional(),
   total: z.coerce.number().nonnegative(),
   deliveryCharge: z.coerce.number().nonnegative().default(0),
 });

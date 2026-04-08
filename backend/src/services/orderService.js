@@ -35,7 +35,19 @@ export function isMongoEnabled() {
   return useMongo;
 }
 
-export async function createOrder({ customerName, phone, dateOfBirth, address, items, total, deliveryCharge }) {
+export async function createOrder({
+  customerName,
+  phone,
+  dateOfBirth,
+  address,
+  items,
+  subtotal,
+  discountEnabled,
+  discountRate,
+  discountAmount,
+  total,
+  deliveryCharge,
+}) {
   const normalizedItems = items.map((item) => ({
     name: item.name,
     variant: item.variant || "Regular",
@@ -50,6 +62,10 @@ export async function createOrder({ customerName, phone, dateOfBirth, address, i
     dateOfBirth,
     address,
     items: normalizedItems,
+    subtotal: Number(subtotal) || normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0),
+    discountEnabled: Boolean(discountEnabled),
+    discountRate: Number(discountRate) || 0,
+    discountAmount: Number(discountAmount) || 0,
     total: Number(total) || 0,
     deliveryCharge: Number(deliveryCharge) || 0,
     status: "Preparing",

@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { sendBroadcastNotification } from "@/lib/bridge";
+import { fetchOrderingStatus, sendBroadcastNotification, updateOrderingStatus } from "@/lib/bridge";
 
 export default function Settings() {
   const { outletId } = useAppOutlet();
@@ -21,6 +21,8 @@ export default function Settings() {
   const { data: settings, isLoading, isError, error } = useGetSettings(outletId);
   const updateSettings = useUpdateSettings();
   const [draftSettings, setDraftSettings] = useState<typeof settings | null>(null);
+  const [isOrderingOpen, setIsOrderingOpen] = useState(true);
+  const [isUpdatingOrderingStatus, setIsUpdatingOrderingStatus] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [isSendingNotification, setIsSendingNotification] = useState(false);
 
@@ -29,6 +31,49 @@ export default function Settings() {
       setDraftSettings(settings);
     }
   }, [settings]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadOrderingStatus = async () => {
+      try {
+        const status = await fetchOrderingStatus();
+        if (!isMounted) return;
+        setIsOrderingOpen(Boolean(status.isOrderingOpen));
+      } catch {
+        if (!isMounted) return;
+        setIsOrderingOpen(true);
+      }
+    };
+
+    loadOrderingStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleOrderingToggle = async (checked: boolean) => {
+    const previousStatus = isOrderingOpen;
+    setIsOrderingOpen(checked);
+    setIsUpdatingOrderingStatus(true);
+    try {
+      const nextStatus = await updateOrderingStatus(checked);
+      setIsOrderingOpen(Boolean(nextStatus.isOrderingOpen));
+      toast({
+        title: nextStatus.isOrderingOpen ? "Shop is accepting orders" : "Shop is not accepting orders now",
+      });
+    } catch (error) {
+      setIsOrderingOpen(previousStatus);
+      toast({
+        title: "Failed to update shop availability",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingOrderingStatus(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!draftSettings) return;
@@ -170,6 +215,30 @@ export default function Settings() {
                 />
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Availability</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base">Accept User Orders</Label>
+                <p className="text-sm text-muted-foreground">
+                  Turn this off at night or whenever needed to stop new orders.
+                </p>
+              </div>
+              <Switch
+                checked={isOrderingOpen}
+                onCheckedChange={handleOrderingToggle}
+                disabled={isUpdatingOrderingStatus}
+              />
+            </div>
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+              {isOrderingOpen ? "Users can place orders right now." : "Shop is not accepting orders now."}
+            </div>
           </CardContent>
         </Card>
 

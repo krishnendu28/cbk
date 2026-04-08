@@ -18,6 +18,10 @@ const orderSchema = new mongoose.Schema(
     dateOfBirth: { type: String, trim: true },
     address: { type: String, required: true, trim: true },
     items: { type: [orderItemSchema], required: true },
+    subtotal: { type: Number, min: 0, default: 0 },
+    discountEnabled: { type: Boolean, default: false },
+    discountRate: { type: Number, min: 0, max: 100, default: 0 },
+    discountAmount: { type: Number, min: 0, default: 0 },
     total: { type: Number, required: true, min: 0 },
     deliveryCharge: { type: Number, default: 0, min: 0 },
     status: {

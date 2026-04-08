@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Chakhna By Kilo",
+    "name": "Chakhna by Kilo",
     "slug": "app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -59,10 +59,8 @@
     },
     "extra": {
       "router": {},
-      "eas": {
-        "projectId": "61fb6e90-f726-4d1b-bc27-7e7e94de17e3"
-      }
+      "eas": {}
     },
-    "owner": "krishnendu28"
+    "owner": "mayank8159"
   }
 }

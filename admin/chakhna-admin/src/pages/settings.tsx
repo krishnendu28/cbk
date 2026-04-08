@@ -32,25 +32,24 @@ export default function Settings() {
 
   const handleSave = async () => {
     if (!draftSettings) return;
+    const current = draftSettings as any;
 
     try {
       await updateSettings.mutateAsync({
         outletId,
         data: {
-          gstEnabled: draftSettings.gstEnabled,
-          gstRate: Number(draftSettings.gstRate),
-          serviceChargeEnabled: draftSettings.serviceChargeEnabled,
-          serviceChargeRate: Number(draftSettings.serviceChargeRate),
-          loyaltyPointsPerRupee: Number(draftSettings.loyaltyPointsPerRupee),
-          loyaltyRedemptionRate: Number(draftSettings.loyaltyRedemptionRate),
-          currencySymbol: draftSettings.currencySymbol,
-          receiptFooter: draftSettings.receiptFooter,
-          printKotAutomatically: draftSettings.printKotAutomatically,
-          zomatoEnabled: draftSettings.zomatoEnabled,
-          swiggyEnabled: draftSettings.swiggyEnabled,
-          zomatoApiKey: draftSettings.zomatoApiKey ?? null,
-          swiggyApiKey: draftSettings.swiggyApiKey ?? null,
-          carbonTrackingEnabled: draftSettings.carbonTrackingEnabled,
+          discountEnabled: Boolean(current.discountEnabled),
+          discountRate: Number(current.discountRate),
+          gstEnabled: Boolean(current.gstEnabled),
+          gstRate: Number(current.gstRate),
+          serviceChargeEnabled: Boolean(current.serviceChargeEnabled),
+          serviceChargeRate: Number(current.serviceChargeRate),
+          loyaltyPointsPerRupee: Number(current.loyaltyPointsPerRupee),
+          loyaltyRedemptionRate: Number(current.loyaltyRedemptionRate),
+          currencySymbol: String(current.currencySymbol || "Rs"),
+          receiptFooter: String(current.receiptFooter || "Thank you for visiting Chakhna by Kilo"),
+          printKotAutomatically: Boolean(current.printKotAutomatically),
+          carbonTrackingEnabled: Boolean(current.carbonTrackingEnabled),
         },
       });
       queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey(outletId) });
@@ -127,7 +126,7 @@ export default function Settings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold">Outlet Settings</h1>
-          <p className="text-muted-foreground">Configure taxes, printing, and integrations</p>
+          <p className="text-muted-foreground">Configure taxes, printing, and notifications</p>
         </div>
         <Button
           className="rounded-xl shadow-md"
@@ -141,29 +140,29 @@ export default function Settings() {
       <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Taxes & Charges</CardTitle>
+            <CardTitle>Discount</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-base">Enable GST</Label>
-                <p className="text-sm text-muted-foreground">Apply GST to all orders</p>
+                <Label className="text-base">Enable Discount</Label>
+                <p className="text-sm text-muted-foreground">Apply a percentage discount for all user orders</p>
               </div>
               <Switch
-                checked={draftSettings.gstEnabled}
+                checked={Boolean((draftSettings as any).discountEnabled)}
                 onCheckedChange={(checked) =>
-                  setDraftSettings((prev) => (prev ? { ...prev, gstEnabled: checked } : prev))
+                  setDraftSettings((prev) => (prev ? { ...(prev as any), discountEnabled: checked } : prev))
                 }
               />
             </div>
-            {draftSettings.gstEnabled && (
+            {Boolean((draftSettings as any).discountEnabled) && (
               <div className="space-y-2">
-                <Label>Default GST Rate (%)</Label>
+                <Label>Discount Rate (%)</Label>
                 <Input
-                  value={draftSettings.gstRate}
+                  value={String((draftSettings as any).discountRate ?? 0)}
                   onChange={(e) =>
                     setDraftSettings((prev) =>
-                      prev ? { ...prev, gstRate: Number(e.target.value || 0) } : prev,
+                      prev ? { ...(prev as any), discountRate: Number(e.target.value || 0) } : prev,
                     )
                   }
                   type="number"
@@ -171,67 +170,6 @@ export default function Settings() {
                 />
               </div>
             )}
-            <div className="flex items-center justify-between border-t pt-6">
-              <div>
-                <Label className="text-base">Service Charge</Label>
-                <p className="text-sm text-muted-foreground">Automatically add service charge</p>
-              </div>
-              <Switch
-                checked={draftSettings.serviceChargeEnabled}
-                onCheckedChange={(checked) =>
-                  setDraftSettings((prev) =>
-                    prev ? { ...prev, serviceChargeEnabled: checked } : prev,
-                  )
-                }
-              />
-            </div>
-            {draftSettings.serviceChargeEnabled && (
-              <div className="space-y-2">
-                <Label>Service Charge Rate (%)</Label>
-                <Input
-                  value={draftSettings.serviceChargeRate}
-                  onChange={(e) =>
-                    setDraftSettings((prev) =>
-                      prev ? { ...prev, serviceChargeRate: Number(e.target.value || 0) } : prev,
-                    )
-                  }
-                  type="number"
-                  className="w-32"
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Integrations</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-base">Zomato Sync</Label>
-                <p className="text-sm text-muted-foreground">Receive orders from Zomato</p>
-              </div>
-              <Switch
-                checked={draftSettings.zomatoEnabled}
-                onCheckedChange={(checked) =>
-                  setDraftSettings((prev) => (prev ? { ...prev, zomatoEnabled: checked } : prev))
-                }
-              />
-            </div>
-            <div className="flex items-center justify-between border-t pt-6">
-              <div>
-                <Label className="text-base">Swiggy Sync</Label>
-                <p className="text-sm text-muted-foreground">Receive orders from Swiggy</p>
-              </div>
-              <Switch
-                checked={draftSettings.swiggyEnabled}
-                onCheckedChange={(checked) =>
-                  setDraftSettings((prev) => (prev ? { ...prev, swiggyEnabled: checked } : prev))
-                }
-              />
-            </div>
           </CardContent>
         </Card>
 

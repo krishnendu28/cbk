@@ -8,6 +8,8 @@ const outletSettingSchema = new mongoose.Schema(
       unique: true,
       min: 1,
     },
+    discountEnabled: { type: Boolean, required: true, default: false },
+    discountRate: { type: Number, required: true, default: 0, min: 0, max: 100 },
     gstEnabled: { type: Boolean, required: true, default: true },
     gstRate: { type: Number, required: true, default: 5, min: 0, max: 100 },
     serviceChargeEnabled: { type: Boolean, required: true, default: false },

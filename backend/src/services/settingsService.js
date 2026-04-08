@@ -3,6 +3,8 @@ import { OutletSetting } from "../models/OutletSetting.js";
 import { logger } from "../utils/logger.js";
 
 const defaultSettings = {
+  discountEnabled: false,
+  discountRate: 0,
   gstEnabled: true,
   gstRate: 5,
   serviceChargeEnabled: false,
@@ -28,6 +30,8 @@ function isMongoConnected() {
 function normalizeSettings(settings) {
   const source = settings || {};
   return {
+    discountEnabled: Boolean(source.discountEnabled),
+    discountRate: Number(source.discountRate ?? 0),
     gstEnabled: Boolean(source.gstEnabled),
     gstRate: Number(source.gstRate ?? 0),
     serviceChargeEnabled: Boolean(source.serviceChargeEnabled),

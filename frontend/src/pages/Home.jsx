@@ -57,6 +57,8 @@ function Home({ userSession, onLogout, onOpenHistory }) {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [isOrderingOpen, setIsOrderingOpen] = useState(true);
   const [cartItems, setCartItems] = useState([]);
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountRate, setDiscountRate] = useState(0);
   const [flyItem, setFlyItem] = useState(null);
   const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
   const [customer, setCustomer] = useState({
@@ -112,8 +114,20 @@ function Home({ userSession, onLogout, onOpenHistory }) {
       }
     }
 
+    async function loadOutletSettings() {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/outlets/1/settings`);
+        setDiscountEnabled(Boolean(response.data?.discountEnabled));
+        setDiscountRate(Number(response.data?.discountRate || 0));
+      } catch {
+        setDiscountEnabled(false);
+        setDiscountRate(0);
+      }
+    }
+
     loadMenu();
     loadOrderingStatus();
+    loadOutletSettings();
     const onMenuChanged = () => loadMenu();
     const onOrderingStatusChanged = (status) => setIsOrderingOpen(Boolean(status?.isOrderingOpen));
 
@@ -137,7 +151,8 @@ function Home({ userSession, onLogout, onOpenHistory }) {
 
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryCharge = cartItems.length > 0 ? 20 : 0;
-  const grandTotal = subtotal + deliveryCharge;
+  const discountAmount = discountEnabled ? Number(((subtotal * discountRate) / 100).toFixed(2)) : 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount + deliveryCharge);
   const showMobileCartActions = cartItems.length > 0;
 
   const handleVariantChange = (itemName, variant) => {
@@ -550,6 +565,9 @@ function Home({ userSession, onLogout, onOpenHistory }) {
 
                 <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-white/80">
                   <p className="flex justify-between"><span>Subtotal</span><span>{formatINR(subtotal)}</span></p>
+                  {discountEnabled && discountAmount > 0 && (
+                    <p className="flex justify-between text-emerald-300"><span>Discount ({discountRate}%)</span><span>-{formatINR(discountAmount)}</span></p>
+                  )}
                   <p className="flex justify-between"><span>Delivery</span><span>{formatINR(deliveryCharge)}</span></p>
                   <p className="mt-1 flex justify-between font-semibold text-[var(--cbk-gold)]"><span>Payable</span><span>{formatINR(grandTotal)}</span></p>
                 </div>

@@ -148,6 +148,8 @@ export default function MenuScreen() {
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState("");
   const [isOrderingOpen, setIsOrderingOpen] = useState(true);
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountRate, setDiscountRate] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -206,6 +208,33 @@ export default function MenuScreen() {
     };
   }, [session]);
 
+  useEffect(() => {
+    if (!session) return;
+
+    let isMounted = true;
+
+    const loadOutletSettings = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/outlets/1/settings`);
+        if (!isMounted) return;
+        setDiscountEnabled(Boolean(response.data?.discountEnabled));
+        setDiscountRate(Number(response.data?.discountRate || 0));
+      } catch {
+        if (!isMounted) return;
+        setDiscountEnabled(false);
+        setDiscountRate(0);
+      }
+    };
+
+    loadOutletSettings();
+    const intervalId = setInterval(loadOutletSettings, 15000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [session]);
+
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
     [activeCategory, menuCategories],
@@ -213,7 +242,8 @@ export default function MenuScreen() {
 
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryCharge = cartItems.length ? 20 : 0;
-  const grandTotal = subtotal + deliveryCharge;
+  const discountAmount = discountEnabled ? Number(((subtotal * discountRate) / 100).toFixed(2)) : 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount + deliveryCharge);
   const loginDob = useMemo(() => (loginDobDate ? formatDateOfBirth(loginDobDate) : ""), [loginDobDate]);
 
   const menuHeader = (
@@ -632,6 +662,9 @@ export default function MenuScreen() {
 
             <View style={styles.billBox}>
               <Text style={styles.billText}>Subtotal: Rs {subtotal}</Text>
+              {discountEnabled && discountAmount > 0 ? (
+                <Text style={styles.billDiscount}>Discount ({discountRate}%): -Rs {discountAmount}</Text>
+              ) : null}
               <Text style={styles.billText}>Delivery: Rs {deliveryCharge}</Text>
               <Text style={styles.billTotal}>Payable: Rs {grandTotal}</Text>
             </View>
@@ -802,6 +835,7 @@ const styles = StyleSheet.create({
   qtyValue: { color: "#F5EFE4" },
   billBox: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 10, gap: 3, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
   billText: { color: "#D0D0D0" },
+  billDiscount: { color: "#78D79C", fontWeight: "600" },
   billTotal: { color: "#D4A017", fontWeight: "700" },
   placeBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingVertical: 12, marginTop: 4 },
   placeBtnDisabled: { opacity: 0.6 },

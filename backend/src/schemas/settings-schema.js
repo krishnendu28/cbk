@@ -15,6 +15,8 @@ const nullableTrimmedString = z.union([
 });
 
 export const updateOutletSettingsSchema = z.object({
+  discountEnabled: z.boolean(),
+  discountRate: z.number().min(0).max(100),
   gstEnabled: z.boolean(),
   gstRate: z.number().min(0).max(100),
   serviceChargeEnabled: z.boolean(),

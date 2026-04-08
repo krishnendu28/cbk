@@ -35,7 +35,7 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
+    if (DEMO_AUTH && email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
       setDemoError(false);
       activateDemoSession(setLocation);
       return;
@@ -56,7 +56,7 @@ export default function Login() {
         setLocation(getDefaultRouteForRole((data.user as { role?: string | null })?.role ?? null));
       },
       onError: () => {
-        if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
+        if (DEMO_AUTH && email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
           setDemoError(false);
           activateDemoSession(setLocation);
           return;

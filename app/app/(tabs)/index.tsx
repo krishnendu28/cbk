@@ -435,9 +435,19 @@ export default function MenuScreen() {
   const placeOrder = async () => {
     if (!session) return;
 
-    if (!isOrderingOpen) {
-      Alert.alert("Ordering closed", "The shop is currently closed. Please place your order when it reopens.");
-      return;
+    try {
+      const statusResponse = await axios.get(`${API_BASE_URL}/api/shop/ordering-status`);
+      const backendOrderingOpen = Boolean(statusResponse.data?.isOrderingOpen);
+      setIsOrderingOpen(backendOrderingOpen);
+      if (!backendOrderingOpen) {
+        Alert.alert("Ordering closed", "The shop is currently closed. Please place your order when it reopens.");
+        return;
+      }
+    } catch {
+      if (!isOrderingOpen) {
+        Alert.alert("Ordering closed", "The shop is currently closed. Please place your order when it reopens.");
+        return;
+      }
     }
 
     if (!flatNo.trim() || !roomFloor.trim()) {
@@ -472,7 +482,7 @@ export default function MenuScreen() {
       if (error?.response?.status === 403) {
         Alert.alert("Ordering closed", error?.response?.data?.message || "Ordering is currently closed.");
       } else {
-        Alert.alert("Order failed", "Please try again.");
+        Alert.alert("Order failed", error?.response?.data?.message || "Please try again.");
       }
     } finally {
       setPlacingOrder(false);

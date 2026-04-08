@@ -20,6 +20,10 @@ function formatTime(value) {
   }
 }
 
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 function getStatusClass(status) {
   if (status === "Delivered") return "bg-emerald-500/20 text-emerald-300 border-emerald-400/35";
   if (status === "Ready") return "bg-amber-500/20 text-amber-300 border-amber-400/35";
@@ -30,7 +34,12 @@ function OrderHistory({ userSession, onBack }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const userPhone = String(userSession?.phone || "").trim();
+  const userPhoneNormalized = normalizePhone(userSession?.phone).slice(-10);
+  const isSameUserPhone = (orderPhone) => {
+    const normalizedOrderPhone = normalizePhone(orderPhone);
+    if (!normalizedOrderPhone || !userPhoneNormalized) return false;
+    return normalizedOrderPhone.slice(-10) === userPhoneNormalized;
+  };
 
   useEffect(() => {
     async function loadOrders() {
@@ -38,7 +47,7 @@ function OrderHistory({ userSession, onBack }) {
         const response = await axios.get(`${API_BASE_URL}/api/orders`);
         const data = Array.isArray(response.data) ? response.data : [];
         const filtered = data
-          .filter((order) => String(order.phone || "").trim() === userPhone)
+          .filter((order) => isSameUserPhone(order.phone))
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setOrders(filtered);
       } catch {
@@ -51,12 +60,12 @@ function OrderHistory({ userSession, onBack }) {
     loadOrders();
 
     const onOrderCreated = (order) => {
-      if (String(order?.phone || "").trim() !== userPhone) return;
+      if (!isSameUserPhone(order?.phone)) return;
       setOrders((prev) => [order, ...prev.filter((item) => item._id !== order._id)]);
     };
 
     const onOrderUpdated = (order) => {
-      if (String(order?.phone || "").trim() !== userPhone) return;
+      if (!isSameUserPhone(order?.phone)) return;
       setOrders((prev) => prev.map((item) => (item._id === order._id ? order : item)));
     };
 
@@ -73,7 +82,7 @@ function OrderHistory({ userSession, onBack }) {
       socket.off("order_updated", onOrderUpdated);
       socket.off("order_deleted", onOrderDeleted);
     };
-  }, [userPhone]);
+  }, [userPhoneNormalized]);
 
   const hasOrders = useMemo(() => orders.length > 0, [orders]);
 

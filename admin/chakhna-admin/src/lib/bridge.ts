@@ -1,5 +1,6 @@
 import { io } from "socket.io-client";
 import { DEMO_SESSION_KEY } from "@/lib/session";
+import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 
 export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
@@ -410,7 +411,7 @@ export function localFallbackMenuGroups(): BridgeMenuGroup[] {
         id: categoryIndex * 1000 + itemIndex + 1,
         name: item.name,
         price: pickBasePrice(item.prices),
-        image: getFoodImageUrl(item.name, `${category.title}-${itemIndex}`),
+        image: getMenuItemImageUrl(item.name, category.title, getFoodImageUrl(item.name, `${category.title}-${itemIndex}`)),
       })),
     }))
     .filter((group) => group.items.length > 0);
@@ -425,7 +426,11 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
         id: Number(item.id) || categoryIndex * 1000 + itemIndex + 1,
         name: String(item.name || "Item"),
         price: pickBasePrice(item.prices || { Regular: 0 }),
-        image: item.image || getFoodImageUrl(item.name || "food", `${category.title}-${itemIndex}`),
+        image: getMenuItemImageUrl(
+          String(item.name || "Item"),
+          String(category.title || "Menu"),
+          String(item.image || getFoodImageUrl(item.name || "food", `${category.title}-${itemIndex}`)),
+        ),
       })),
     }))
     .filter((group) => group.items.length > 0);

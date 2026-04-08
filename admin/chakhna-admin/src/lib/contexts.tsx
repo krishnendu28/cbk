@@ -50,8 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const syncToken = () => setHasToken(Boolean(localStorage.getItem(TOKEN_KEY)));
     window.addEventListener("storage", syncToken);
+    window.addEventListener("cbk-auth-changed", syncToken as EventListener);
     return () => {
       window.removeEventListener("storage", syncToken);
+      window.removeEventListener("cbk-auth-changed", syncToken as EventListener);
     };
   }, []);
 

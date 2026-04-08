@@ -10,6 +10,7 @@
     "newArchEnabled": true,
     "jsEngine": "hermes",
     "ios": {
+      "bundleIdentifier": "com.krishnendu28.cbkapp",
       "supportsTablet": true
     },
     "android": {

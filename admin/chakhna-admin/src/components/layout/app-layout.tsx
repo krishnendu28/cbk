@@ -40,6 +40,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(DEMO_SESSION_KEY);
     localStorage.removeItem(TOKEN_KEY);
     window.dispatchEvent(new Event("cbk-demo-auth-changed"));
+    window.dispatchEvent(new Event("cbk-auth-changed"));
 
     if (DEMO_AUTH) {
       queryClient.clear();

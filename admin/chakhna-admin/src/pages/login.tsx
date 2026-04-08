@@ -20,6 +20,7 @@ function activateDemoSession(setLocation: (path: string) => void) {
   localStorage.setItem(DEMO_SESSION_KEY, "1");
   localStorage.removeItem(TOKEN_KEY);
   window.dispatchEvent(new Event("cbk-demo-auth-changed"));
+  window.dispatchEvent(new Event("cbk-auth-changed"));
   setLocation("/pos");
 }
 
@@ -51,6 +52,8 @@ export default function Login() {
         // Persist token so customFetch sends it on every request
         if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
         localStorage.removeItem(DEMO_SESSION_KEY);
+        window.dispatchEvent(new Event("cbk-auth-changed"));
+        window.dispatchEvent(new Event("cbk-demo-auth-changed"));
         // Set user data directly in the cache so AuthProvider sees it immediately
         queryClient.setQueryData(getGetMeQueryKey(), data.user);
         setLocation(getDefaultRouteForRole((data.user as { role?: string | null })?.role ?? null));

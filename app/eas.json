@@ -3,9 +3,22 @@
     "version": ">= 16.0.0"
   },
   "build": {
+    "production": {
+      "env": {
+        "EXPO_NO_TELEMETRY": "1"
+      }
+    },
     "apk": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_NO_TELEMETRY": "1"
+      }
+    },
+    "ios": {
+      "ios": {
+        "simulator": false
       },
       "env": {
         "EXPO_NO_TELEMETRY": "1"

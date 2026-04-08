@@ -39,7 +39,9 @@ This repository has two separate Vite apps you should deploy as two separate Ver
 
 Set this exact value in Render for `ALLOWED_ORIGINS`:
 
-`http://localhost:5173,http://localhost:5174,http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006,http://127.0.0.1:19006,https://cbk-user.vercel.app,https://cbk-admin.vercel.app`
+`http://localhost:5173,http://localhost:5174,http://localhost:8081,http://127.0.0.1:8081,http://localhost:19006,http://127.0.0.1:19006,https://cbk-user.vercel.app,https://cbk-admin.vercel.app,https://cbk-gamma.vercel.app`
+
+Note: use `http://localhost:5174` as the origin in local development; `/pos` is a route path, not a separate CORS origin.
 
 Keep:
 

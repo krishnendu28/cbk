@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReceiptText, ShoppingCart } from "lucide-react";
 import {
   BridgeMenuItem,
+  appendDemoOrder,
   fetchBridgeMenuGroups,
   getBridgeMenuGroups,
   getStoredTables,
@@ -13,6 +14,7 @@ import {
   subscribeBridgeMenu,
   USER_BACKEND_URL,
 } from "@/lib/bridge";
+import { DEMO_SESSION_KEY } from "@/lib/session";
 
 type CartItem = {
   id: number;
@@ -45,6 +47,13 @@ export default function POS() {
   const activeGroup = menuGroups.find((group) => group.id === activeGroupId) || menuGroups[0];
 
   useEffect(() => {
+    if (localStorage.getItem(DEMO_SESSION_KEY) === "1") {
+      const demoMenuGroups = getBridgeMenuGroups();
+      setMenuGroups(demoMenuGroups);
+      setActiveGroupId(demoMenuGroups[0]?.id || "");
+      return;
+    }
+
     async function reloadMenu() {
       const nextGroups = await fetchBridgeMenuGroups();
       setMenuGroups(nextGroups);
@@ -177,6 +186,40 @@ export default function POS() {
         deliveryCharge,
         total: Math.round(total),
       };
+
+      if (localStorage.getItem(DEMO_SESSION_KEY) === "1") {
+        const demoOrder = {
+          _id: `demo-${Date.now()}`,
+          customerName: payload.customerName,
+          phone: payload.phone,
+          address: payload.address,
+          items: payload.items,
+          total: payload.total,
+          deliveryCharge,
+          status: "Preparing" as const,
+          createdAt: new Date().toISOString(),
+        };
+
+        appendDemoOrder(demoOrder);
+
+        if (orderType === "dine-in" && selectedTableId) {
+          const updatedTables = getStoredTables().map((table) =>
+            table.id === selectedTableId ? { ...table, status: "occupied" as const } : table,
+          );
+          saveStoredTables(updatedTables);
+        }
+
+        setCart([]);
+        setCustomerName("");
+        setPhone("");
+        setFlatNo("");
+        setRoomNo("");
+        setLandmark("");
+        setAutoLocation("");
+        setSelectedTableId(null);
+        setSavedAt(null);
+        return;
+      }
 
       const response = await fetch(`${USER_BACKEND_URL}/api/orders`, {
         method: "POST",

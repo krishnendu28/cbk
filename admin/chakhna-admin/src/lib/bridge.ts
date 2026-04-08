@@ -1,7 +1,13 @@
 import { io } from "socket.io-client";
+import { DEMO_SESSION_KEY } from "@/lib/session";
 
 export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
+const DEMO_ORDERS_KEY = "cbk_demo_orders";
+
+function isDemoSessionActive() {
+  return typeof localStorage !== "undefined" && localStorage.getItem(DEMO_SESSION_KEY) === "1";
+}
 
 function resolveAdminToken() {
   const fromEnv = String(import.meta.env.VITE_ADMIN_API_KEY || "").trim();
@@ -25,6 +31,28 @@ function buildAdminHeaders(extraHeaders: Record<string, string> = {}) {
     Authorization: `Bearer ${token}`,
     "x-admin-key": token,
   };
+}
+
+function readDemoOrders(): BridgeOrder[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DEMO_ORDERS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDemoOrders(orders: BridgeOrder[]) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(orders));
+}
+
+export function appendDemoOrder(order: BridgeOrder) {
+  const next = [order, ...readDemoOrders().filter((entry) => entry._id !== order._id)];
+  saveDemoOrders(next);
+  return order;
 }
 
 async function buildRequestError(response: Response, fallbackMessage: string) {
@@ -106,7 +134,15 @@ export type BridgeStaff = {
   password?: string;
 };
 
-const socket = io(USER_BACKEND_URL, { autoConnect: true });
+const socket = isDemoSessionActive() ? null : io(USER_BACKEND_URL, { autoConnect: true });
+
+if (typeof window !== "undefined") {
+  window.addEventListener("cbk-demo-auth-changed", () => {
+    if (localStorage.getItem(DEMO_SESSION_KEY) === "1") {
+      socket?.disconnect();
+    }
+  });
+}
 
 const rawMenuCategories: Array<{
   title: string;
@@ -365,7 +401,7 @@ type BackendMenuCategory = {
   }>;
 };
 
-function localFallbackMenuGroups(): BridgeMenuGroup[] {
+export function localFallbackMenuGroups(): BridgeMenuGroup[] {
   return rawMenuCategories
     .map((category, categoryIndex) => ({
       id: toGroupId(category.title) || `group-${categoryIndex + 1}`,
@@ -400,6 +436,10 @@ export function getBridgeMenuGroups(): BridgeMenuGroup[] {
 }
 
 export async function fetchBridgeMenuGroups(): Promise<BridgeMenuGroup[]> {
+  if (isDemoSessionActive()) {
+    return localFallbackMenuGroups();
+  }
+
   try {
     const response = await fetch(`${USER_BACKEND_URL}/api/menu`);
     if (!response.ok) throw new Error("Failed to fetch menu");
@@ -459,6 +499,8 @@ export async function deleteBridgeMenuItem(itemId: number) {
 }
 
 export function subscribeBridgeMenu(onMenuChanged: () => void) {
+  if (!socket) return () => {};
+
   const handler = () => onMenuChanged();
   socket.on("menu_created", handler);
   socket.on("menu_updated", handler);
@@ -681,6 +723,10 @@ export function deleteStaffMember(staffId: number): boolean {
 }
 
 export async function fetchBridgeOrders(): Promise<BridgeOrder[]> {
+  if (isDemoSessionActive()) {
+    return readDemoOrders();
+  }
+
   const response = await fetch(`${USER_BACKEND_URL}/api/orders`);
   if (!response.ok) throw new Error("Failed to fetch bridge orders");
   const data = await response.json();
@@ -688,6 +734,15 @@ export async function fetchBridgeOrders(): Promise<BridgeOrder[]> {
 }
 
 export async function patchBridgeOrderStatus(orderId: string, status: BridgeOrderStatus): Promise<BridgeOrder> {
+  if (isDemoSessionActive()) {
+    const orders = readDemoOrders();
+    const next = orders.map((order) => (order._id === orderId ? { ...order, status } : order));
+    const updated = next.find((order) => order._id === orderId);
+    if (!updated) throw new Error("Failed to update order status");
+    saveDemoOrders(next);
+    return updated;
+  }
+
   const response = await fetch(`${USER_BACKEND_URL}/api/orders/${orderId}`, {
     method: "PATCH",
     headers: buildAdminHeaders({
@@ -700,6 +755,11 @@ export async function patchBridgeOrderStatus(orderId: string, status: BridgeOrde
 }
 
 export async function deleteBridgeOrder(orderId: string): Promise<void> {
+  if (isDemoSessionActive()) {
+    saveDemoOrders(readDemoOrders().filter((order) => order._id !== orderId));
+    return;
+  }
+
   const response = await fetch(`${USER_BACKEND_URL}/api/orders/${orderId}`, {
     method: "DELETE",
     headers: buildAdminHeaders(),
@@ -712,6 +772,8 @@ export function subscribeBridgeOrders(
   onUpdatedOrder: (order: BridgeOrder) => void,
   onDeletedOrder?: (payload: { _id: string }) => void,
 ) {
+  if (!socket) return () => {};
+
   socket.on("new_order", onNewOrder);
   socket.on("order_updated", onUpdatedOrder);
   if (onDeletedOrder) {

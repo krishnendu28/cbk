@@ -10,12 +10,14 @@ Render deployment for backend
 - Set MONGO_URI to your MongoDB connection string
 - Set ALLOWED_ORIGINS to your frontend URL(s), comma-separated
   Example: https://your-frontend.onrender.com,https://your-custom-domain.com
+  Include your exact Vercel app URL if you use one, for example: https://cbk-gamma.vercel.app
 - Set ADMIN_API_KEYS for role-based admin access
   Example: owner:super-secret-owner-key,manager:super-secret-manager-key
 - Optional: set ENFORCE_ADMIN_AUTH=true to strictly require admin keys for protected routes
   - If false (default), protected routes are temporarily allowed when ADMIN_API_KEYS is not configured
 - ALLOW_RENDER_PREVIEWS defaults to true and allows *.onrender.com origins
 - ALLOW_VERCEL_PREVIEWS defaults to true and allows *.vercel.app origins
+- For local development, use the origin `http://localhost:5174` (the `/pos` path is not part of CORS origin matching)
 
 3. Configure cron keepalive env var
 - Service: cbk-backend-keepwarm

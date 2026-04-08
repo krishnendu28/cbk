@@ -35,12 +35,13 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
+      setDemoError(false);
+      activateDemoSession(setLocation);
+      return;
+    }
+
     if (DEMO_AUTH) {
-      if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
-        setDemoError(false);
-        activateDemoSession(setLocation);
-        return;
-      }
       setDemoError(true);
       return;
     }

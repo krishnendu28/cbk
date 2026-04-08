@@ -9,7 +9,7 @@ import { useAppOutlet, useAuth } from "@/lib/contexts";
 import { useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { TOKEN_KEY } from "@/main";
+import { TOKEN_KEY } from "@/lib/session";
 import { NAV_ACCESS } from "@/lib/rbac";
 
 const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";

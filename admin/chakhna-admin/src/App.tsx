@@ -40,15 +40,29 @@ function ProtectedRoute({ component: Component, path }: { component: any; path: 
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated) return;
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      setLocation("/login");
+      return;
+    }
 
     if (!canAccessRoute(path, user?.role)) {
       setLocation(getDefaultRouteForRole(user?.role));
     }
   }, [isLoading, isAuthenticated, path, setLocation, user?.role]);
 
-  if (!isAuthenticated) return null;
-  if (!canAccessRoute(path, user?.role)) return null;
+  if (isLoading) {
+    return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <div className="p-6 text-sm text-muted-foreground">Redirecting to login...</div>;
+  }
+
+  if (!canAccessRoute(path, user?.role)) {
+    return <div className="p-6 text-sm text-muted-foreground">Redirecting...</div>;
+  }
 
   return (
     <AppLayout>

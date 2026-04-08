@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { getGetOutletsQueryKey, useGetMe, useGetOutlets } from "@workspace/api-client-react";
 import type { Outlet, User } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { TOKEN_KEY } from "@/lib/session";
 
 const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
 const DEMO_OWNER_KEY = "cbk_tabio_demo_owner";
@@ -44,9 +45,19 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const [demoAuthenticated, setDemoAuthenticated] = useState(() => localStorage.getItem(DEMO_OWNER_KEY) === "1");
+  const [hasToken, setHasToken] = useState(() => Boolean(localStorage.getItem(TOKEN_KEY)));
+
+  useEffect(() => {
+    const syncToken = () => setHasToken(Boolean(localStorage.getItem(TOKEN_KEY)));
+    window.addEventListener("storage", syncToken);
+    return () => {
+      window.removeEventListener("storage", syncToken);
+    };
+  }, []);
+
   const { data: userResponse, isLoading, isError, isFetching } = useGetMe({
     query: {
-      enabled: !DEMO_AUTH,
+      enabled: !DEMO_AUTH && hasToken,
     },
   });
   const user = userResponse && typeof userResponse === "object" && "role" in (userResponse as any)
@@ -74,6 +85,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
+
+    if (!hasToken) {
+      const currentPath = window.location.pathname;
+      if (!currentPath.endsWith("/login")) {
+        setLocation("/login");
+      }
+      return;
+    }
+
     // Redirect to login once we know we don't have a valid authenticated user.
     if (!isLoading && !isFetching && (isError || !user)) {
       const currentPath = window.location.pathname;
@@ -81,13 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLocation("/login");
       }
     }
-  }, [isLoading, isFetching, isError, setLocation, user]);
+  }, [demoAuthenticated, hasToken, isLoading, isFetching, isError, setLocation, user]);
 
   return (
     <AuthContext.Provider
       value={{
         user: DEMO_AUTH ? (demoAuthenticated ? demoUser : null) : user,
-        isLoading: DEMO_AUTH ? false : isLoading || isFetching,
+        isLoading: DEMO_AUTH ? false : hasToken && (isLoading || isFetching),
         isAuthenticated: DEMO_AUTH ? demoAuthenticated : !!user,
       }}
     >

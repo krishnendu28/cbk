@@ -17,7 +17,7 @@ const demoUser: User = {
 const demoOutlets: Outlet[] = [
   {
     id: 1,
-    name: "Chakhna By Kilo",
+    name: "Chakhna by Kilo",
     address: "Outside Shapoorji C Block Gate, Technocity (New Town), Kolkata - 700135",
     phone: "+91-84202 52042",
     email: "owner@tabio.com",

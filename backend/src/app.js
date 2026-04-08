@@ -9,6 +9,7 @@ import menuRoutes from "./routes/menuRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import shopRoutes from "./routes/shopRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
 import { requestContext } from "./middlewares/request-context.js";
 import { requestLogger } from "./middlewares/request-logger.js";
@@ -37,6 +38,7 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/shop", shopRoutes);
+app.use("/api", settingsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

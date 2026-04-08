@@ -21,7 +21,6 @@ const Tables = lazy(() => import("@/pages/tables"));
 const Inventory = lazy(() => import("@/pages/inventory"));
 const Reports = lazy(() => import("@/pages/reports"));
 const Customers = lazy(() => import("@/pages/customers"));
-const Aggregators = lazy(() => import("@/pages/aggregators"));
 const Settings = lazy(() => import("@/pages/settings"));
 const Staff = lazy(() => import("@/pages/staff"));
 const LiveOrders = lazy(() => import("@/pages/live-orders"));
@@ -86,7 +85,6 @@ function Router() {
       <Route path="/inventory"><ProtectedRoute path="/inventory" component={Inventory} /></Route>
       <Route path="/reports"><ProtectedRoute path="/reports" component={Reports} /></Route>
       <Route path="/customers"><ProtectedRoute path="/customers" component={Customers} /></Route>
-      <Route path="/aggregators"><ProtectedRoute path="/aggregators" component={Aggregators} /></Route>
       <Route path="/live-orders"><ProtectedRoute path="/live-orders" component={LiveOrders} /></Route>
       <Route path="/settings"><ProtectedRoute path="/settings" component={Settings} /></Route>
       <Route path="/staff"><ProtectedRoute path="/staff" component={Staff} /></Route>
@@ -116,3 +114,4 @@ function App() {
 }
 
 export default App;
+

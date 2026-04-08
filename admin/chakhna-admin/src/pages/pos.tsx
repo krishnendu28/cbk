@@ -307,7 +307,7 @@ export default function POS() {
       <html>
         <head>
           <meta charset="UTF-8" />
-          <title>Chkhna By Kilo E-Bill</title>
+          <title>Chakhna by Kilo E-Bill</title>
           <style>
             @page { size: 80mm auto; margin: 6mm; }
             * { box-sizing: border-box; }
@@ -386,8 +386,8 @@ export default function POS() {
         <body>
           <div class="bill">
             <div class="center">
-              <img src="${logoUrl}" alt="Chkhna By Kilo" class="logo" />
-              <h1>Chkhna By Kilo</h1>
+              <img src="${logoUrl}" alt="Chakhna by Kilo" class="logo" />
+              <h1>Chakhna by Kilo</h1>
               <div class="muted">E-BILL / TAX INVOICE</div>
             </div>
 
@@ -594,3 +594,4 @@ export default function POS() {
     </div>
   );
 }
+

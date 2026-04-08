@@ -16,7 +16,6 @@ export const NAV_ACCESS: NavItem[] = [
   { href: "/inventory", label: "Inventory", allowedRoles: ["owner", "manager"] },
   { href: "/customers", label: "Customers", allowedRoles: ["owner", "manager", "cashier", "waiter"] },
   { href: "/reports", label: "Reports", allowedRoles: ["owner", "manager"] },
-  { href: "/aggregators", label: "Aggregators", allowedRoles: ["owner", "manager", "cashier"] },
   { href: "/live-orders", label: "Live Orders", allowedRoles: ["owner", "manager", "cashier", "kitchen", "waiter"] },
   { href: "/staff", label: "Staff", allowedRoles: ["owner", "manager"] },
   { href: "/settings", label: "Settings", allowedRoles: ["owner", "manager"] },
@@ -53,3 +52,4 @@ export function canAccessRoute(path: string, role?: string | null): boolean {
 
   return matched.allowedRoles.includes(role as AppRole);
 }
+

@@ -9,16 +9,20 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { sendBroadcastNotification } from "@/lib/bridge";
 
 export default function Settings() {
   const { outletId } = useAppOutlet();
   const queryClient = useQueryClient();
-  const { data: settings, isLoading } = useGetSettings(outletId);
+  const { data: settings, isLoading, isError, error } = useGetSettings(outletId);
   const updateSettings = useUpdateSettings();
   const [draftSettings, setDraftSettings] = useState<typeof settings | null>(null);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -60,7 +64,63 @@ export default function Settings() {
     }
   };
 
-  if (isLoading || !settings || !draftSettings) return <div className="p-8">Loading settings...</div>;
+  const handleSendNotification = async () => {
+    const message = broadcastMessage.trim();
+    if (!message) {
+      toast({
+        title: "Message required",
+        description: "Please enter a notification message first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSendingNotification(true);
+      await sendBroadcastNotification(message);
+      setBroadcastMessage("");
+      toast({
+        title: "Notification sent",
+        description: "Connected app users will receive it instantly.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to send notification",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingNotification(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-8">Loading settings...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="p-8">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+          <p className="font-medium text-destructive">Failed to load settings from backend.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {error instanceof Error ? error.message : "Please verify backend settings endpoint and admin access."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settings || !draftSettings) {
+    return (
+      <div className="p-8">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="font-medium">Settings are currently unavailable.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Please refresh or check backend connectivity.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -172,6 +232,32 @@ export default function Settings() {
                 }
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>App Notifications</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="broadcast-message">Broadcast Message</Label>
+              <Textarea
+                id="broadcast-message"
+                value={broadcastMessage}
+                onChange={(event) => setBroadcastMessage(event.target.value)}
+                placeholder="Write a message for all connected app users"
+                maxLength={220}
+                className="min-h-24"
+              />
+              <p className="text-xs text-muted-foreground">{broadcastMessage.length}/220 characters</p>
+            </div>
+            <Button
+              onClick={handleSendNotification}
+              disabled={isSendingNotification || broadcastMessage.trim().length === 0}
+            >
+              {isSendingNotification ? "Sending..." : "Send Notification"}
+            </Button>
           </CardContent>
         </Card>
       </div>

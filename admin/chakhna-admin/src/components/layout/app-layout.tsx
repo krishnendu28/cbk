@@ -24,7 +24,6 @@ const NAV_ICON_MAP = {
   "/inventory": Store,
   "/customers": Users,
   "/reports": BarChart3,
-  "/aggregators": Package,
   "/live-orders": ShoppingCart,
   "/staff": UserCircle,
   "/settings": Settings,
@@ -63,10 +62,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-3">
           <img
             src={`${import.meta.env.BASE_URL}logo.jpeg`}
-            alt="Chkhna By Kilo Logo"
+            alt="Chakhna by Kilo Logo"
             className="w-12 h-12 rounded-2xl object-cover shadow-lg animate-pulse"
           />
-          <p className="text-foreground text-sm font-semibold">Loading Chkhna By Kilo Admin...</p>
+          <p className="text-foreground text-sm font-semibold">Loading Chakhna by Kilo Admin...</p>
         </div>
       </div>
     );
@@ -88,10 +87,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="p-6 flex items-center gap-3">
           <img
             src={`${import.meta.env.BASE_URL}logo.jpeg`}
-            alt="Chkhna By Kilo Logo"
+            alt="Chakhna by Kilo Logo"
             className="w-10 h-10 rounded-xl shadow-lg object-cover"
           />
-          <span className="font-display font-extrabold text-[1.45rem] tracking-tight text-white">Chkhna By Kilo</span>
+          <span className="font-display font-extrabold text-[1.45rem] tracking-tight text-white">Chakhna by Kilo</span>
         </div>
         
         <nav className="flex-1 px-4 pb-4 space-y-1 overflow-y-auto custom-scrollbar">
@@ -145,7 +144,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 min-w-0">
             <img
               src={`${import.meta.env.BASE_URL}logo.jpeg`}
-              alt="Chkhna By Kilo Logo"
+              alt="Chakhna by Kilo Logo"
               className="w-9 h-9 rounded-lg object-cover border border-blue-200"
             />
             <h1 className="text-xl font-display font-bold text-foreground truncate">
@@ -182,3 +181,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

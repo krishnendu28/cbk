@@ -80,10 +80,10 @@ export default function Login() {
         <div className="flex flex-col items-center mb-8">
           <img
             src={`${import.meta.env.BASE_URL}logo.jpeg`}
-            alt="Chkhna By Kilo Logo"
+            alt="Chakhna by Kilo Logo"
             className="w-16 h-16 rounded-2xl shadow-lg object-cover mb-4"
           />
-          <h1 className="text-3xl font-display font-extrabold text-foreground">Chkhna By Kilo Admin</h1>
+          <h1 className="text-3xl font-display font-extrabold text-foreground">Chakhna by Kilo Admin</h1>
           <p className="text-foreground/85 mt-2 text-center font-medium">Sign in to manage POS, KOT, inventory, reports, and more.</p>
         </div>
 
@@ -136,3 +136,4 @@ export default function Login() {
     </div>
   );
 }
+

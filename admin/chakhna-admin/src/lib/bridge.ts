@@ -557,7 +557,7 @@ const defaultStaff: BridgeStaff[] = [
   {
     id: 2,
     name: "Kitchen Captain",
-    email: "kitchen@chkhna.com",
+    email: "kitchen@chakhna.com",
     phone: "9000000002",
     role: "kitchen",
     isActive: true,
@@ -770,6 +770,32 @@ export async function deleteBridgeOrder(orderId: string): Promise<void> {
     headers: buildAdminHeaders(),
   });
   if (!response.ok) throw await buildRequestError(response, "Failed to delete order");
+}
+
+export async function sendBroadcastNotification(message: string): Promise<{ id: string; message: string; createdAt: string }> {
+  const trimmedMessage = String(message || "").trim();
+  if (!trimmedMessage) {
+    throw new Error("Notification message is required");
+  }
+
+  if (isDemoSessionActive()) {
+    throw new Error("Broadcast notifications are not available in demo mode");
+  }
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/notifications/broadcast`, {
+    method: "POST",
+    headers: buildAdminHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify({ message: trimmedMessage }),
+  });
+
+  if (!response.ok) {
+    throw await buildRequestError(response, "Failed to send notification");
+  }
+
+  const data = await response.json();
+  return data?.notification;
 }
 
 export function subscribeBridgeOrders(

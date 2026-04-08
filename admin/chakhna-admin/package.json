@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174",
-    "build": "node ./scripts/sync-artifact.mjs",
+    "build": "vite build && node ./scripts/sync-artifact.mjs",
     "preview": "vite preview --port 5174"
   },
   "dependencies": {

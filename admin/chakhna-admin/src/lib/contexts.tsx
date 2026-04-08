@@ -44,11 +44,14 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const [demoAuthenticated, setDemoAuthenticated] = useState(() => localStorage.getItem(DEMO_OWNER_KEY) === "1");
-  const { data: user, isLoading, isError, isFetching } = useGetMe({
+  const { data: userResponse, isLoading, isError, isFetching } = useGetMe({
     query: {
       enabled: !DEMO_AUTH,
     },
   });
+  const user = userResponse && typeof userResponse === "object" && "role" in (userResponse as any)
+    ? (userResponse as User)
+    : null;
 
   useEffect(() => {
     if (!DEMO_AUTH) return;
@@ -71,19 +74,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-    // Only redirect when we've confirmed there's no session (not loading/fetching)
-    if (!isLoading && !isFetching && isError) {
+    // Redirect to login once we know we don't have a valid authenticated user.
+    if (!isLoading && !isFetching && (isError || !user)) {
       const currentPath = window.location.pathname;
       if (!currentPath.endsWith("/login")) {
         setLocation("/login");
       }
     }
-  }, [isLoading, isFetching, isError, setLocation]);
+  }, [isLoading, isFetching, isError, setLocation, user]);
 
   return (
     <AuthContext.Provider
       value={{
-        user: DEMO_AUTH ? (demoAuthenticated ? demoUser : null) : user || null,
+        user: DEMO_AUTH ? (demoAuthenticated ? demoUser : null) : user,
         isLoading: DEMO_AUTH ? false : isLoading || isFetching,
         isAuthenticated: DEMO_AUTH ? demoAuthenticated : !!user,
       }}

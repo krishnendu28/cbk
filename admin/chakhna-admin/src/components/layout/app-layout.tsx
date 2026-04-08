@@ -9,11 +9,10 @@ import { useAppOutlet, useAuth } from "@/lib/contexts";
 import { useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { TOKEN_KEY } from "@/lib/session";
+import { DEMO_SESSION_KEY, TOKEN_KEY } from "@/lib/session";
 import { NAV_ACCESS } from "@/lib/rbac";
 
 const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
-const DEMO_OWNER_KEY = "cbk_tabio_demo_owner";
 
 const NAV_ICON_MAP = {
   "/": LayoutDashboard,
@@ -39,10 +38,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   const handleLogout = () => {
+    localStorage.removeItem(DEMO_SESSION_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    window.dispatchEvent(new Event("cbk-demo-auth-changed"));
+
     if (DEMO_AUTH) {
-      localStorage.removeItem(DEMO_OWNER_KEY);
-      localStorage.removeItem(TOKEN_KEY);
-      window.dispatchEvent(new Event("cbk-demo-auth-changed"));
       queryClient.clear();
       setLocation("/login");
       return;
@@ -50,7 +50,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
     logout.mutate(undefined, {
       onSuccess: () => {
-        localStorage.removeItem(TOKEN_KEY);
         queryClient.setQueryData(getGetMeQueryKey(), null);
         queryClient.clear();
         setLocation("/login");

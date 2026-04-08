@@ -2,16 +2,26 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useLogin, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { TOKEN_KEY } from "@/lib/session";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { getDefaultRouteForRole } from "@/lib/rbac";
+import { DEMO_SESSION_KEY, TOKEN_KEY } from "@/lib/session";
 
 const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
-const DEMO_OWNER_KEY = "cbk_tabio_demo_owner";
+const DEMO_CREDENTIALS = {
+  email: "owner@tabio.com",
+  password: "demo1234",
+};
+
+function activateDemoSession(setLocation: (path: string) => void) {
+  localStorage.setItem(DEMO_SESSION_KEY, "1");
+  localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event("cbk-demo-auth-changed"));
+  setLocation("/pos");
+}
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -26,11 +36,9 @@ export default function Login() {
     e.preventDefault();
 
     if (DEMO_AUTH) {
-      if (email === "owner@tabio.com" && password === "demo1234") {
+      if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
         setDemoError(false);
-        localStorage.setItem(DEMO_OWNER_KEY, "1");
-        window.dispatchEvent(new Event("cbk-demo-auth-changed"));
-        setLocation("/pos");
+        activateDemoSession(setLocation);
         return;
       }
       setDemoError(true);
@@ -41,10 +49,20 @@ export default function Login() {
       onSuccess: (data) => {
         // Persist token so customFetch sends it on every request
         if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+        localStorage.removeItem(DEMO_SESSION_KEY);
         // Set user data directly in the cache so AuthProvider sees it immediately
         queryClient.setQueryData(getGetMeQueryKey(), data.user);
         setLocation(getDefaultRouteForRole((data.user as { role?: string | null })?.role ?? null));
-      }
+      },
+      onError: () => {
+        if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
+          setDemoError(false);
+          activateDemoSession(setLocation);
+          return;
+        }
+
+        setDemoError(true);
+      },
     });
   };
 
@@ -77,7 +95,7 @@ export default function Login() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="bg-white/90 focus:bg-white transition-colors py-6 text-lg text-slate-900 font-semibold"
-              placeholder="owner@tabio.com"
+              placeholder={DEMO_CREDENTIALS.email}
               required
             />
           </div>

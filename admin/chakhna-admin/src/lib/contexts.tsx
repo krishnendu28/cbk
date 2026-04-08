@@ -112,12 +112,17 @@ const OutletContext = createContext<OutletContextType>({
 
 export function OutletProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
-  const { data: outlets = [], isLoading: isOutletsLoading } = useGetOutlets({
+  const { data: outletsResponse, isLoading: isOutletsLoading } = useGetOutlets({
     query: {
       enabled: isAuthenticated && !DEMO_AUTH,
       queryKey: getGetOutletsQueryKey(),
     },
   });
+  const outlets = Array.isArray(outletsResponse)
+    ? outletsResponse
+    : Array.isArray((outletsResponse as any)?.outlets)
+      ? (outletsResponse as any).outlets
+      : [];
   const [outletId, setOutletId] = useState(1);
 
   useEffect(() => {

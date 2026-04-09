@@ -140,7 +140,13 @@ export type BridgeStaff = {
   password?: string;
 };
 
-const socket = isDemoSessionActive() ? null : io(USER_BACKEND_URL, { autoConnect: true });
+const socket = isDemoSessionActive() ? null : io(USER_BACKEND_URL, {
+  autoConnect: true,
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: Infinity,
+});
 
 if (typeof window !== "undefined") {
   window.addEventListener("cbk-demo-auth-changed", () => {

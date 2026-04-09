@@ -11,7 +11,10 @@
     "jsEngine": "hermes",
     "ios": {
       "bundleIdentifier": "com.krishnendu28.cbkapp",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.krishnendu28.cbkapp",
@@ -59,7 +62,9 @@
     },
     "extra": {
       "router": {},
-      "eas": {}
+      "eas": {
+        "projectId": "f5896dce-c7bd-4a5d-8f36-8466e4a08d5a"
+      }
     },
     "owner": "mayank8159"
   }

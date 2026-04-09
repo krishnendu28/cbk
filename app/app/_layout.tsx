@@ -17,7 +17,13 @@ export const unstable_settings = {
 };
 
 const LAST_DISMISSED_RELEASE_KEY = 'cbk_last_dismissed_release_tag';
-const socket = io(API_BASE_URL, { autoConnect: true });
+export const socket = io(API_BASE_URL, {
+  autoConnect: true,
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: Infinity,
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

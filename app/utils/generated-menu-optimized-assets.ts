@@ -165,7 +165,6 @@ export const optimizedMenuImageAssets: Record<string, ImageSourcePropType> = {
   "Schezwan-Noodles-mushroom.jpeg": require("../assets/menu-optimized/Schezwan-Noodles-mushroom.jpeg"),
   "Schezwan-Noodles-panner.jpeg": require("../assets/menu-optimized/Schezwan-Noodles-panner.jpeg"),
   "Schezwan-Noodles-Prawn.jpeg": require("../assets/menu-optimized/Schezwan-Noodles-Prawn.jpeg"),
-  "Schezwan-Noodles-prawn.jpg": require("../assets/menu-optimized/Schezwan-Noodles-prawn.jpg"),
   "szechuan-chicken-.jpg": require("../assets/menu-optimized/szechuan-chicken-.jpg"),
   "Tandoori-Chicken.jpg": require("../assets/menu-optimized/Tandoori-Chicken.jpg"),
   "Tandoori-Roti.jpeg": require("../assets/menu-optimized/Tandoori-Roti.jpeg"),

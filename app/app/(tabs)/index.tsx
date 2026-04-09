@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
+import { socket } from "@/app/_layout";
 
 type MenuItem = {
   id: number;
@@ -234,6 +235,45 @@ export default function MenuScreen() {
       clearInterval(intervalId);
     };
   }, [session]);
+
+  // Real-time listener for ordering status updates
+  useEffect(() => {
+    const handleOrderingStatusUpdate = (status: { isOrderingOpen: boolean }) => {
+      setIsOrderingOpen(Boolean(status?.isOrderingOpen));
+    };
+
+    socket.on("ordering_status_updated", handleOrderingStatusUpdate);
+
+    return () => {
+      socket.off("ordering_status_updated", handleOrderingStatusUpdate);
+    };
+  }, []);
+
+  // Real-time listeners for menu updates
+  useEffect(() => {
+    const handleMenuRefresh = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/menu`);
+        const categories = Array.isArray(response.data) ? response.data : [];
+        setMenuCategories(categories);
+        if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
+          setActiveCategory(categories[0].id);
+        }
+      } catch {
+        // Silent failure - keep existing menu
+      }
+    };
+
+    socket.on("menu_created", handleMenuRefresh);
+    socket.on("menu_updated", handleMenuRefresh);
+    socket.on("menu_deleted", handleMenuRefresh);
+
+    return () => {
+      socket.off("menu_created", handleMenuRefresh);
+      socket.off("menu_updated", handleMenuRefresh);
+      socket.off("menu_deleted", handleMenuRefresh);
+    };
+  }, [activeCategory]);
 
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],

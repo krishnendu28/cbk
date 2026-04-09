@@ -36,6 +36,21 @@ function buildAdminHeaders(extraHeaders: Record<string, string> = {}) {
   };
 }
 
+function normalizeMenuImageForApi(image?: string) {
+  const value = String(image || "").trim();
+  if (!value) return undefined;
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  try {
+    return new URL(value, USER_BACKEND_URL).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function readDemoOrders(): BridgeOrder[] {
   if (typeof localStorage === "undefined") return [];
   try {
@@ -564,15 +579,16 @@ export async function createBridgeMenuItem(payload: {
     headers: buildAdminHeaders({
       "Content-Type": "application/json",
     }),
+    
     body: JSON.stringify({
       categoryId: payload.categoryId,
       categoryTitle: payload.categoryTitle,
       name: payload.name,
       prices: { Regular: payload.price },
-      image: payload.image,
+      image: normalizeMenuImageForApi(payload.image),
     }),
   });
-  if (!response.ok) throw new Error("Failed to create menu item");
+  if (!response.ok) throw await buildRequestError(response, "Failed to create menu item");
   return response.json();
 }
 
@@ -622,10 +638,10 @@ export async function updateBridgeMenuItem(
       categoryTitle: payload.categoryTitle,
       name: payload.name,
       prices: payload.price !== undefined ? { Regular: payload.price } : undefined,
-      image: payload.image,
+      image: normalizeMenuImageForApi(payload.image),
     }),
   });
-  if (!response.ok) throw new Error("Failed to update menu item");
+  if (!response.ok) throw await buildRequestError(response, "Failed to update menu item");
   return response.json();
 }
 

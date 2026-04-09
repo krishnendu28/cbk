@@ -94,6 +94,10 @@ export default function Settings() {
           currencySymbol: String(current.currencySymbol || "Rs"),
           receiptFooter: String(current.receiptFooter || "Thank you for visiting Chakhna by Kilo"),
           printKotAutomatically: Boolean(current.printKotAutomatically),
+          zomatoEnabled: Boolean(current.zomatoEnabled),
+          swiggyEnabled: Boolean(current.swiggyEnabled),
+          zomatoApiKey: current.zomatoApiKey ? String(current.zomatoApiKey) : null,
+          swiggyApiKey: current.swiggyApiKey ? String(current.swiggyApiKey) : null,
           carbonTrackingEnabled: Boolean(current.carbonTrackingEnabled),
         },
       });

@@ -236,6 +236,24 @@ export default function MenuScreen() {
     };
   }, [session]);
 
+  useEffect(() => {
+    const handleOutletSettingsUpdated = (payload: {
+      outletId?: number;
+      settings?: { discountEnabled?: boolean; discountRate?: number };
+    }) => {
+      if (Number(payload?.outletId) !== 1) return;
+
+      setDiscountEnabled(Boolean(payload?.settings?.discountEnabled));
+      setDiscountRate(Number(payload?.settings?.discountRate || 0));
+    };
+
+    socket.on("outlet_settings_updated", handleOutletSettingsUpdated);
+
+    return () => {
+      socket.off("outlet_settings_updated", handleOutletSettingsUpdated);
+    };
+  }, []);
+
   // Real-time listener for ordering status updates
   useEffect(() => {
     const handleOrderingStatusUpdate = (status: { isOrderingOpen: boolean }) => {

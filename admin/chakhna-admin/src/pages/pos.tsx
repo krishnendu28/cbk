@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
 import { ReceiptText, ShoppingCart } from "lucide-react";
 import {
   BridgeMenuItem,
@@ -174,7 +175,8 @@ export default function POS() {
 
       const payload = {
         customerName: customerName.trim() || (orderType === "dine-in" ? "Walk-in Guest" : "Takeaway Guest"),
-        phone: phone.trim() || "N/A",
+        // Backend validates min length for phone; keep a POS-safe fallback for walk-in orders.
+        phone: phone.trim() || "0000000000",
         address: addressParts.join(", "),
         items: cart.map((item) => ({
           name: item.name,
@@ -184,6 +186,7 @@ export default function POS() {
           totalPrice: item.totalPrice,
         })),
         deliveryCharge,
+        subtotal,
         total: Math.round(total),
       };
 
@@ -218,6 +221,10 @@ export default function POS() {
         setAutoLocation("");
         setSelectedTableId(null);
         setSavedAt(null);
+        toast({
+          title: "Order sent to kitchen",
+          description: "Demo order created successfully.",
+        });
         return;
       }
 
@@ -247,6 +254,16 @@ export default function POS() {
       setAutoLocation("");
       setSelectedTableId(null);
       setSavedAt(null);
+      toast({
+        title: "Order sent to kitchen",
+        description: "POS order created successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to place order",
+        description: error instanceof Error ? error.message : "Please check order details and try again.",
+        variant: "destructive",
+      });
     } finally {
       setPlacing(false);
     }

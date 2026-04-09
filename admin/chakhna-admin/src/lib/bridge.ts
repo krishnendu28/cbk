@@ -3,13 +3,14 @@ import { DEMO_SESSION_KEY } from "@/lib/session";
 import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 
 export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
+const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
 const DEMO_ORDERS_KEY = "cbk_demo_orders";
 const DEMO_MENU_KEY = "cbk_demo_menu_groups";
 const DEMO_MENU_CHANGED_EVENT = "cbk_demo_menu_changed";
 
 function isDemoSessionActive() {
-  return typeof localStorage !== "undefined" && localStorage.getItem(DEMO_SESSION_KEY) === "1";
+  return DEMO_AUTH && typeof localStorage !== "undefined" && localStorage.getItem(DEMO_SESSION_KEY) === "1";
 }
 
 function resolveAdminToken() {

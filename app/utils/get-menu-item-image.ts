@@ -178,21 +178,44 @@ function toLocalImage(fileName = ""): ImageSourcePropType {
   return optimizedMenuImageAssets[cleanFileName] ?? fallbackImage;
 }
 
+const lowerCaseOptimizedAssets = Object.fromEntries(
+  Object.entries(optimizedMenuImageAssets).map(([fileName, source]) => [fileName.toLowerCase(), source]),
+);
+
 const normalizeName = (value = "") =>
   String(value)
     .toLowerCase()
     .replace(/[()/_+.-]+/g, " ")
     .replace(/\b(pcs?|pc|gm|kg|ml|regular|half|full)\b/g, " ")
     .replace(/\d+/g, " ")
+    .replace(/\b(speciual)\b/g, "special")
+    .replace(/\b(biriyani)\b/g, "biryani")
+    .replace(/\b(mushromm|mushrom)\b/g, "mushroom")
+    .replace(/\b(munchurian|manchuriyan)\b/g, "manchurian")
     .replace(/\b(corma|korma)\b/g, "korma")
     .replace(/\b(kadhai|kadai)\b/g, "kadai")
     .replace(/\b(piyaza|pyaza)\b/g, "pyaza")
     .replace(/\b(alu|aloo)\b/g, "aloo")
     .replace(/\b(nan)\b/g, "naan")
-    .replace(/\b(panner)\b/g, "paneer")
+    .replace(/\b(panner|panneer|paner)\b/g, "paneer")
     .replace(/\b(dhinya)\b/g, "dhaniya")
     .replace(/\s+/g, " ")
     .trim();
+
+const menuImageAliases: Record<string, string> = {
+  "special family pack biryani": "Special Family Pack Biryani",
+  "special family pack biriyani": "Special Family Pack Biryani",
+  "speciual family pack biryani": "Special Family Pack Biryani",
+  "speciual family pack biriyani": "Special Family Pack Biryani",
+  "mushroom manchurian": "Mushroom Manchurian 500ml",
+  "mushromm manchurian": "Mushroom Manchurian 500ml",
+  "mushroom munchurian": "Mushroom Manchurian 500ml",
+  "mushromm munchurian": "Mushroom Manchurian 500ml",
+  "matar paneer": "Matar Paneer 8pcs",
+  "matar paneer masala": "Matar Paneer 8pcs",
+  "matar paneer masala combo": "Matar Paneer Masala Combo",
+  "aloo paratha": "Alu Paratha 2pcs",
+};
 
 const menuImages = Object.fromEntries(
   Object.entries(menuImageFiles).map(([menuItem, fileName]) => [menuItem, toLocalImage(fileName)]),
@@ -227,13 +250,16 @@ function getImageByBackendPath(backendImage = ""): ImageSourcePropType | null {
   );
   if (!fileName) return null;
 
-  return optimizedMenuImageAssets[fileName] ?? null;
+  return optimizedMenuImageAssets[fileName] ?? lowerCaseOptimizedAssets[fileName.toLowerCase()] ?? null;
 }
 
 export function getMenuItemImage(itemName = "", category = "", backendImage = ""): ImageSourcePropType {
   if (menuImages[itemName]) return menuImages[itemName];
 
   const normalizedName = normalizeName(itemName);
+  const aliasTarget = menuImageAliases[normalizedName];
+  if (aliasTarget && menuImages[aliasTarget]) return menuImages[aliasTarget];
+
   if (normalizedMenuImages[normalizedName]) return normalizedMenuImages[normalizedName];
 
   const backendMappedImage = getImageByBackendPath(backendImage);

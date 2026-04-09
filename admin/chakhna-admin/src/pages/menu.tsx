@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import {
   createBridgeMenuItem,
   deleteBridgeMenuItem,
@@ -21,6 +22,8 @@ export default function MenuManagement() {
   const [price, setPrice] = useState("");
   const [image, setImage] = useState("");
   const [categoryTitle, setCategoryTitle] = useState(menuGroups[0]?.title || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const activeGroup = menuGroups.find((group) => group.id === activeGroupId) || menuGroups[0];
 
   async function reloadMenu() {
@@ -48,8 +51,23 @@ export default function MenuManagement() {
     const ok = window.confirm(`Delete menu item "${itemName}" from admin menu?`);
     if (!ok) return;
 
-    await deleteBridgeMenuItem(itemId);
-    await reloadMenu();
+    try {
+      setIsDeletingId(itemId);
+      await deleteBridgeMenuItem(itemId);
+      await reloadMenu();
+      toast({ title: "Menu item deleted" });
+      if (editingItemId === itemId) {
+        resetForm();
+      }
+    } catch (error) {
+      toast({
+        title: "Failed to delete item",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingId(null);
+    }
   }
 
   function startEdit(item: { id: number; name: string; price: number; image: string }, groupTitle: string) {
@@ -73,26 +91,40 @@ export default function MenuManagement() {
     const numericPrice = Number(price || 0);
     if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
 
-    if (editingItemId) {
-      await updateBridgeMenuItem(editingItemId, {
-        name: name.trim(),
-        price: numericPrice,
-        image: image.trim() || undefined,
-        categoryId: activeGroup?.title === categoryTitle.trim() ? activeGroup?.id : undefined,
-        categoryTitle: categoryTitle.trim(),
-      });
-    } else {
-      await createBridgeMenuItem({
-        categoryId: activeGroup?.title === categoryTitle.trim() ? activeGroup?.id : undefined,
-        categoryTitle: categoryTitle.trim(),
-        name: name.trim(),
-        price: numericPrice,
-        image: image.trim() || undefined,
-      });
-    }
+    try {
+      setIsSaving(true);
 
-    await reloadMenu();
-    resetForm();
+      if (editingItemId) {
+        await updateBridgeMenuItem(editingItemId, {
+          name: name.trim(),
+          price: numericPrice,
+          image: image.trim() || undefined,
+          categoryId: activeGroup?.title === categoryTitle.trim() ? activeGroup?.id : undefined,
+          categoryTitle: categoryTitle.trim(),
+        });
+        toast({ title: "Menu item updated" });
+      } else {
+        await createBridgeMenuItem({
+          categoryId: activeGroup?.title === categoryTitle.trim() ? activeGroup?.id : undefined,
+          categoryTitle: categoryTitle.trim(),
+          name: name.trim(),
+          price: numericPrice,
+          image: image.trim() || undefined,
+        });
+        toast({ title: "Menu item created" });
+      }
+
+      await reloadMenu();
+      resetForm();
+    } catch (error) {
+      toast({
+        title: editingItemId ? "Failed to update item" : "Failed to add item",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -113,9 +145,11 @@ export default function MenuManagement() {
           <Input placeholder="Image URL (optional)" value={image} onChange={(event) => setImage(event.target.value)} />
         </div>
         <div className="flex gap-2">
-          <Button onClick={submitMenuItem}>{editingItemId ? "Update Item" : "Add Item"}</Button>
+          <Button onClick={submitMenuItem} disabled={isSaving}>
+            {isSaving ? (editingItemId ? "Updating..." : "Saving...") : editingItemId ? "Update Item" : "Add Item"}
+          </Button>
           {editingItemId && (
-            <Button variant="outline" onClick={resetForm}>Cancel</Button>
+            <Button variant="outline" onClick={resetForm} disabled={isSaving}>Cancel</Button>
           )}
         </div>
       </Card>
@@ -123,6 +157,7 @@ export default function MenuManagement() {
       <div className="flex flex-wrap gap-2">
         {menuGroups.map((group) => (
           <button
+                disabled={isSaving || isDeletingId === item.id}
             key={group.id}
             type="button"
             onClick={() => setActiveGroupId(group.id)}
@@ -131,8 +166,9 @@ export default function MenuManagement() {
                 ? "px-4 py-2 rounded-full bg-primary text-primary-foreground"
                 : "px-4 py-2 rounded-full bg-muted text-foreground"
             }
+                disabled={isSaving || isDeletingId === item.id}
           >
-            {group.title}
+                <Trash2 className="w-4 h-4 mr-2" /> {isDeletingId === item.id ? "Deleting..." : "Delete"}
           </button>
         ))}
       </div>

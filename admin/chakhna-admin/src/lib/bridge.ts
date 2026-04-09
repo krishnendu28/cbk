@@ -475,7 +475,9 @@ export async function createBridgeMenuItem(payload: {
 }) {
   const response = await fetch(`${USER_BACKEND_URL}/api/menu`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildAdminHeaders({
+      "Content-Type": "application/json",
+    }),
     body: JSON.stringify({
       categoryId: payload.categoryId,
       categoryTitle: payload.categoryTitle,
@@ -494,7 +496,9 @@ export async function updateBridgeMenuItem(
 ) {
   const response = await fetch(`${USER_BACKEND_URL}/api/menu/${itemId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: buildAdminHeaders({
+      "Content-Type": "application/json",
+    }),
     body: JSON.stringify({
       categoryId: payload.categoryId,
       categoryTitle: payload.categoryTitle,
@@ -510,6 +514,7 @@ export async function updateBridgeMenuItem(
 export async function deleteBridgeMenuItem(itemId: number) {
   const response = await fetch(`${USER_BACKEND_URL}/api/menu/${itemId}`, {
     method: "DELETE",
+    headers: buildAdminHeaders(),
   });
   if (!response.ok) throw new Error("Failed to delete menu item");
 }

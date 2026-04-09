@@ -5,8 +5,8 @@ import 'react-native-reanimated';
 import { Alert, Linking, Platform } from 'react-native';
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
-import * as Notifications from 'expo-notifications';
 import { SessionProvider } from '@/context/session-context';
 import { checkForGithubReleaseUpdate } from '@/utils/update-check';
 import { API_BASE_URL } from '@/utils/api';
@@ -19,13 +19,8 @@ export const unstable_settings = {
 
 const LAST_DISMISSED_RELEASE_KEY = 'cbk_last_dismissed_release_tag';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+type ExpoNotificationsModule = typeof import('expo-notifications');
+let notificationsModulePromise: Promise<ExpoNotificationsModule | null> | null = null;
 
 export const socket = io(API_BASE_URL, {
   autoConnect: true,
@@ -35,35 +30,72 @@ export const socket = io(API_BASE_URL, {
   reconnectionAttempts: Infinity,
 });
 
+function isExpoGoRuntime() {
+  return Constants.appOwnership === 'expo';
+}
+
+async function getNotificationsModule() {
+  if (Platform.OS === 'web' || isExpoGoRuntime()) return null;
+
+  if (!notificationsModulePromise) {
+    notificationsModulePromise = import('expo-notifications')
+      .then((notifications) => {
+        notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          }),
+        });
+        return notifications;
+      })
+      .catch(() => null);
+  }
+
+  return notificationsModulePromise;
+}
+
 async function ensureBroadcastNotificationSetup() {
+  const notifications = await getNotificationsModule();
+  if (!notifications) return false;
+
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('broadcast', {
+    await notifications.setNotificationChannelAsync('broadcast', {
       name: 'Broadcast Notifications',
-      importance: Notifications.AndroidImportance.MAX,
+      importance: notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#D4A017',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      lockscreenVisibility: notifications.AndroidNotificationVisibility.PUBLIC,
       sound: 'default',
     });
   }
 
-  const permission = await Notifications.getPermissionsAsync();
+  const permission = await notifications.getPermissionsAsync();
   if (permission.status === 'granted') return true;
 
-  const requested = await Notifications.requestPermissionsAsync();
+  const requested = await notifications.requestPermissionsAsync();
   return requested.status === 'granted';
 }
 
 async function showBroadcastTaskbarNotification(message: string) {
+  if (isExpoGoRuntime()) {
+    // Expo Go cannot show Android task-bar notifications via expo-notifications.
+    // Ignore here to avoid popup alerts; use APK/dev build for real notifications.
+    return;
+  }
+
+  const notifications = await getNotificationsModule();
+  if (!notifications) return;
+
   const allowed = await ensureBroadcastNotificationSetup();
   if (!allowed) return;
 
-  await Notifications.scheduleNotificationAsync({
+  await notifications.scheduleNotificationAsync({
     content: {
       title: 'Message From Chakhna',
       body: message,
       sound: 'default',
-      priority: Notifications.AndroidNotificationPriority.MAX,
+      priority: notifications.AndroidNotificationPriority.MAX,
     },
     trigger: null,
   });

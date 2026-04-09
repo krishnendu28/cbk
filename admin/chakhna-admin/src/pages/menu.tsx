@@ -157,7 +157,6 @@ export default function MenuManagement() {
       <div className="flex flex-wrap gap-2">
         {menuGroups.map((group) => (
           <button
-                disabled={isSaving || isDeletingId === item.id}
             key={group.id}
             type="button"
             onClick={() => setActiveGroupId(group.id)}
@@ -166,9 +165,8 @@ export default function MenuManagement() {
                 ? "px-4 py-2 rounded-full bg-primary text-primary-foreground"
                 : "px-4 py-2 rounded-full bg-muted text-foreground"
             }
-                disabled={isSaving || isDeletingId === item.id}
           >
-                <Trash2 className="w-4 h-4 mr-2" /> {isDeletingId === item.id ? "Deleting..." : "Delete"}
+            {group.title}
           </button>
         ))}
       </div>

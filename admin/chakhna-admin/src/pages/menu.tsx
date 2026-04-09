@@ -77,6 +77,10 @@ export default function MenuManagement() {
     setPrice(String(item.price));
     setImage(item.image || "");
     setCategoryTitle(groupTitle);
+    toast({
+      title: "Editing menu item",
+      description: item.name,
+    });
   }
 
   function resetForm() {

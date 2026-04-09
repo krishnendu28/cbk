@@ -5,6 +5,8 @@ import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
 const DEMO_ORDERS_KEY = "cbk_demo_orders";
+const DEMO_MENU_KEY = "cbk_demo_menu_groups";
+const DEMO_MENU_CHANGED_EVENT = "cbk_demo_menu_changed";
 
 function isDemoSessionActive() {
   return typeof localStorage !== "undefined" && localStorage.getItem(DEMO_SESSION_KEY) === "1";
@@ -48,6 +50,64 @@ function readDemoOrders(): BridgeOrder[] {
 function saveDemoOrders(orders: BridgeOrder[]) {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(orders));
+}
+
+function readDemoMenuGroups(): BridgeMenuGroup[] {
+  if (typeof localStorage === "undefined") return localFallbackMenuGroups();
+
+  try {
+    const raw = localStorage.getItem(DEMO_MENU_KEY);
+    if (!raw) {
+      return localFallbackMenuGroups();
+    }
+
+    const parsed = JSON.parse(raw) as BridgeMenuGroup[];
+    if (!Array.isArray(parsed)) {
+      return localFallbackMenuGroups();
+    }
+
+    return parsed
+      .map((group, groupIndex) => ({
+        id: String(group.id || toGroupId(group.title) || `group-${groupIndex + 1}`),
+        title: String(group.title || "Menu"),
+        items: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
+          id: Number(item.id) || groupIndex * 1000 + itemIndex + 1,
+          name: String(item.name || "Item"),
+          price: Number(item.price) || 0,
+          image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
+        })),
+      }))
+      .filter((group) => group.items.length > 0);
+  } catch {
+    return localFallbackMenuGroups();
+  }
+}
+
+function saveDemoMenuGroups(groups: BridgeMenuGroup[]) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(DEMO_MENU_KEY, JSON.stringify(groups));
+  window.dispatchEvent(new CustomEvent(DEMO_MENU_CHANGED_EVENT));
+}
+
+function getNextMenuItemId(groups: BridgeMenuGroup[]) {
+  const ids = groups.flatMap((group) => group.items.map((item) => Number(item.id) || 0));
+  return ids.length ? Math.max(...ids) + 1 : 1;
+}
+
+function findDemoGroup(groups: BridgeMenuGroup[], categoryId?: string, categoryTitle?: string) {
+  const normalizedTitle = String(categoryTitle || "").trim().toLowerCase();
+
+  if (categoryId) {
+    const byId = groups.find((group) => group.id === categoryId);
+    if (byId) return byId;
+  }
+
+  if (normalizedTitle) {
+    const byTitle = groups.find((group) => group.title.trim().toLowerCase() === normalizedTitle);
+    if (byTitle) return byTitle;
+  }
+
+  return null;
 }
 
 export function appendDemoOrder(order: BridgeOrder) {
@@ -448,12 +508,12 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
 }
 
 export function getBridgeMenuGroups(): BridgeMenuGroup[] {
-  return localFallbackMenuGroups();
+  return isDemoSessionActive() ? readDemoMenuGroups() : localFallbackMenuGroups();
 }
 
 export async function fetchBridgeMenuGroups(): Promise<BridgeMenuGroup[]> {
   if (isDemoSessionActive()) {
-    return localFallbackMenuGroups();
+    return readDemoMenuGroups();
   }
 
   try {
@@ -473,6 +533,32 @@ export async function createBridgeMenuItem(payload: {
   price: number;
   image?: string;
 }) {
+  if (isDemoSessionActive()) {
+    const groups = readDemoMenuGroups();
+    let targetGroup = findDemoGroup(groups, payload.categoryId, payload.categoryTitle);
+
+    if (!targetGroup) {
+      targetGroup = {
+        id: payload.categoryId || toGroupId(payload.categoryTitle) || `group-${groups.length + 1}`,
+        title: payload.categoryTitle.trim(),
+        items: [],
+      };
+      groups.push(targetGroup);
+    }
+
+    const nextItemId = getNextMenuItemId(groups);
+    const item = {
+      id: nextItemId,
+      name: payload.name.trim(),
+      price: Number(payload.price) || 0,
+      image: String(payload.image || getFoodImageUrl(payload.name, `${targetGroup.title}-${nextItemId}`)),
+    };
+
+    targetGroup.items.push(item);
+    saveDemoMenuGroups(groups);
+    return { categoryId: targetGroup.id, categoryTitle: targetGroup.title, item };
+  }
+
   const response = await fetch(`${USER_BACKEND_URL}/api/menu`, {
     method: "POST",
     headers: buildAdminHeaders({
@@ -494,6 +580,38 @@ export async function updateBridgeMenuItem(
   itemId: number,
   payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; image?: string },
 ) {
+  if (isDemoSessionActive()) {
+    const groups = readDemoMenuGroups();
+    const sourceGroup = groups.find((group) => group.items.some((item) => item.id === itemId));
+    if (!sourceGroup) throw new Error("Failed to update menu item");
+
+    const sourceIndex = sourceGroup.items.findIndex((item) => item.id === itemId);
+    const sourceItem = sourceGroup.items[sourceIndex];
+    const updatedItem = {
+      ...sourceItem,
+      name: payload.name !== undefined ? payload.name.trim() : sourceItem.name,
+      price: payload.price !== undefined ? Number(payload.price) || 0 : sourceItem.price,
+      image: payload.image !== undefined
+        ? String(payload.image || getFoodImageUrl(payload.name || sourceItem.name, `${sourceGroup.title}-${itemId}`))
+        : sourceItem.image,
+    };
+
+    let targetGroup = findDemoGroup(groups, payload.categoryId, payload.categoryTitle) || sourceGroup;
+    if (!findDemoGroup(groups, payload.categoryId, payload.categoryTitle) && String(payload.categoryTitle || "").trim()) {
+      targetGroup = {
+        id: payload.categoryId || toGroupId(payload.categoryTitle || sourceGroup.title) || `group-${groups.length + 1}`,
+        title: String(payload.categoryTitle || sourceGroup.title).trim(),
+        items: [],
+      };
+      groups.push(targetGroup);
+    }
+
+    sourceGroup.items.splice(sourceIndex, 1);
+    targetGroup.items.push(updatedItem);
+    saveDemoMenuGroups(groups);
+    return { categoryId: targetGroup.id, categoryTitle: targetGroup.title, item: updatedItem };
+  }
+
   const response = await fetch(`${USER_BACKEND_URL}/api/menu/${itemId}`, {
     method: "PATCH",
     headers: buildAdminHeaders({
@@ -512,6 +630,16 @@ export async function updateBridgeMenuItem(
 }
 
 export async function deleteBridgeMenuItem(itemId: number) {
+  if (isDemoSessionActive()) {
+    const groups = readDemoMenuGroups();
+    const sourceGroup = groups.find((group) => group.items.some((item) => item.id === itemId));
+    if (!sourceGroup) throw new Error("Failed to delete menu item");
+
+    sourceGroup.items = sourceGroup.items.filter((item) => item.id !== itemId);
+    saveDemoMenuGroups(groups.filter((group) => group.items.length > 0));
+    return;
+  }
+
   const response = await fetch(`${USER_BACKEND_URL}/api/menu/${itemId}`, {
     method: "DELETE",
     headers: buildAdminHeaders(),
@@ -520,6 +648,17 @@ export async function deleteBridgeMenuItem(itemId: number) {
 }
 
 export function subscribeBridgeMenu(onMenuChanged: () => void) {
+  if (isDemoSessionActive()) {
+    const handler = () => onMenuChanged();
+    window.addEventListener(DEMO_MENU_CHANGED_EVENT, handler);
+    window.addEventListener("storage", handler);
+
+    return () => {
+      window.removeEventListener(DEMO_MENU_CHANGED_EVENT, handler);
+      window.removeEventListener("storage", handler);
+    };
+  }
+
   if (!socket) return () => {};
 
   const handler = () => onMenuChanged();

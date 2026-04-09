@@ -70,8 +70,9 @@ export default function MenuManagement() {
     }
   }
 
-  function startEdit(item: { id: number; name: string; price: number; image: string }, groupTitle: string) {
+  function startEdit(item: { id: number; name: string; price: number; image: string }, groupId: string, groupTitle: string) {
     setEditingItemId(item.id);
+    setActiveGroupId(groupId);
     setName(item.name);
     setPrice(String(item.price));
     setImage(item.image || "");
@@ -138,6 +139,11 @@ export default function MenuManagement() {
 
       <Card className="p-4 space-y-3 border-blue-200 bg-blue-50/40">
         <h2 className="font-semibold">{editingItemId ? "Update Menu Item" : "Add Menu Item"}</h2>
+        {editingItemId && (
+          <div className="rounded-md border border-blue-200 bg-blue-100/70 px-3 py-2 text-sm text-blue-900">
+            Editing: <span className="font-semibold">{name || "selected item"}</span>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input placeholder="Food Name" value={name} onChange={(event) => setName(event.target.value)} />
           <Input placeholder="Price" type="number" value={price} onChange={(event) => setPrice(event.target.value)} />
@@ -145,11 +151,11 @@ export default function MenuManagement() {
           <Input placeholder="Image URL (optional)" value={image} onChange={(event) => setImage(event.target.value)} />
         </div>
         <div className="flex gap-2">
-          <Button onClick={submitMenuItem} disabled={isSaving}>
+          <Button type="button" onClick={submitMenuItem} disabled={isSaving}>
             {isSaving ? (editingItemId ? "Updating..." : "Saving...") : editingItemId ? "Update Item" : "Add Item"}
           </Button>
           {editingItemId && (
-            <Button variant="outline" onClick={resetForm} disabled={isSaving}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={resetForm} disabled={isSaving}>Cancel</Button>
           )}
         </div>
       </Card>
@@ -181,10 +187,17 @@ export default function MenuManagement() {
                 <Badge variant="outline">{activeGroup.title}</Badge>
                 <p className="font-bold text-primary">Rs {item.price}</p>
               </div>
-              <Button variant="outline" size="sm" className="w-full" onClick={() => startEdit(item, activeGroup.title)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => startEdit(item, activeGroup.id, activeGroup.title)}
+              >
                 Update
               </Button>
               <Button
+                type="button"
                 variant="destructive"
                 size="sm"
                 className="w-full"

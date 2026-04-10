@@ -35,6 +35,32 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
+## Build APK Without EAS Cloud Queue
+
+This repository includes GitHub Actions workflows that build Android APK using local EAS mode on GitHub runners.
+
+1. Add `EXPO_TOKEN` in GitHub repository secrets.
+2. Open Actions tab and run `Build Android APK (No EAS Queue)`.
+3. Download artifacts from the workflow run:
+   - `cbk-android-apk-debug` (faster test build)
+   - `cbk-android-apk-release` (release APK)
+
+Workflow file:
+
+- `.github/workflows/build-apk-local.yml`
+
+## Auto Attach APK To GitHub Release
+
+The repository also includes a release pipeline that builds release APK and attaches it to GitHub Releases.
+
+1. Ensure `EXPO_TOKEN` secret is set.
+2. Create and push a tag like `v1.0.0`.
+3. Workflow builds `apk-release` profile and publishes the APK in the release assets.
+
+Workflow file:
+
+- `.github/workflows/release-apk.yml`
+
 ## Learn more
 
 To learn more about developing your project with Expo, look at the following resources:

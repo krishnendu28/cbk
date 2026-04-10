@@ -8,6 +8,24 @@
         "EXPO_NO_TELEMETRY": "1"
       }
     },
+    "apk-debug": {
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "env": {
+        "EXPO_NO_TELEMETRY": "1"
+      }
+    },
+    "apk-release": {
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "EXPO_NO_TELEMETRY": "1"
+      }
+    },
     "apk": {
       "android": {
         "buildType": "apk"

@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { broadcastNotificationHandler, registerDeviceTokenHandler } from "../controllers/notificationController.js";
+import {
+  broadcastNotificationHandler,
+  getPushNotificationHealthHandler,
+  registerDeviceTokenHandler,
+} from "../controllers/notificationController.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import { validateRequest } from "../middlewares/validate.js";
 import { broadcastNotificationSchema, registerDeviceTokenSchema } from "../schemas/notification-schema.js";
@@ -10,6 +14,12 @@ router.post(
   "/device-token",
   validateRequest({ bodySchema: registerDeviceTokenSchema }),
   registerDeviceTokenHandler,
+);
+
+router.get(
+  "/health",
+  requireAdmin(["owner", "manager"]),
+  getPushNotificationHealthHandler,
 );
 
 router.post(

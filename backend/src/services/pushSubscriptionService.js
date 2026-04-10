@@ -74,6 +74,14 @@ export async function listPushSubscriptionTokens() {
   );
 }
 
+export async function getPushSubscriptionCount() {
+  return withMongoFallback(
+    "getPushSubscriptionCount",
+    () => PushSubscription.countDocuments({}),
+    () => memoryTokens.size,
+  );
+}
+
 export async function removePushSubscriptionsByTokens(tokens = []) {
   const uniqueTokens = [...new Set(tokens.map(normalizeToken).filter(Boolean))];
   if (uniqueTokens.length === 0) return;

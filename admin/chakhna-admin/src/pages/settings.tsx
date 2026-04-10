@@ -13,7 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { fetchOrderingStatus, sendBroadcastNotification, updateOrderingStatus } from "@/lib/bridge";
+import {
+  fetchOrderingStatus,
+  fetchPushNotificationHealth,
+  sendBroadcastNotification,
+  updateOrderingStatus,
+  type BridgePushHealth,
+  type BridgePushResult,
+} from "@/lib/bridge";
 
 export default function Settings() {
   const { outletId } = useAppOutlet();
@@ -25,6 +32,9 @@ export default function Settings() {
   const [isUpdatingOrderingStatus, setIsUpdatingOrderingStatus] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [isSendingNotification, setIsSendingNotification] = useState(false);
+  const [pushHealth, setPushHealth] = useState<BridgePushHealth | null>(null);
+  const [isPushHealthLoading, setIsPushHealthLoading] = useState(false);
+  const [lastPushResult, setLastPushResult] = useState<BridgePushResult | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -47,6 +57,32 @@ export default function Settings() {
     };
 
     loadOrderingStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadPushHealth = async () => {
+      setIsPushHealthLoading(true);
+      try {
+        const nextHealth = await fetchPushNotificationHealth();
+        if (!isMounted) return;
+        setPushHealth(nextHealth);
+      } catch {
+        if (!isMounted) return;
+        setPushHealth(null);
+      } finally {
+        if (isMounted) {
+          setIsPushHealthLoading(false);
+        }
+      }
+    };
+
+    loadPushHealth();
 
     return () => {
       isMounted = false;
@@ -125,11 +161,20 @@ export default function Settings() {
 
     try {
       setIsSendingNotification(true);
-      await sendBroadcastNotification(message);
+      const response = await sendBroadcastNotification(message);
+      setLastPushResult(response.push);
+
+      try {
+        const nextHealth = await fetchPushNotificationHealth();
+        setPushHealth(nextHealth);
+      } catch {
+        // Keep current snapshot if refresh fails
+      }
+
       setBroadcastMessage("");
       toast({
         title: "Notification sent",
-        description: "Connected app users will receive it instantly.",
+        description: `Sent: ${response.push.sent} | Invalid removed: ${response.push.invalidRemoved}`,
       });
     } catch (error) {
       toast({
@@ -251,6 +296,55 @@ export default function Settings() {
             <CardTitle>App Notifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Push Delivery Health</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPushHealthLoading}
+                  onClick={async () => {
+                    try {
+                      setIsPushHealthLoading(true);
+                      const nextHealth = await fetchPushNotificationHealth();
+                      setPushHealth(nextHealth);
+                    } catch (error) {
+                      toast({
+                        title: "Failed to refresh push health",
+                        description: error instanceof Error ? error.message : "Please try again.",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsPushHealthLoading(false);
+                    }
+                  }}
+                >
+                  {isPushHealthLoading ? "Refreshing..." : "Refresh"}
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md border border-border/60 bg-background px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Registered Devices</p>
+                  <p className="text-lg font-bold text-foreground">{pushHealth?.registeredDevices ?? 0}</p>
+                </div>
+                <div className="rounded-md border border-border/60 bg-background px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Last Send Result</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    Sent {lastPushResult?.sent ?? pushHealth?.lastBroadcast?.sent ?? 0}
+                    {" "}
+                    | Invalid {lastPushResult?.invalidRemoved ?? pushHealth?.lastBroadcast?.invalidRemoved ?? 0}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Last broadcast:{" "}
+                {pushHealth?.lastBroadcast?.createdAt
+                  ? new Date(pushHealth.lastBroadcast.createdAt).toLocaleString()
+                  : "No broadcasts yet"}
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="broadcast-message">Broadcast Message</Label>
               <Textarea

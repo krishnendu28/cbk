@@ -154,6 +154,21 @@ export type BridgeOrderingStatus = {
   updatedAt?: string;
 };
 
+export type BridgePushResult = {
+  sent: number;
+  invalidRemoved: number;
+};
+
+export type BridgePushHealth = {
+  registeredDevices: number;
+  lastBroadcast: {
+    sent: number;
+    invalidRemoved: number;
+    message: string;
+    createdAt: string;
+  } | null;
+};
+
 export type BridgeOrderItem = {
   name: string;
   variant: string;
@@ -991,7 +1006,10 @@ export async function deleteBridgeOrder(orderId: string): Promise<void> {
   if (!response.ok) throw await buildRequestError(response, "Failed to delete order");
 }
 
-export async function sendBroadcastNotification(message: string): Promise<{ id: string; message: string; createdAt: string }> {
+export async function sendBroadcastNotification(message: string): Promise<{
+  notification: { id: string; message: string; createdAt: string };
+  push: BridgePushResult;
+}> {
   const trimmedMessage = String(message || "").trim();
   if (!trimmedMessage) {
     throw new Error("Notification message is required");
@@ -1014,7 +1032,45 @@ export async function sendBroadcastNotification(message: string): Promise<{ id: 
   }
 
   const data = await response.json();
-  return data?.notification;
+  return {
+    notification: data?.notification,
+    push: {
+      sent: Number(data?.push?.sent || 0),
+      invalidRemoved: Number(data?.push?.invalidRemoved || 0),
+    },
+  };
+}
+
+export async function fetchPushNotificationHealth(): Promise<BridgePushHealth> {
+  if (isDemoSessionActive()) {
+    return {
+      registeredDevices: 0,
+      lastBroadcast: null,
+    };
+  }
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/notifications/health`, {
+    headers: buildAdminHeaders(),
+  });
+
+  if (!response.ok) {
+    throw await buildRequestError(response, "Failed to fetch push notification health");
+  }
+
+  const data = await response.json();
+  const lastBroadcast = data?.lastBroadcast
+    ? {
+        sent: Number(data.lastBroadcast.sent || 0),
+        invalidRemoved: Number(data.lastBroadcast.invalidRemoved || 0),
+        message: String(data.lastBroadcast.message || ""),
+        createdAt: String(data.lastBroadcast.createdAt || ""),
+      }
+    : null;
+
+  return {
+    registeredDevices: Number(data?.registeredDevices || 0),
+    lastBroadcast,
+  };
 }
 
 export function subscribeBridgeOrders(

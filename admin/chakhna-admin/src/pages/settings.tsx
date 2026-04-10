@@ -103,10 +103,10 @@ export default function Settings() {
       });
       queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey(outletId) });
       toast({ title: "Settings updated" });
-    } catch {
+    } catch (error) {
       toast({
         title: "Failed to update settings",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     }

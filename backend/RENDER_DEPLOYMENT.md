@@ -17,6 +17,9 @@ Render deployment for backend
   - If false (default), protected routes are temporarily allowed when ADMIN_API_KEYS is not configured
 - ALLOW_RENDER_PREVIEWS defaults to true and allows *.onrender.com origins
 - ALLOW_VERCEL_PREVIEWS defaults to true and allows *.vercel.app origins
+- ALLOW_PRIVATE_NETWORK_ORIGINS controls LAN development origins (for example http://192.168.1.20:5174)
+  - Default behavior: true in development, false in production
+  - Set to true if you open frontend/admin from another laptop on the same Wi-Fi
 - For local development, use the origin `http://localhost:5174` (the `/pos` path is not part of CORS origin matching)
 
 3. Configure cron keepalive env var

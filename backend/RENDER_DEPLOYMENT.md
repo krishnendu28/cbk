@@ -20,7 +20,14 @@ Render deployment for backend
 - ALLOW_PRIVATE_NETWORK_ORIGINS controls LAN development origins (for example http://192.168.1.20:5174)
   - Default behavior: true in development, false in production
   - Set to true if you open frontend/admin from another laptop on the same Wi-Fi
+- Optional: set EXPO_ACCESS_TOKEN to enable authenticated requests to Expo Push API
 - For local development, use the origin `http://localhost:5174` (the `/pos` path is not part of CORS origin matching)
+
+Push notifications when app is closed
+- App must be a development build or production build. Expo Go does not support full background push behavior.
+- Build credentials must be configured (FCM for Android, APNs for iOS) in Expo/EAS.
+- App registers device push token at runtime via `/api/notifications/device-token`.
+- Admin broadcast endpoint (`/api/notifications/broadcast`) now sends both Socket.IO events and Expo push notifications.
 
 3. Configure cron keepalive env var
 - Service: cbk-backend-keepwarm

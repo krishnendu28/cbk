@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import app from "./src/app.js";
 import { initSocket } from "./src/config/socket.js";
 import { setMongoEnabled } from "./src/services/orderService.js";
+import { setPushSubscriptionsMongoEnabled } from "./src/services/pushSubscriptionService.js";
 import { logger } from "./src/utils/logger.js";
 
 dotenv.config();
@@ -24,13 +25,16 @@ async function startServer() {
     try {
       await mongoose.connect(MONGO_URI);
       setMongoEnabled(true);
+      setPushSubscriptionsMongoEnabled(true);
       logger.info("database.connected", { provider: "mongo" });
     } catch (error) {
       setMongoEnabled(false);
+      setPushSubscriptionsMongoEnabled(false);
       logger.warn("database.fallback_memory", { reason: error.message });
     }
   } else {
     setMongoEnabled(false);
+    setPushSubscriptionsMongoEnabled(false);
     logger.warn("database.memory_mode", { reason: "MONGO_URI not set" });
   }
 

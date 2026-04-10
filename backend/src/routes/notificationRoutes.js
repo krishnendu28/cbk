@@ -1,10 +1,16 @@
 import { Router } from "express";
-import { broadcastNotificationHandler } from "../controllers/notificationController.js";
+import { broadcastNotificationHandler, registerDeviceTokenHandler } from "../controllers/notificationController.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import { validateRequest } from "../middlewares/validate.js";
-import { broadcastNotificationSchema } from "../schemas/notification-schema.js";
+import { broadcastNotificationSchema, registerDeviceTokenSchema } from "../schemas/notification-schema.js";
 
 const router = Router();
+
+router.post(
+  "/device-token",
+  validateRequest({ bodySchema: registerDeviceTokenSchema }),
+  registerDeviceTokenHandler,
+);
 
 router.post(
   "/broadcast",

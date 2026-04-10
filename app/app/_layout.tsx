@@ -77,6 +77,35 @@ async function ensureBroadcastNotificationSetup() {
   return requested.status === 'granted';
 }
 
+async function registerPushTokenWithBackend() {
+  const notifications = await getNotificationsModule();
+  if (!notifications) return;
+
+  const allowed = await ensureBroadcastNotificationSetup();
+  if (!allowed) return;
+
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ??
+    Constants.easConfig?.projectId;
+
+  if (!projectId) return;
+
+  const tokenResponse = await notifications.getExpoPushTokenAsync({ projectId });
+  const token = String(tokenResponse?.data || '').trim();
+  if (!token) return;
+
+  await fetch(`${API_BASE_URL}/api/notifications/device-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      token,
+      platform: Platform.OS === 'android' ? 'android' : Platform.OS === 'ios' ? 'ios' : 'unknown',
+    }),
+  });
+}
+
 async function showBroadcastTaskbarNotification(message: string) {
   if (isExpoGoRuntime()) {
     // Expo Go cannot show Android task-bar notifications via expo-notifications.
@@ -147,7 +176,7 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    ensureBroadcastNotificationSetup().catch(() => undefined);
+    registerPushTokenWithBackend().catch(() => undefined);
 
     const onBroadcastNotification = (payload: { message?: string }) => {
       const message = String(payload?.message || '').trim();

@@ -20,6 +20,8 @@ services:
         value: "true"
       - key: ADMIN_API_KEYS
         sync: false
+      - key: EXPO_ACCESS_TOKEN
+        sync: false
 
   - type: cron
     name: cbk-backend-keepwarm

@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 90
     defaults:
       run:
-        working-directory: cbk/app
+        working-directory: app
 
     steps:
       - name: Checkout
@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: cbk/app/package-lock.json
+          cache-dependency-path: app/package-lock.json
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -61,4 +61,4 @@ jobs:
           tag_name: ${{ steps.tag.outputs.value }}
           name: Android APK ${{ steps.tag.outputs.value }}
           generate_release_notes: true
-          files: cbk/app/build/app-release.apk
+          files: app/build/app-release.apk

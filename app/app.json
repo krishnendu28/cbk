@@ -54,6 +54,13 @@
           }
         }
       ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-7501738870401219~8638097019",
+          "user_tracking_usage_description": "This identifier will be used to deliver personalized ads to you."
+        }
+      ],
       "expo-notifications",
       "@react-native-community/datetimepicker"
     ],

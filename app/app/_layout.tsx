@@ -2,12 +2,13 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { Alert, Linking, Platform } from 'react-native';
-import { useEffect } from 'react';
+import { Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
 import { SessionProvider } from '@/context/session-context';
+import { initializeAdMob } from '@/utils/admob';
 import { checkForGithubReleaseUpdate } from '@/utils/update-check';
 import { API_BASE_URL } from '@/utils/api';
 
@@ -18,6 +19,12 @@ export const unstable_settings = {
 };
 
 const LAST_DISMISSED_RELEASE_KEY = 'cbk_last_dismissed_release_tag';
+
+type UpdatePromptState = {
+  visible: boolean;
+  latestTag: string;
+  releasePageUrl: string;
+};
 
 type ExpoNotificationsModule = typeof import('expo-notifications');
 let notificationsModulePromise: Promise<ExpoNotificationsModule | null> | null = null;
@@ -30,10 +37,6 @@ export const socket = io(API_BASE_URL, {
   reconnectionAttempts: Infinity,
 });
 
-function isExpoGoRuntime() {
-  return Constants.appOwnership === 'expo';
-}
-
 async function getNotificationsModule() {
   if (Platform.OS === 'web') return null;
 
@@ -43,6 +46,8 @@ async function getNotificationsModule() {
         notifications.setNotificationHandler({
           handleNotification: async () => ({
             shouldShowAlert: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
             shouldPlaySound: true,
             shouldSetBadge: false,
           }),
@@ -130,6 +135,34 @@ async function showBroadcastTaskbarNotification(message: string) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [updatePrompt, setUpdatePrompt] = useState<UpdatePromptState>({
+    visible: false,
+    latestTag: '',
+    releasePageUrl: '',
+  });
+
+  async function handleDismissUpdatePrompt() {
+    if (updatePrompt.latestTag) {
+      await AsyncStorage.setItem(LAST_DISMISSED_RELEASE_KEY, updatePrompt.latestTag);
+    }
+
+    setUpdatePrompt({
+      visible: false,
+      latestTag: '',
+      releasePageUrl: '',
+    });
+  }
+
+  async function handleOpenUpdateUrl() {
+    if (!updatePrompt.releasePageUrl) return;
+
+    try {
+      await Linking.openURL(updatePrompt.releasePageUrl);
+      await handleDismissUpdatePrompt();
+    } catch {
+      // no-op
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -142,25 +175,11 @@ export default function RootLayout() {
         const dismissedTag = await AsyncStorage.getItem(LAST_DISMISSED_RELEASE_KEY);
         if (dismissedTag && dismissedTag === update.latestTag) return;
 
-        Alert.alert(
-          'Update available',
-          `A new version (${update.latestTag}) is available. Please update to continue with the latest fixes and features.`,
-          [
-            {
-              text: 'Later',
-              style: 'cancel',
-              onPress: () => {
-                AsyncStorage.setItem(LAST_DISMISSED_RELEASE_KEY, update.latestTag).catch(() => undefined);
-              },
-            },
-            {
-              text: 'Update now',
-              onPress: () => {
-                Linking.openURL(update.releasePageUrl).catch(() => undefined);
-              },
-            },
-          ],
-        );
+        setUpdatePrompt({
+          visible: true,
+          latestTag: update.latestTag,
+          releasePageUrl: update.releasePageUrl,
+        });
       } catch {
         // Silent failure: update checks should never block app usage.
       }
@@ -174,6 +193,8 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    initializeAdMob().catch(() => undefined);
+
     registerPushTokenWithBackend().catch((error) => {
       console.warn('push_token_registration_failed', error);
     });
@@ -200,6 +221,71 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />
+
+        <Modal
+          visible={updatePrompt.visible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            handleDismissUpdatePrompt().catch(() => undefined);
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.45)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+            }}
+          >
+            <View
+              style={{
+                width: '100%',
+                maxWidth: 420,
+                backgroundColor: '#ffffff',
+                borderRadius: 16,
+                padding: 18,
+                gap: 14,
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#0f172a' }}>Update Available</Text>
+              <Text style={{ color: '#334155', fontSize: 15, lineHeight: 22 }}>
+                A new app version ({updatePrompt.latestTag}) is available. Please install the latest build.
+              </Text>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    handleDismissUpdatePrompt().catch(() => undefined);
+                  }}
+                  style={{
+                    backgroundColor: '#e2e8f0',
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                  }}
+                >
+                  <Text style={{ color: '#0f172a', fontWeight: '600' }}>Later</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    handleOpenUpdateUrl().catch(() => undefined);
+                  }}
+                  style={{
+                    backgroundColor: '#16a34a',
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                  }}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: '700' }}>Update</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ThemeProvider>
     </SessionProvider>
   );

@@ -25,6 +25,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
+import { AdBanner } from "@/components/admob/ad-banner";
+import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 import { socket } from "@/app/_layout";
 
@@ -130,6 +132,7 @@ function formatDateOfBirth(date: Date) {
 
 export default function MenuScreen() {
   const { session, isHydrated, login, logout } = useSession();
+  const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
   const insets = useSafeAreaInsets();
   const horizontalSafePadding = Math.max(14, Math.max(insets.left, insets.right) + 10);
   const [loginName, setLoginName] = useState("");
@@ -451,7 +454,7 @@ export default function MenuScreen() {
     login(loginName, loginPhone, loginDob);
   };
 
-  const callRestaurant = async () => {
+  async function callRestaurant() {
     const dialUrl = `tel:${RESTAURANT_PHONE_DIAL}`;
     try {
       const supported = await Linking.canOpenURL(dialUrl);
@@ -463,7 +466,7 @@ export default function MenuScreen() {
     } catch {
       Alert.alert("Call unavailable", `Please call ${RESTAURANT_PHONE_LABEL}`);
     }
-  };
+  }
 
   const addToCart = (item: MenuItem) => {
     if (!isOrderingOpen) {
@@ -570,6 +573,7 @@ export default function MenuScreen() {
       setRoomFloor("");
       setLandmark("");
       setCartVisible(false);
+      showCheckoutInterstitial();
     } catch (error: any) {
       if (error?.response?.status === 403) {
         Alert.alert("Ordering closed", error?.response?.data?.message || "Ordering is currently closed.");
@@ -633,7 +637,7 @@ export default function MenuScreen() {
         data={!loadingMenu && !menuError ? activeCategoryData?.items || [] : []}
         keyExtractor={(item) => `${activeCategoryData?.id}-${item.id}`}
         ListHeaderComponent={menuHeader}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 190 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         initialNumToRender={6}
@@ -678,6 +682,19 @@ export default function MenuScreen() {
           ) : null
         }
       />
+
+      <View
+        style={[
+          styles.adBannerWrap,
+          {
+            left: horizontalSafePadding,
+            right: horizontalSafePadding,
+            bottom: cartItems.length > 0 ? 70 : 14,
+          },
+        ]}
+      >
+        <AdBanner />
+      </View>
 
       {cartItems.length > 0 && (
         <TouchableOpacity activeOpacity={0.88} style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding }]} onPress={() => setCartVisible(true)}>
@@ -880,6 +897,7 @@ const styles = StyleSheet.create({
   addBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
   orderingClosedBanner: { position: "absolute", backgroundColor: "rgba(139, 0, 0, 0.9)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, zIndex: 2 },
   orderingClosedText: { color: "#F5EFE4", textAlign: "center", fontWeight: "600", fontSize: 12 },
+  adBannerWrap: { position: "absolute", alignItems: "center" },
   checkoutPill: { position: "absolute", bottom: 16, right: 16, left: 16, backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E7507", shadowOpacity: 0.14, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
   checkoutPillText: { color: "#121212", fontWeight: "800" },
   modalBackdrop: { flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(0,0,0,0.42)" },
@@ -906,6 +924,9 @@ const styles = StyleSheet.create({
   spinnerWrap: { marginBottom: 16 },
   spinner: { ...(Platform.OS !== "web" && { textShadowColor: "rgba(0,0,0,0.2)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }) },
   loaderText: { color: "#D4A017", fontSize: 16, fontWeight: "600" },
+  emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 54, gap: 8 },
+  emptyStateTitle: { color: "#F5EFE4", fontSize: 16, fontWeight: "700" },
+  emptyStateText: { color: "#AFA79A", fontSize: 13, textAlign: "center" },
   errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 100, paddingHorizontal: 24 },
   errorTitle: { color: "#EF5350", fontSize: 20, fontWeight: "700", marginTop: 12 },
   errorMessage: { color: "#D0D0D0", fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },

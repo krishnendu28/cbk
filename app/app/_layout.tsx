@@ -35,7 +35,7 @@ function isExpoGoRuntime() {
 }
 
 async function getNotificationsModule() {
-  if (Platform.OS === 'web' || isExpoGoRuntime()) return null;
+  if (Platform.OS === 'web') return null;
 
   if (!notificationsModulePromise) {
     notificationsModulePromise = import('expo-notifications')
@@ -88,13 +88,13 @@ async function registerPushTokenWithBackend() {
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId;
 
-  if (!projectId) return;
-
-  const tokenResponse = await notifications.getExpoPushTokenAsync({ projectId });
+  const tokenResponse = projectId
+    ? await notifications.getExpoPushTokenAsync({ projectId })
+    : await notifications.getExpoPushTokenAsync();
   const token = String(tokenResponse?.data || '').trim();
   if (!token) return;
 
-  await fetch(`${API_BASE_URL}/api/notifications/device-token`, {
+  const response = await fetch(`${API_BASE_URL}/api/notifications/device-token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -104,15 +104,13 @@ async function registerPushTokenWithBackend() {
       platform: Platform.OS === 'android' ? 'android' : Platform.OS === 'ios' ? 'ios' : 'unknown',
     }),
   });
+
+  if (!response.ok) {
+    throw new Error(`Failed to register push token (HTTP ${response.status})`);
+  }
 }
 
 async function showBroadcastTaskbarNotification(message: string) {
-  if (isExpoGoRuntime()) {
-    // Expo Go cannot show Android task-bar notifications via expo-notifications.
-    // Ignore here to avoid popup alerts; use APK/dev build for real notifications.
-    return;
-  }
-
   const notifications = await getNotificationsModule();
   if (!notifications) return;
 
@@ -176,7 +174,9 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    registerPushTokenWithBackend().catch(() => undefined);
+    registerPushTokenWithBackend().catch((error) => {
+      console.warn('push_token_registration_failed', error);
+    });
 
     const onBroadcastNotification = (payload: { message?: string }) => {
       const message = String(payload?.message || '').trim();

@@ -17,6 +17,7 @@ export const createMenuItemSchema = z
     name: z.string().trim().min(1),
     prices: pricesSchema,
     image: z.string().trim().url().optional(),
+    available: z.boolean().optional(),
   })
   .refine((data) => data.categoryId || data.categoryTitle, {
     message: "categoryId or categoryTitle is required",
@@ -30,6 +31,7 @@ export const updateMenuItemSchema = z
     name: z.string().trim().min(1).optional(),
     prices: pricesSchema.optional(),
     image: z.string().trim().url().optional(),
+    available: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field is required to update menu item",

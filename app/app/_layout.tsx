@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import { Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { AppState, Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -83,6 +83,11 @@ async function ensureBroadcastNotificationSetup() {
 }
 
 async function registerPushTokenWithBackend() {
+  if (Constants.appOwnership === 'expo') {
+    console.warn('push_token_registration_skipped_expo_go');
+    return;
+  }
+
   const notifications = await getNotificationsModule();
   if (!notifications) return;
 
@@ -193,10 +198,21 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    initializeAdMob().catch(() => undefined);
+    if (Constants.appOwnership === 'expo') {
+      console.warn('admob_skipped_expo_go');
+    } else {
+      initializeAdMob().catch(() => undefined);
+    }
 
     registerPushTokenWithBackend().catch((error) => {
       console.warn('push_token_registration_failed', error);
+    });
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      registerPushTokenWithBackend().catch((error) => {
+        console.warn('push_token_registration_retry_failed', error);
+      });
     });
 
     const onBroadcastNotification = (payload: { message?: string }) => {
@@ -209,6 +225,7 @@ export default function RootLayout() {
     socket.on('broadcast_notification', onBroadcastNotification);
 
     return () => {
+      appStateSubscription.remove();
       socket.off('broadcast_notification', onBroadcastNotification);
     };
   }, []);

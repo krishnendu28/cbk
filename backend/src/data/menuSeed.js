@@ -13,6 +13,7 @@ export function createSeededMenuState() {
       name: String(item.name || "Item"),
       prices: item.prices && typeof item.prices === "object" ? item.prices : { Regular: Number(item.price) || 0 },
       image: String(item.image || getFoodImage(item.name, category.title) || ""),
+      available: item.available !== false,
     })),
   }));
 

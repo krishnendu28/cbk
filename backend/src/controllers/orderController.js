@@ -21,6 +21,9 @@ export async function createOrderHandler(req, res) {
     return res.status(201).json(order);
   } catch (error) {
     console.error(error);
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     return res.status(500).json({ message: "Failed to place order." });
   }
 }

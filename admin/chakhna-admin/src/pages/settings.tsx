@@ -135,7 +135,7 @@ export default function Settings() {
           zomatoApiKey: current.zomatoApiKey ? String(current.zomatoApiKey) : null,
           swiggyApiKey: current.swiggyApiKey ? String(current.swiggyApiKey) : null,
           carbonTrackingEnabled: Boolean(current.carbonTrackingEnabled),
-        },
+        } as any,
       });
       queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey(outletId) });
       toast({ title: "Settings updated" });

@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { Order } from "../models/Order.js";
+import { findMenuItemById, getAllMenuCategories } from "./menuService.js";
 import { logger } from "../utils/logger.js";
 
 const memoryOrders = [];
@@ -10,6 +11,39 @@ function toMemoryOrder(payload) {
     _id: randomUUID(),
     ...payload,
   };
+}
+
+function findMenuItemByName(name) {
+  const normalizedName = String(name || "").trim().toLowerCase();
+  if (!normalizedName) return null;
+
+  for (const category of getAllMenuCategories()) {
+    const item = category.items.find((entry) => String(entry.name || "").trim().toLowerCase() === normalizedName);
+    if (item) {
+      return { category, item };
+    }
+  }
+
+  return null;
+}
+
+function validateOrderItems(items) {
+  const unavailableItems = [];
+
+  for (const item of items) {
+    const byId = item.menuItemId !== undefined && item.menuItemId !== null ? findMenuItemById(Number(item.menuItemId)) : null;
+    const source = byId || findMenuItemByName(item.name);
+
+    if (source && source.item.available === false) {
+      unavailableItems.push(source.item.name || item.name);
+    }
+  }
+
+  if (unavailableItems.length > 0) {
+    const error = new Error(`Menu item ${unavailableItems[0]} is currently unavailable.`);
+    error.statusCode = 400;
+    throw error;
+  }
 }
 
 async function withMongoFallback(operationName, mongoOperation, memoryOperation) {
@@ -48,7 +82,10 @@ export async function createOrder({
   total,
   deliveryCharge,
 }) {
+  validateOrderItems(items);
+
   const normalizedItems = items.map((item) => ({
+    menuItemId: item.menuItemId !== undefined ? Number(item.menuItemId) : undefined,
     name: item.name,
     variant: item.variant || "Regular",
     quantity: Number(item.quantity) || 1,

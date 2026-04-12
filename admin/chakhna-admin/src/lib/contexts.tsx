@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { getGetOutletsQueryKey, useGetMe, useGetOutlets } from "@workspace/api-client-react";
+import { getGetMeQueryKey, getGetOutletsQueryKey, useGetMe, useGetOutlets } from "@workspace/api-client-react";
 import type { Outlet, User } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { DEMO_SESSION_KEY, TOKEN_KEY } from "@/lib/session";
@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const { data: userResponse, isLoading, isError, isFetching } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       enabled: !isDemoSessionActive && hasToken,
     },
   });

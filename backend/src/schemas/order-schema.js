@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const orderItemSchema = z.object({
+  menuItemId: z.coerce.number().int().positive().optional(),
   name: z.string().trim().min(1),
   variant: z.string().trim().min(1).default("Regular"),
   quantity: z.coerce.number().int().positive(),

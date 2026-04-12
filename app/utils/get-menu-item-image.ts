@@ -27,7 +27,7 @@ const menuImageFiles: Record<string, string> = {
   "Egg Handi Biryani": "Egg_Handi_B.jpg",
   "Chicken Handi Biryani": "chicken-handi-biryani.jpg",
   "Mutton Handi Biryani": "mutton_Handi_B.jpg",
-  "Special Family Pack Biryani": "Family_pack_Birayni.avif",
+  "Special Family Pack Biryani": "chicken-handi-biryani.jpg",
   "Chicken Tangri Kebab 2pcs": "Tangdi-kebab.webp",
   "Chicken Tikka Kebab 8pcs": "Chicken tikka Kebab.jpg",
   "Chicken Reshmi Kebab 8pcs": "Reshmi Kabab.jpeg",
@@ -133,7 +133,7 @@ const menuImageFiles: Record<string, string> = {
   "Regular Pabda Thali": "Pabda-Thali.jpeg",
   "Regular Prawn Thali": "prawn-thali.jpg",
   "Lachha Paratha": "Lachha-Paratha.jpg",
-  "Alu Paratha 2pcs": "aloo-Paratha.avif",
+  "Alu Paratha 2pcs": "aloo.avif",
   "Paneer Paratha 2pcs": "panner-paratha.jpg",
   "Tawa Roti": "tawa-roti.jpeg",
   "Butter Roti": "Butter-Roti.jpeg",
@@ -158,7 +158,7 @@ const menuImageFiles: Record<string, string> = {
   "Chicken Corma Combo": "Chicken-Korma-combo.webp",
   "Handi Paneer Masala Combo": "handi paneer masala combo.png",
   "Butter Paneer Masala Combo": "panner-butter-combo.webp",
-  "Matar Paneer Masala Combo": "Matar panner Masala combo.avif",
+  "Matar Paneer Masala Combo": "Matar-combo.avif",
   "Chicken Butter Masala Combo": "Chicken butter masala combo.jpg",
   "Chilli Chicken Combo": "CHILI-chicken-combo.jpg",
   "Chicken Bharta Combo": "Chicken-Bharta-Combo.jpeg",
@@ -171,11 +171,37 @@ const menuImageFiles: Record<string, string> = {
 };
 
 const fallbackImage = require("../assets/images/logo.jpeg");
-function toLocalImage(fileName = ""): ImageSourcePropType {
-  const cleanFileName = String(fileName).trim();
-  if (!cleanFileName) return fallbackImage;
 
-  return optimizedMenuImageAssets[cleanFileName] ?? fallbackImage;
+const avifFallbackFiles: Record<string, string> = {
+  "Family_pack_Birayni.avif": "chicken-handi-biryani.jpg",
+  "mushroom_manchurian.avif": "Veg_manchuriyan.jpg",
+  "Chicken Butter Masala.avif": "Chicken Tikka Butter Masala.jpg",
+  "Matar panner Masala combo.avif": "panner-butter-combo.webp",
+  "mutton-thali.avif": "Chicken-thali.jpeg",
+  "aloo.avif": "Lachha-Paratha.jpg",
+  "Matar-combo.avif": "panner-butter-combo.webp",
+  "Thali-Chicken-COMBO.avif": "Chicken-thali.jpeg",
+};
+
+function resolveOptimizedImage(fileName = ""): ImageSourcePropType | null {
+  const cleanFileName = String(fileName).trim();
+  if (!cleanFileName) return null;
+
+  const exact = optimizedMenuImageAssets[cleanFileName] ?? lowerCaseOptimizedAssets[cleanFileName.toLowerCase()];
+  if (exact) return exact;
+
+  if (/\.avif$/i.test(cleanFileName)) {
+    const fallbackFile = avifFallbackFiles[cleanFileName] || avifFallbackFiles[cleanFileName.toLowerCase()];
+    if (fallbackFile) {
+      return optimizedMenuImageAssets[fallbackFile] ?? lowerCaseOptimizedAssets[fallbackFile.toLowerCase()] ?? null;
+    }
+  }
+
+  return null;
+}
+
+function toLocalImage(fileName = ""): ImageSourcePropType {
+  return resolveOptimizedImage(fileName) ?? fallbackImage;
 }
 
 const lowerCaseOptimizedAssets = Object.fromEntries(
@@ -250,7 +276,7 @@ function getImageByBackendPath(backendImage = ""): ImageSourcePropType | null {
   );
   if (!fileName) return null;
 
-  return optimizedMenuImageAssets[fileName] ?? lowerCaseOptimizedAssets[fileName.toLowerCase()] ?? null;
+  return resolveOptimizedImage(fileName);
 }
 
 export function getMenuItemImage(itemName = "", category = "", backendImage = ""): ImageSourcePropType {

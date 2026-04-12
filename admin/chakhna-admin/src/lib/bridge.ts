@@ -2,6 +2,18 @@ import { io } from "socket.io-client";
 import { DEMO_SESSION_KEY } from "@/lib/session";
 import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 
+type RawMenuItem = {
+  name: string;
+  prices?: Record<string, number>;
+  image?: string;
+  available?: boolean;
+};
+
+type RawMenuCategory = {
+  title: string;
+  items: RawMenuItem[];
+};
+
 export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
 const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
@@ -91,6 +103,7 @@ function readDemoMenuGroups(): BridgeMenuGroup[] {
           name: String(item.name || "Item"),
           price: Number(item.price) || 0,
           image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
+          available: item.available !== false,
         })),
       }))
       .filter((group) => group.items.length > 0);
@@ -194,6 +207,7 @@ export type BridgeMenuItem = {
   name: string;
   price: number;
   image: string;
+  available: boolean;
 };
 
 export type BridgeMenuGroup = {
@@ -249,7 +263,7 @@ if (typeof window !== "undefined") {
 
 const rawMenuCategories: Array<{
   title: string;
-  items: Array<{ name: string; prices: Record<string, number> }>;
+  items: Array<{ name: string; prices: Record<string, number>; available?: boolean }>;
 }> = [
   {
     title: "Non Veg Chakhna",
@@ -501,11 +515,12 @@ type BackendMenuCategory = {
     name: string;
     prices?: Record<string, number>;
     image?: string;
+    available?: boolean;
   }>;
 };
 
 export function localFallbackMenuGroups(): BridgeMenuGroup[] {
-  return rawMenuCategories
+  return (rawMenuCategories as RawMenuCategory[])
     .map((category, categoryIndex) => ({
       id: toGroupId(category.title) || `group-${categoryIndex + 1}`,
       title: category.title,
@@ -514,6 +529,7 @@ export function localFallbackMenuGroups(): BridgeMenuGroup[] {
         name: item.name,
         price: pickBasePrice(item.prices),
         image: getMenuItemImageUrl(item.name, category.title, getFoodImageUrl(item.name, `${category.title}-${itemIndex}`)),
+        available: true,
       })),
     }))
     .filter((group) => group.items.length > 0);
@@ -533,6 +549,7 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
           String(category.title || "Menu"),
           String(item.image || getFoodImageUrl(item.name || "food", `${category.title}-${itemIndex}`)),
         ),
+        available: item.available !== false,
       })),
     }))
     .filter((group) => group.items.length > 0);
@@ -563,6 +580,7 @@ export async function createBridgeMenuItem(payload: {
   name: string;
   price: number;
   image?: string;
+  available?: boolean;
 }) {
   if (isDemoSessionActive()) {
     const groups = readDemoMenuGroups();
@@ -583,6 +601,7 @@ export async function createBridgeMenuItem(payload: {
       name: payload.name.trim(),
       price: Number(payload.price) || 0,
       image: String(payload.image || getFoodImageUrl(payload.name, `${targetGroup.title}-${nextItemId}`)),
+      available: payload.available !== false,
     };
 
     targetGroup.items.push(item);
@@ -602,6 +621,7 @@ export async function createBridgeMenuItem(payload: {
       name: payload.name,
       prices: { Regular: payload.price },
       image: normalizeMenuImageForApi(payload.image),
+      available: payload.available !== false,
     }),
   });
   if (!response.ok) throw await buildRequestError(response, "Failed to create menu item");
@@ -610,7 +630,7 @@ export async function createBridgeMenuItem(payload: {
 
 export async function updateBridgeMenuItem(
   itemId: number,
-  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; image?: string },
+  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; image?: string; available?: boolean },
 ) {
   if (isDemoSessionActive()) {
     const groups = readDemoMenuGroups();
@@ -626,6 +646,7 @@ export async function updateBridgeMenuItem(
       image: payload.image !== undefined
         ? String(payload.image || getFoodImageUrl(payload.name || sourceItem.name, `${sourceGroup.title}-${itemId}`))
         : sourceItem.image,
+      available: payload.available !== undefined ? Boolean(payload.available) : sourceItem.available !== false,
     };
 
     let targetGroup = findDemoGroup(groups, payload.categoryId, payload.categoryTitle) || sourceGroup;
@@ -655,6 +676,7 @@ export async function updateBridgeMenuItem(
       name: payload.name,
       prices: payload.price !== undefined ? { Regular: payload.price } : undefined,
       image: normalizeMenuImageForApi(payload.image),
+      available: payload.available,
     }),
   });
   if (!response.ok) throw await buildRequestError(response, "Failed to update menu item");

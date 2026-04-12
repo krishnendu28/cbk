@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -22,6 +23,7 @@ export default function MenuManagement() {
   const [price, setPrice] = useState("");
   const [image, setImage] = useState("");
   const [categoryTitle, setCategoryTitle] = useState(menuGroups[0]?.title || "");
+  const [available, setAvailable] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const activeGroup = menuGroups.find((group) => group.id === activeGroupId) || menuGroups[0];
@@ -70,13 +72,14 @@ export default function MenuManagement() {
     }
   }
 
-  function startEdit(item: { id: number; name: string; price: number; image: string }, groupId: string, groupTitle: string) {
+  function startEdit(item: { id: number; name: string; price: number; image: string; available: boolean }, groupId: string, groupTitle: string) {
     setEditingItemId(item.id);
     setActiveGroupId(groupId);
     setName(item.name);
     setPrice(String(item.price));
     setImage(item.image || "");
     setCategoryTitle(groupTitle);
+    setAvailable(item.available !== false);
     toast({
       title: "Editing menu item",
       description: item.name,
@@ -89,6 +92,7 @@ export default function MenuManagement() {
     setPrice("");
     setImage("");
     setCategoryTitle(activeGroup?.title || "");
+    setAvailable(true);
   }
 
   async function submitMenuItem() {
@@ -106,6 +110,7 @@ export default function MenuManagement() {
           image: image.trim() || undefined,
           categoryId: activeGroup?.title === categoryTitle.trim() ? activeGroup?.id : undefined,
           categoryTitle: categoryTitle.trim(),
+          available,
         });
         toast({ title: "Menu item updated" });
       } else {
@@ -115,6 +120,7 @@ export default function MenuManagement() {
           name: name.trim(),
           price: numericPrice,
           image: image.trim() || undefined,
+          available,
         });
         toast({ title: "Menu item created" });
       }
@@ -154,6 +160,18 @@ export default function MenuManagement() {
           <Input placeholder="Category (e.g. Main Course)" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
           <Input placeholder="Image URL (optional)" value={image} onChange={(event) => setImage(event.target.value)} />
         </div>
+        <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+          <div>
+            <p className="text-sm font-medium">Menu item availability</p>
+            <p className="text-xs text-muted-foreground">Unavailable items stay visible in the app but cannot be ordered.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={available ? "text-emerald-700 font-medium text-sm" : "text-muted-foreground font-medium text-sm"}>
+              {available ? "Available" : "Unavailable"}
+            </span>
+            <Switch checked={available} onCheckedChange={setAvailable} />
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button type="button" onClick={submitMenuItem} disabled={isSaving}>
             {isSaving ? (editingItemId ? "Updating..." : "Saving...") : editingItemId ? "Update Item" : "Add Item"}
@@ -191,6 +209,9 @@ export default function MenuManagement() {
                 <Badge variant="outline">{activeGroup.title}</Badge>
                 <p className="font-bold text-primary">Rs {item.price}</p>
               </div>
+              <Badge variant="outline" className={item.available ? "w-fit bg-emerald-500/10 text-emerald-700 border-emerald-300" : "w-fit bg-slate-500/10 text-slate-600 border-slate-300"}>
+                {item.available ? "Available" : "Unavailable"}
+              </Badge>
               <Button
                 type="button"
                 variant="outline"

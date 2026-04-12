@@ -1,42 +1,57 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdEventType, InterstitialAd } from "react-native-google-mobile-ads";
-import { getInterstitialAdUnitId } from "@/utils/admob";
+import { getInterstitialAdUnitId, initializeAdMob } from "@/utils/admob";
 
 export function useInterstitialAd() {
-  const ad = useMemo(
-    () =>
-      InterstitialAd.createForAdRequest(getInterstitialAdUnitId(), {
-        requestNonPersonalizedAdsOnly: false,
-      }),
-    [],
-  );
+  const adRef = useRef<ReturnType<typeof InterstitialAd.createForAdRequest> | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const onLoaded = ad.addAdEventListener(AdEventType.LOADED, () => {
-      setLoaded(true);
-    });
+    let mounted = true;
+    let cleanupLoaded: (() => void) | null = null;
+    let cleanupClosed: (() => void) | null = null;
+    let cleanupError: (() => void) | null = null;
 
-    const onClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
-      setLoaded(false);
-      ad.load();
-    });
+    initializeAdMob()
+      .then((canShowAds) => {
+        if (!mounted || !canShowAds) return;
 
-    const onError = ad.addAdEventListener(AdEventType.ERROR, () => {
-      setLoaded(false);
-    });
+        const ad = InterstitialAd.createForAdRequest(getInterstitialAdUnitId(), {
+          requestNonPersonalizedAdsOnly: false,
+        });
+        adRef.current = ad;
 
-    ad.load();
+        cleanupLoaded = ad.addAdEventListener(AdEventType.LOADED, () => {
+          setLoaded(true);
+        });
+
+        cleanupClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
+          setLoaded(false);
+          ad.load();
+        });
+
+        cleanupError = ad.addAdEventListener(AdEventType.ERROR, (error) => {
+          console.warn("admob_interstitial_failed", error);
+          setLoaded(false);
+        });
+
+        ad.load();
+      })
+      .catch((error) => {
+        console.warn("admob_interstitial_init_failed", error);
+      });
 
     return () => {
-      onLoaded();
-      onClosed();
-      onError();
+      mounted = false;
+      cleanupLoaded?.();
+      cleanupClosed?.();
+      cleanupError?.();
     };
-  }, [ad]);
+  }, []);
 
   const showIfLoaded = () => {
-    if (!loaded) return false;
+    const ad = adRef.current;
+    if (!loaded || !ad) return false;
     ad.show();
     return true;
   };

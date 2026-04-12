@@ -30,7 +30,7 @@ function findCategoryByIdOrTitle(categoryId, categoryTitle) {
   return null;
 }
 
-function findMenuItemById(itemId) {
+export function findMenuItemById(itemId) {
   for (const category of memoryMenuCategories) {
     const index = category.items.findIndex((item) => item.id === itemId);
     if (index >= 0) {
@@ -44,11 +44,16 @@ function findMenuItemById(itemId) {
   return null;
 }
 
+export function isMenuItemAvailable(itemId) {
+  const found = findMenuItemById(Number(itemId));
+  return Boolean(found && found.item.available !== false);
+}
+
 export function getAllMenuCategories() {
   return memoryMenuCategories;
 }
 
-export function createMenuItem({ categoryId, categoryTitle, name, prices, image }) {
+export function createMenuItem({ categoryId, categoryTitle, name, prices, image, available }) {
   let targetCategory = findCategoryByIdOrTitle(categoryId, categoryTitle);
   if (!targetCategory) {
     targetCategory = {
@@ -64,13 +69,14 @@ export function createMenuItem({ categoryId, categoryTitle, name, prices, image 
     name: String(name).trim(),
     prices: normalizePrices(prices),
     image: String(image || getFoodImage(name, targetCategory.title) || ""),
+    available: available !== false,
   };
 
   targetCategory.items.push(nextItem);
   return { categoryId: targetCategory.id, categoryTitle: targetCategory.title, item: nextItem };
 }
 
-export function updateMenuItem(itemId, { name, prices, image, categoryId, categoryTitle }) {
+export function updateMenuItem(itemId, { name, prices, image, categoryId, categoryTitle, available }) {
   const found = findMenuItemById(itemId);
   if (!found) return null;
 
@@ -79,6 +85,7 @@ export function updateMenuItem(itemId, { name, prices, image, categoryId, catego
     name: String(name || found.item.name).trim(),
     prices: prices ? normalizePrices(prices) : found.item.prices,
     image: image !== undefined ? String(image || "") : String(found.item.image || getFoodImage(name || found.item.name, found.category.title) || ""),
+    available: available !== undefined ? Boolean(available) : found.item.available !== false,
   };
 
   let targetCategory = found.category;

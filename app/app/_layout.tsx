@@ -89,34 +89,57 @@ async function registerPushTokenWithBackend() {
   }
 
   const notifications = await getNotificationsModule();
-  if (!notifications) return;
+  if (!notifications) {
+    console.warn('push_token_registration_failed_no_module');
+    return;
+  }
 
   const allowed = await ensureBroadcastNotificationSetup();
-  if (!allowed) return;
+  if (!allowed) {
+    console.warn('push_token_registration_failed_no_permission');
+    return;
+  }
 
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId;
 
-  const tokenResponse = projectId
-    ? await notifications.getExpoPushTokenAsync({ projectId })
-    : await notifications.getExpoPushTokenAsync();
-  const token = String(tokenResponse?.data || '').trim();
-  if (!token) return;
+  let token: string;
+  try {
+    const tokenResponse = projectId
+      ? await notifications.getExpoPushTokenAsync({ projectId })
+      : await notifications.getExpoPushTokenAsync();
+    token = String(tokenResponse?.data || '').trim();
+  } catch (error) {
+    console.warn('push_token_registration_failed_get_token', error);
+    return;
+  }
 
-  const response = await fetch(`${API_BASE_URL}/api/notifications/device-token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      token,
-      platform: Platform.OS === 'android' ? 'android' : Platform.OS === 'ios' ? 'ios' : 'unknown',
-    }),
-  });
+  if (!token) {
+    console.warn('push_token_registration_failed_empty_token');
+    return;
+  }
 
-  if (!response.ok) {
-    throw new Error(`Failed to register push token (HTTP ${response.status})`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/notifications/device-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        token,
+        platform: Platform.OS === 'android' ? 'android' : Platform.OS === 'ios' ? 'ios' : 'unknown',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    console.log('push_token_registration_success');
+  } catch (error) {
+    console.warn('push_token_registration_failed_post', error);
+    throw error;
   }
 }
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "962401696025",
+    "project_id": "chakhna-by-kilo",
+    "storage_bucket": "chakhna-by-kilo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:962401696025:android:b8f5d80051f523e89f6d88",
+        "android_client_info": {
+          "package_name": "com.krishnendu28.cbkapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBckLXkMFPLkzpBUgeM9vGqPw-vXyHlNbI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -8,6 +8,8 @@ type PushDiagnosticsResult = {
   appOwnership: string;
   platform: string;
   projectId: string;
+  firebaseConfigLoaded: boolean;
+  firebaseConfigPath: string;
   permissionStatus: string;
   token: string;
   tokenRegistered: boolean;
@@ -58,6 +60,8 @@ export async function runPushDiagnostics(): Promise<PushDiagnosticsResult> {
   const notifications = await getNotificationsModule();
   const projectId =
     String(Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? "").trim();
+  const firebaseConfigPath =
+    String(Constants.expoConfig?.android?.googleServicesFile ?? "").trim();
 
   let permissionStatus = "unavailable";
   let token = "";
@@ -105,6 +109,8 @@ export async function runPushDiagnostics(): Promise<PushDiagnosticsResult> {
     appOwnership: Constants.appOwnership || "unknown",
     platform: Platform.OS,
     projectId,
+    firebaseConfigLoaded: Boolean(firebaseConfigPath),
+    firebaseConfigPath,
     permissionStatus,
     token,
     tokenRegistered,

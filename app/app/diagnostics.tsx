@@ -9,6 +9,8 @@ type DiagnosticsState = {
   appOwnership: string;
   platform: string;
   projectId: string;
+  firebaseConfigLoaded: boolean;
+  firebaseConfigPath: string;
   permissionStatus: string;
   token: string;
   tokenRegistered: boolean;
@@ -21,6 +23,8 @@ const initialState: DiagnosticsState = {
   appOwnership: "unknown",
   platform: "unknown",
   projectId: "",
+  firebaseConfigLoaded: false,
+  firebaseConfigPath: "",
   permissionStatus: "unknown",
   token: "",
   tokenRegistered: false,
@@ -82,6 +86,8 @@ export default function PushDiagnosticsScreen() {
         <Metric label="App ownership" value={state.appOwnership} />
         <Metric label="Platform" value={state.platform} />
         <Metric label="Expo project ID" value={state.projectId || "Not set"} />
+        <Metric label="Firebase Android config" value={state.firebaseConfigLoaded ? "Loaded" : "Missing"} />
+        <Metric label="Firebase config path" value={state.firebaseConfigPath || "Not set"} mono />
         <Metric label="Notification permission" value={state.permissionStatus} />
         <Metric label="Token registered" value={state.tokenRegistered ? "Yes" : "No"} />
         <Metric label="Backend healthy" value={state.backendHealthy ? "Yes" : "No"} />

@@ -36,12 +36,21 @@ export async function sendBroadcastPushNotification({ title, body, data = {} }) 
   const tokens = allTokens.filter(isValidExpoPushToken);
 
   if (tokens.length === 0) {
-    return { sent: 0, invalidRemoved: 0 };
+    return {
+      targeted: 0,
+      sent: 0,
+      failed: 0,
+      invalidRemoved: 0,
+      accessTokenConfigured: Boolean(String(process.env.EXPO_ACCESS_TOKEN || "").trim()),
+      errors: [{ source: "server", code: "NO_VALID_TOKENS", message: "No valid Expo tokens found." }],
+    };
   }
 
   const chunks = chunk(tokens, 100);
   const invalidDeviceTokens = new Set();
   let sent = 0;
+  let failed = 0;
+  const errors = [];
 
   for (const tokenChunk of chunks) {
     const messages = tokenChunk.map((token) => ({
@@ -63,6 +72,12 @@ export async function sendBroadcastPushNotification({ title, body, data = {} }) 
 
       if (!response.ok) {
         const failureBody = await response.text();
+        failed += tokenChunk.length;
+        errors.push({
+          source: "expo_http",
+          code: `HTTP_${response.status}`,
+          message: failureBody.slice(0, 300),
+        });
         logger.warn("push.expo_http_error", {
           status: response.status,
           body: failureBody.slice(0, 500),
@@ -72,15 +87,29 @@ export async function sendBroadcastPushNotification({ title, body, data = {} }) 
 
       const payload = await response.json();
       const tickets = Array.isArray(payload?.data) ? payload.data : [];
-      sent += tickets.length;
 
       tickets.forEach((ticket, index) => {
-        if (ticket?.status !== "error") return;
+        if (ticket?.status === "ok") {
+          sent += 1;
+          return;
+        }
+
+        failed += 1;
+        const errorCode = String(ticket?.details?.error || ticket?.message || "UNKNOWN");
+        const errorMessage = String(ticket?.message || "Expo push ticket returned an error");
+        errors.push({ source: "expo_ticket", code: errorCode, message: errorMessage });
+
         if (ticket?.details?.error === "DeviceNotRegistered") {
           invalidDeviceTokens.add(tokenChunk[index]);
         }
       });
     } catch (error) {
+      failed += tokenChunk.length;
+      errors.push({
+        source: "expo_request",
+        code: "REQUEST_FAILED",
+        message: error?.message || String(error),
+      });
       logger.warn("push.expo_request_failed", {
         reason: error?.message || String(error),
       });
@@ -92,7 +121,11 @@ export async function sendBroadcastPushNotification({ title, body, data = {} }) 
   }
 
   return {
+    targeted: tokens.length,
     sent,
+    failed,
     invalidRemoved: invalidDeviceTokens.size,
+    accessTokenConfigured: Boolean(String(process.env.EXPO_ACCESS_TOKEN || "").trim()),
+    errors: errors.slice(0, 10),
   };
 }

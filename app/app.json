@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "com.krishnendu28.cbkapp",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#173226",
         "foregroundImage": "./assets/images/android-icon-foreground-chakhna.png",

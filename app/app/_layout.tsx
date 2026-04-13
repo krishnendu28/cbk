@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
 import { SessionProvider } from '@/context/session-context';
 import { initializeAdMob } from '@/utils/admob';
-import { checkForGithubReleaseUpdate } from '@/utils/update-check';
+import { checkForPlayStoreUpdate } from '@/utils/update-check';
 import { API_BASE_URL } from '@/utils/api';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -18,12 +18,13 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-const LAST_DISMISSED_RELEASE_KEY = 'cbk_last_dismissed_release_tag';
+const LAST_DISMISSED_RELEASE_KEY = 'cbk_last_dismissed_playstore_version';
 
 type UpdatePromptState = {
   visible: boolean;
-  latestTag: string;
-  releasePageUrl: string;
+  latestVersion: string;
+  storeAppUrl: string;
+  storeUrl: string;
 };
 
 type ExpoNotificationsModule = typeof import('expo-notifications');
@@ -165,27 +166,38 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [updatePrompt, setUpdatePrompt] = useState<UpdatePromptState>({
     visible: false,
-    latestTag: '',
-    releasePageUrl: '',
+    latestVersion: '',
+    storeAppUrl: '',
+    storeUrl: '',
   });
 
   async function handleDismissUpdatePrompt() {
-    if (updatePrompt.latestTag) {
-      await AsyncStorage.setItem(LAST_DISMISSED_RELEASE_KEY, updatePrompt.latestTag);
+    if (updatePrompt.latestVersion) {
+      await AsyncStorage.setItem(LAST_DISMISSED_RELEASE_KEY, updatePrompt.latestVersion);
     }
 
     setUpdatePrompt({
       visible: false,
-      latestTag: '',
-      releasePageUrl: '',
+      latestVersion: '',
+      storeAppUrl: '',
+      storeUrl: '',
     });
   }
 
   async function handleOpenUpdateUrl() {
-    if (!updatePrompt.releasePageUrl) return;
+    if (!updatePrompt.storeAppUrl && !updatePrompt.storeUrl) return;
 
     try {
-      await Linking.openURL(updatePrompt.releasePageUrl);
+      const canOpenStoreApp = updatePrompt.storeAppUrl
+        ? await Linking.canOpenURL(updatePrompt.storeAppUrl)
+        : false;
+
+      if (canOpenStoreApp && updatePrompt.storeAppUrl) {
+        await Linking.openURL(updatePrompt.storeAppUrl);
+      } else if (updatePrompt.storeUrl) {
+        await Linking.openURL(updatePrompt.storeUrl);
+      }
+
       await handleDismissUpdatePrompt();
     } catch {
       // no-op
@@ -197,16 +209,17 @@ export default function RootLayout() {
 
     async function checkForUpdatesOnLaunch() {
       try {
-        const update = await checkForGithubReleaseUpdate();
-        if (cancelled || !update.hasUpdate || !update.releasePageUrl) return;
+        const update = await checkForPlayStoreUpdate();
+        if (cancelled || !update.hasUpdate || !update.storeUrl) return;
 
         const dismissedTag = await AsyncStorage.getItem(LAST_DISMISSED_RELEASE_KEY);
-        if (dismissedTag && dismissedTag === update.latestTag) return;
+        if (dismissedTag && dismissedTag === update.latestVersion) return;
 
         setUpdatePrompt({
           visible: true,
-          latestTag: update.latestTag,
-          releasePageUrl: update.releasePageUrl,
+          latestVersion: update.latestVersion,
+          storeAppUrl: update.storeAppUrl,
+          storeUrl: update.storeUrl,
         });
       } catch {
         // Silent failure: update checks should never block app usage.
@@ -291,7 +304,7 @@ export default function RootLayout() {
             >
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#0f172a' }}>Update Available</Text>
               <Text style={{ color: '#334155', fontSize: 15, lineHeight: 22 }}>
-                A new app version ({updatePrompt.latestTag}) is available. Please install the latest build.
+                A new app version ({updatePrompt.latestVersion}) is available on Play Store.
               </Text>
 
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>

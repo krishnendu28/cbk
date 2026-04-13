@@ -738,6 +738,9 @@ export default function MenuScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateTitle}>{menuCategories.length ? "No items in this category" : "Loading menu..."}</Text>
               <Text style={styles.emptyStateText}>{menuCategories.length ? "Try another category." : "Please wait a moment."}</Text>
+              <View style={styles.inlineAdWrap}>
+                <AdBanner />
+              </View>
             </View>
           ) : null
         }
@@ -757,7 +760,14 @@ export default function MenuScreen() {
       </View>
 
       {cartItems.length > 0 && (
-        <TouchableOpacity activeOpacity={0.88} style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding }]} onPress={() => setCartVisible(true)}>
+        <TouchableOpacity
+          activeOpacity={0.88}
+          style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding }]}
+          onPress={() => {
+            setCartVisible(true);
+            showCheckoutInterstitial();
+          }}
+        >
           <Ionicons name="cart" size={16} color="#121212" />
           <Text style={styles.checkoutPillText}>Checkout Cart ({cartItems.length})</Text>
         </TouchableOpacity>
@@ -998,6 +1008,7 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 54, gap: 8 },
   emptyStateTitle: { color: "#F5EFE4", fontSize: 16, fontWeight: "700" },
   emptyStateText: { color: "#AFA79A", fontSize: 13, textAlign: "center" },
+  inlineAdWrap: { marginTop: 14, minHeight: 54, justifyContent: "center", alignItems: "center" },
   errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 100, paddingHorizontal: 24 },
   errorTitle: { color: "#EF5350", fontSize: 20, fontWeight: "700", marginTop: 12 },
   errorMessage: { color: "#D0D0D0", fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },

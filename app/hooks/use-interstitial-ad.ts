@@ -1,9 +1,42 @@
 import { useEffect, useRef, useState } from "react";
-import { AdEventType, InterstitialAd } from "react-native-google-mobile-ads";
-import { getInterstitialAdUnitId, initializeAdMob } from "@/utils/admob";
+import { getAdRequestOptions, getInterstitialAdUnitId, initializeAdMob } from "@/utils/admob";
+
+type InterstitialModule = {
+  InterstitialAd: {
+    createForAdRequest: (
+      unitId: string,
+      options?: { requestNonPersonalizedAdsOnly?: boolean },
+    ) => {
+      addAdEventListener: (eventType: string | number, listener: (error?: unknown) => void) => () => void;
+      load: () => void;
+      show: () => void;
+    };
+  };
+  AdEventType: {
+    LOADED: string | number;
+    CLOSED: string | number;
+    ERROR: string | number;
+  };
+};
+
+function getInterstitialModule(): InterstitialModule | null {
+  try {
+    const mod = require("react-native-google-mobile-ads");
+    return {
+      InterstitialAd: mod.InterstitialAd,
+      AdEventType: mod.AdEventType,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function useInterstitialAd() {
-  const adRef = useRef<ReturnType<typeof InterstitialAd.createForAdRequest> | null>(null);
+  const adRef = useRef<{
+    show: () => void;
+    load: () => void;
+  } | null>(null);
+  const pendingShowRef = useRef(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -16,23 +49,36 @@ export function useInterstitialAd() {
       .then((canShowAds) => {
         if (!mounted || !canShowAds) return;
 
-        const ad = InterstitialAd.createForAdRequest(getInterstitialAdUnitId(), {
-          requestNonPersonalizedAdsOnly: false,
+        const module = getInterstitialModule();
+        if (!module) return;
+
+        const ad = module.InterstitialAd.createForAdRequest(getInterstitialAdUnitId(), {
+          ...getAdRequestOptions(),
         });
         adRef.current = ad;
 
-        cleanupLoaded = ad.addAdEventListener(AdEventType.LOADED, () => {
+        cleanupLoaded = ad.addAdEventListener(module.AdEventType.LOADED, () => {
           setLoaded(true);
+
+          if (pendingShowRef.current) {
+            pendingShowRef.current = false;
+            try {
+              ad.show();
+            } catch {
+              // If showing fails, keep flow non-blocking and allow next load cycle.
+            }
+          }
         });
 
-        cleanupClosed = ad.addAdEventListener(AdEventType.CLOSED, () => {
+        cleanupClosed = ad.addAdEventListener(module.AdEventType.CLOSED, () => {
           setLoaded(false);
           ad.load();
         });
 
-        cleanupError = ad.addAdEventListener(AdEventType.ERROR, (error) => {
+        cleanupError = ad.addAdEventListener(module.AdEventType.ERROR, (error) => {
           console.warn("admob_interstitial_failed", error);
           setLoaded(false);
+          pendingShowRef.current = false;
         });
 
         ad.load();
@@ -51,7 +97,12 @@ export function useInterstitialAd() {
 
   const showIfLoaded = () => {
     const ad = adRef.current;
-    if (!loaded || !ad) return false;
+    if (!ad) return false;
+    if (!loaded) {
+      pendingShowRef.current = true;
+      ad.load();
+      return false;
+    }
     ad.show();
     return true;
   };

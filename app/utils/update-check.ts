@@ -1,13 +1,41 @@
 import Constants from "expo-constants";
 
-type GithubRelease = {
-  tag_name?: string;
-  html_url?: string;
-  draft?: boolean;
-  prerelease?: boolean;
-};
+const DEFAULT_PLAY_STORE_WEB_BASE = "https://play.google.com/store/apps/details";
 
-const DEFAULT_GITHUB_REPO = "mayankfhacker/chakhna-by-kilo";
+function getAndroidPackageName(): string {
+  const fromEnv = String(process.env.EXPO_PUBLIC_PLAY_STORE_PACKAGE || "").trim();
+  if (fromEnv) return fromEnv;
+
+  const fromExpoConfig = Constants.expoConfig?.android?.package;
+  if (typeof fromExpoConfig === "string" && fromExpoConfig.trim()) return fromExpoConfig;
+
+  return "";
+}
+
+function getPlayStoreWebUrl(packageName: string): string {
+  const params = new URLSearchParams({ id: packageName, hl: "en", gl: "US" });
+  return `${DEFAULT_PLAY_STORE_WEB_BASE}?${params.toString()}`;
+}
+
+function getPlayStoreAppUrl(packageName: string): string {
+  return `market://details?id=${encodeURIComponent(packageName)}`;
+}
+
+function extractVersionFromPlayStoreHtml(html: string): string {
+  const patterns = [
+    /\"softwareVersion\"\s*:\s*\"([^\"]+)\"/i,
+    /\"Current Version\"\s*<\/div>\s*<span[^>]*>\s*<div[^>]*>\s*<span[^>]*>([^<]+)<\/span>/i,
+    /\[\[\[\"([0-9]+(?:\.[0-9]+){1,3})\"\]\]\]/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    const candidate = String(match?.[1] || "").trim();
+    if (candidate) return candidate;
+  }
+
+  return "";
+}
 
 function normalizeVersion(input: string | undefined | null): number[] {
   const raw = String(input || "").trim().replace(/^v/i, "");
@@ -44,50 +72,56 @@ function getCurrentAppVersion(): string {
   return "0.0.0";
 }
 
-export async function checkForGithubReleaseUpdate(): Promise<{
+export async function checkForPlayStoreUpdate(): Promise<{
   hasUpdate: boolean;
-  latestTag: string;
-  releasePageUrl: string;
+  latestVersion: string;
+  storeAppUrl: string;
+  storeUrl: string;
 }> {
-  const repo = String(process.env.EXPO_PUBLIC_GITHUB_REPO || DEFAULT_GITHUB_REPO).trim();
-  if (!repo || !repo.includes("/")) {
+  const packageName = getAndroidPackageName();
+  if (!packageName) {
     return {
       hasUpdate: false,
-      latestTag: "",
-      releasePageUrl: "",
+      latestVersion: "",
+      storeAppUrl: "",
+      storeUrl: "",
     };
   }
 
-  const apiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
-  const response = await fetch(apiUrl, {
-    headers: {
-      Accept: "application/vnd.github+json",
-    },
-  });
+  const storeAppUrl = getPlayStoreAppUrl(packageName);
+  const storeUrl = getPlayStoreWebUrl(packageName);
+  const configuredLatestVersion = String(process.env.EXPO_PUBLIC_PLAY_STORE_LATEST_VERSION || "").trim();
 
-  if (!response.ok) {
-    throw new Error(`Failed to check updates (HTTP ${response.status})`);
+  let latestVersion = configuredLatestVersion;
+
+  if (!latestVersion) {
+    const response = await fetch(storeUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to check Play Store updates (HTTP ${response.status})`);
+    }
+
+    const html = await response.text();
+    latestVersion = extractVersionFromPlayStoreHtml(html);
   }
 
-  const latest = (await response.json()) as GithubRelease;
-  const latestTag = String(latest.tag_name || "").trim();
-  const releasePageUrl =
-    String(latest.html_url || "").trim() || `https://github.com/${repo}/releases/latest`;
-
-  if (!latestTag || latest.draft || latest.prerelease) {
+  if (!latestVersion) {
     return {
       hasUpdate: false,
-      latestTag,
-      releasePageUrl,
+      latestVersion: "",
+      storeAppUrl,
+      storeUrl,
     };
   }
 
   const currentVersion = getCurrentAppVersion();
-  const hasUpdate = isRemoteNewer(latestTag, currentVersion);
+  const hasUpdate = isRemoteNewer(latestVersion, currentVersion);
 
   return {
     hasUpdate,
-    latestTag,
-    releasePageUrl,
+    latestVersion,
+    storeAppUrl,
+    storeUrl,
   };
 }
+
+export const checkForGithubReleaseUpdate = checkForPlayStoreUpdate;

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
+import { AdBanner } from "@/components/admob/ad-banner";
 
 type Order = {
   _id: string;
@@ -96,7 +97,14 @@ export default function OrdersScreen() {
         data={orders}
         keyExtractor={(item) => item._id}
         contentContainerStyle={{ paddingBottom: 20, gap: 12 }}
-        ListEmptyComponent={<Text style={styles.emptyText}>{emptyText}</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>{emptyText}</Text>
+            <View style={styles.inlineAdWrap}>
+              <AdBanner />
+            </View>
+          </View>
+        }
         renderItem={({ item }) => {
           const currentIndex = Math.max(0, steps.indexOf(item.status || "Preparing"));
           return (
@@ -149,7 +157,9 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 12 },
   title: { color: "#F5EFE4", fontSize: 28, fontWeight: "700" },
   subtitle: { color: "#A5A5A5", marginTop: 4 },
+  emptyWrap: { alignItems: "center", gap: 12, paddingTop: 18 },
   emptyText: { color: "#A5A5A5", textAlign: "center", marginTop: 18 },
+  inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center" },
   orderCard: { backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "#2D2D2D", borderRadius: 14, padding: 12, gap: 9 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orderId: { color: "#F5EFE4", fontWeight: "700" },

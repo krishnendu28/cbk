@@ -354,9 +354,6 @@ export default function MenuScreen() {
         <TouchableOpacity onPress={callRestaurant} style={styles.callIconBtn} activeOpacity={0.85}>
           <Ionicons name="call-outline" size={17} color="#F5EFE4" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push("/diagnostics")} style={styles.diagIconBtn} activeOpacity={0.85}>
-          <Ionicons name="medical-outline" size={17} color="#F5EFE4" />
-        </TouchableOpacity>
         <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={18} color="#F5EFE4" />
         </TouchableOpacity>
@@ -678,10 +675,6 @@ export default function MenuScreen() {
             <Ionicons name="call-outline" size={16} color="#F5EFE4" />
             <Text style={styles.callBtnText}>Call Restaurant: {RESTAURANT_PHONE_LABEL}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.diagLoginBtn} onPress={() => router.push("/diagnostics")}>
-            <Ionicons name="medical-outline" size={16} color="#F5EFE4" />
-            <Text style={styles.diagLoginText}>Open Push Diagnostics</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
             <Text style={styles.loginBtnText}>Continue</Text>
           </TouchableOpacity>
@@ -858,8 +851,6 @@ const styles = StyleSheet.create({
   dobPickerWrap: { backgroundColor: "#1C1C1C", borderRadius: 10, borderWidth: 1, borderColor: "#303030", paddingHorizontal: 4, paddingVertical: 4, marginBottom: 8 },
   callBtn: { backgroundColor: "#1E3A28", borderRadius: 10, paddingVertical: 10, marginBottom: 8, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#2A5B3B" },
   callBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
-  diagLoginBtn: { backgroundColor: "rgba(212,160,23,0.18)", borderRadius: 10, paddingVertical: 10, marginBottom: 8, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "rgba(212,160,23,0.34)" },
-  diagLoginText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
   loginBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingVertical: 11, marginTop: 2 },
   loginBtnText: { color: "#121212", textAlign: "center", fontWeight: "700" },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 10 },
@@ -867,7 +858,6 @@ const styles = StyleSheet.create({
   brand: { color: "#F5EFE4", fontSize: 16, fontWeight: "700" },
   tagline: { color: "#A7A29A", fontSize: 12 },
   callIconBtn: { backgroundColor: "#1E3A28", borderRadius: 18, padding: 8 },
-  diagIconBtn: { backgroundColor: "rgba(212,160,23,0.18)", borderRadius: 18, padding: 8, borderWidth: 1, borderColor: "rgba(212,160,23,0.34)" },
   logoutBtn: { backgroundColor: "#8B0000", borderRadius: 18, padding: 8 },
   heroWrap: {
     marginHorizontal: 2,

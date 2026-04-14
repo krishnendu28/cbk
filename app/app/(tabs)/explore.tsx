@@ -74,7 +74,7 @@ export default function OrdersScreen() {
   }, [session]);
 
   const emptyText = useMemo(() => {
-    if (!session) return "Login from Menu tab to view your orders.";
+    if (!session) return "Sign in on the Menu tab to view your orders.";
     return "No orders yet.";
   }, [session]);
 
@@ -89,8 +89,8 @@ export default function OrdersScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 6, paddingHorizontal: horizontalSafePadding }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Order History</Text>
-        <Text style={styles.subtitle}>Live kitchen status from admin panel</Text>
+        <Text style={styles.title}>Your Orders</Text>
+        <Text style={styles.subtitle}>Track each order as it moves through the kitchen</Text>
       </View>
 
       <FlatList

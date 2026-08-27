@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { SessionProvider } from '@/context/session-context';
+import { CartProvider } from '@/context/cart-context';
 import { initializeAdMob } from '@/utils/admob';
 import { checkForPlayStoreUpdate } from '@/utils/update-check';
 import { API_BASE_URL } from '@/utils/api';
@@ -231,10 +232,12 @@ export default function RootLayout() {
 
   return (
     <SessionProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
+      <CartProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="category/[id]" options={{ headerShown: false }} />
+          </Stack>
         <StatusBar style="auto" />
 
         <Modal
@@ -302,6 +305,7 @@ export default function RootLayout() {
           </View>
         </Modal>
       </ThemeProvider>
+    </CartProvider>
     </SessionProvider>
   );
 }

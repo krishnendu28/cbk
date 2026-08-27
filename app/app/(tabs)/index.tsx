@@ -8,8 +8,6 @@ import {
   FlatList,
   ImageBackground,
   Image,
-  Animated,
-  type ImageSourcePropType,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -23,35 +21,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
+import { useCart } from "@/context/cart-context";
 import { AdBanner } from "@/components/admob/ad-banner";
 import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
-import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
-
-type MenuItem = {
-  id: number;
-  name: string;
-  prices: Record<string, number>;
-  image?: string;
-  available?: boolean;
-};
-
-type MenuCategory = {
-  id: string;
-  title: string;
-  items: MenuItem[];
-};
-
-type CartItem = {
-  id: string;
-  menuItemId: number;
-  name: string;
-  variant: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-};
+import { MenuItemCard } from "@/components/menu-item-card";
+import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
+import { getMenuImageByFileName } from "@/utils/get-menu-item-image";
+import type { MenuCategory } from "@/types/menu";
 
 const heroSlides = [
   {
@@ -77,18 +56,6 @@ type CategoryCardMeta = {
   bgColor: string;
 };
 
-const CATEGORY_CARD_ORDER = [
-  "non-veg-chakhna",
-  "veg-chakhna",
-  "biryani",
-  "thali",
-  "combos",
-  "main-course",
-  "noodles",
-  "rice",
-  "rolls",
-];
-
 const CATEGORY_CARD_META: Record<string, CategoryCardMeta> = {
   "non-veg-chakhna": { id: "non-veg-chakhna", imageFile: "Fish Fry.jpg", bgColor: "#FBE3E0" },
   "veg-chakhna": { id: "veg-chakhna", imageFile: "paneer-pakoda.jpg", bgColor: "#DFF2DC" },
@@ -107,56 +74,6 @@ const CATEGORY_CARD_META: Record<string, CategoryCardMeta> = {
 
 const RESTAURANT_PHONE_LABEL = "+91 8420252042";
 const RESTAURANT_PHONE_DIAL = "+918420252042";
-const FALLBACK_IMAGE = require("@/assets/images/logo.jpeg");
-
-function ResilientImage({
-  primarySource,
-  secondarySource,
-  style,
-  animateOnChange = false,
-}: {
-  primarySource: ImageSourcePropType;
-  secondarySource?: ImageSourcePropType;
-  style: any;
-  animateOnChange?: boolean;
-}) {
-  const [source, setSource] = useState<ImageSourcePropType>(primarySource);
-  const [step, setStep] = useState(0);
-  const fade = useMemo(() => new Animated.Value(1), []);
-
-  useEffect(() => {
-    if (!animateOnChange) {
-      setSource(primarySource);
-      setStep(0);
-      return;
-    }
-
-    fade.setValue(0);
-    setSource(primarySource);
-    setStep(0);
-    Animated.timing(fade, {
-      toValue: 1,
-      duration: 420,
-      useNativeDriver: true,
-    }).start();
-  }, [animateOnChange, fade, primarySource]);
-
-  return (
-    <Animated.Image
-      source={source}
-      style={[style, animateOnChange && { opacity: fade }]}
-      onError={() => {
-        if (step === 0 && secondarySource) {
-          setSource(secondarySource);
-          setStep(1);
-          return;
-        }
-        setSource(FALLBACK_IMAGE);
-        setStep(2);
-      }}
-    />
-  );
-}
 
 function formatDateOfBirth(date: Date) {
   const year = date.getFullYear();
@@ -168,7 +85,9 @@ function formatDateOfBirth(date: Date) {
 export default function MenuScreen() {
   const { session, isHydrated, login, logout } = useSession();
   const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { cartItems, setCartItems, cartVisible, setCartVisible, isOrderingOpen, setIsOrderingOpen, updateQuantity } = useCart();
   const horizontalSafePadding = Math.max(14, Math.max(insets.left, insets.right) + 10);
   const [loginName, setLoginName] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
@@ -176,10 +95,6 @@ export default function MenuScreen() {
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState("");
-  const [showAllCategories, setShowAllCategories] = useState(false);
-  const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [cartVisible, setCartVisible] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [flatNo, setFlatNo] = useState("");
@@ -187,7 +102,6 @@ export default function MenuScreen() {
   const [landmark, setLandmark] = useState("");
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState("");
-  const [isOrderingOpen, setIsOrderingOpen] = useState(true);
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountRate, setDiscountRate] = useState(0);
 
@@ -253,32 +167,7 @@ export default function MenuScreen() {
       "Cart updated",
       `${removedItems.map((item) => item.name).join(", ")} ${removedItems.length === 1 ? "was" : "were"} removed because ${removedItems.length === 1 ? "it is" : "they are"} now unavailable.`,
     );
-  }, [cartItems, menuCategories, findMenuItemById]);
-
-  useEffect(() => {
-    if (!session) return;
-
-    let isMounted = true;
-
-    const loadOrderingStatus = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/shop/ordering-status`);
-        if (!isMounted) return;
-        setIsOrderingOpen(Boolean(response.data?.isOrderingOpen));
-      } catch {
-        if (!isMounted) return;
-        setIsOrderingOpen(true);
-      }
-    };
-
-    loadOrderingStatus();
-    const intervalId = setInterval(loadOrderingStatus, 15000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, [session]);
+  }, [cartItems, menuCategories, findMenuItemById, setCartItems]);
 
   useEffect(() => {
     if (!session) return;
@@ -354,25 +243,6 @@ export default function MenuScreen() {
         };
       });
   }, [activeCategory, menuCategories]);
-
-  const visibleCategoryCards = useMemo(() => {
-    if (showAllCategories) return categoryCards;
-
-    const ordered = CATEGORY_CARD_ORDER.map((id) => categoryCards.find((card) => card.id === id)).filter(
-      (card): card is (typeof categoryCards)[number] => Boolean(card),
-    );
-
-    for (const card of categoryCards) {
-      if (!ordered.some((entry) => entry.id === card.id)) ordered.push(card);
-    }
-
-    if (ordered.length > 0 && !ordered.some((card) => card.isSelected)) {
-      const activeCard = categoryCards.find((card) => card.isSelected);
-      if (activeCard && !ordered.some((entry) => entry.id === activeCard.id)) ordered.push(activeCard);
-    }
-
-    return ordered;
-  }, [categoryCards, showAllCategories]);
 
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryCharge = cartItems.length ? 20 : 0;
@@ -484,10 +354,13 @@ export default function MenuScreen() {
           </View>
 
           <View style={styles.categoriesGrid}>
-            {visibleCategoryCards.map((card) => (
+            {categoryCards.map((card) => (
               <TouchableOpacity
                 key={card.id}
-                onPress={() => setActiveCategory(card.id)}
+                onPress={() => {
+                  setActiveCategory(card.id);
+                  router.push(`/category/${card.id}`);
+                }}
                 activeOpacity={0.9}
                 style={[styles.categoryCard, { backgroundColor: card.bgColor }, card.isSelected && styles.categoryCardActive]}>
                 <View style={[styles.categoryCardEmblem, card.isSelected && styles.categoryCardEmblemActive]}>
@@ -499,13 +372,6 @@ export default function MenuScreen() {
               </TouchableOpacity>
             ))}
           </View>
-
-          {categoryCards.length > CATEGORY_CARD_ORDER.length && (
-            <TouchableOpacity style={styles.moreBtn} activeOpacity={0.88} onPress={() => setShowAllCategories((prev) => !prev)}>
-              <Text style={styles.moreBtnText}>{showAllCategories ? "Less" : "More"}</Text>
-              <Ionicons name={showAllCategories ? "chevron-up" : "chevron-down"} size={14} color="#D4A017" />
-            </TouchableOpacity>
-          )}
         </View>
       )}
     </View>
@@ -560,67 +426,6 @@ export default function MenuScreen() {
       Alert.alert("Call unavailable", `Please call ${RESTAURANT_PHONE_LABEL}`);
     }
   }
-
-  const addToCart = (item: MenuItem) => {
-    if (!isOrderingOpen) {
-      Alert.alert("Ordering closed", "The shop is currently closed. Please try again later.");
-      return;
-    }
-
-    if (item.available === false) {
-      Alert.alert("Item unavailable", "This item is currently unavailable.");
-      return;
-    }
-
-    const variants = Object.keys(item.prices || {});
-    const selectedVariant = variantSelections[item.name] || variants[0] || "Regular";
-    const selectedPrice = Number(item.prices?.[selectedVariant] || 0);
-
-    setCartItems((prev) => {
-      const existing = prev.find((cartItem) => cartItem.name === item.name && cartItem.variant === selectedVariant);
-      if (existing) {
-        return prev.map((cartItem) =>
-          cartItem.id === existing.id
-            ? {
-                ...cartItem,
-                quantity: cartItem.quantity + 1,
-                totalPrice: (cartItem.quantity + 1) * cartItem.unitPrice,
-              }
-            : cartItem,
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          id: `${item.id}-${selectedVariant}`,
-          menuItemId: item.id,
-          name: item.name,
-          variant: selectedVariant,
-          quantity: 1,
-          unitPrice: selectedPrice,
-          totalPrice: selectedPrice,
-        },
-      ];
-    });
-    setCartVisible(true);
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCartItems((prev) =>
-      prev
-        .map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                quantity: Math.max(0, item.quantity + delta),
-                totalPrice: Math.max(0, item.quantity + delta) * item.unitPrice,
-              }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
-    );
-  };
 
   const placeOrder = async () => {
     if (!session) return;
@@ -755,43 +560,7 @@ export default function MenuScreen() {
         updateCellsBatchingPeriod={50}
         removeClippedSubviews={Platform.OS !== "web"}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        renderItem={({ item }) => {
-          const variants = Object.keys(item.prices || {});
-          const selectedVariant = variantSelections[item.name] || variants[0] || "Regular";
-          const price = Number(item.prices?.[selectedVariant] || 0);
-          const menuImage = getMenuItemImage(item.name, activeCategoryData?.title, item.image);
-          const isItemUnavailable = item.available === false;
-
-          return (
-            <View style={[styles.card, isItemUnavailable && styles.cardUnavailable]}>
-              <ResilientImage primarySource={menuImage} style={styles.cardImage} />
-              {isItemUnavailable ? (
-                <View style={styles.unavailableBadge}>
-                  <Text style={styles.unavailableBadgeText}>Unavailable</Text>
-                </View>
-              ) : null}
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.price}>Rs {price}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {variants.map((variant) => (
-                  <TouchableOpacity
-                    key={variant}
-                    onPress={() => setVariantSelections((prev) => ({ ...prev, [item.name]: variant }))}
-                    style={[styles.variantBtn, selectedVariant === variant && styles.variantBtnActive]}>
-                    <Text style={[styles.variantText, selectedVariant === variant && styles.variantTextActive]}>{variant}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-                <TouchableOpacity
-                  style={[styles.addBtn, (!isOrderingOpen || isItemUnavailable) && styles.addBtnDisabled]}
-                  onPress={() => addToCart(item)}
-                  activeOpacity={0.88}
-                  disabled={!isOrderingOpen || isItemUnavailable}>
-                  <Text style={styles.addBtnText}>{!isOrderingOpen ? "Ordering Closed" : isItemUnavailable ? "Unavailable" : "Add to Cart"}</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        }}
+        renderItem={({ item }) => <MenuItemCard item={item} categoryTitle={activeCategoryData?.title || ""} />}
         ListEmptyComponent={
           !loadingMenu && !menuError ? (
             <View style={styles.emptyState}>
@@ -1020,30 +789,6 @@ const styles = StyleSheet.create({
   categoryCardImage: { width: "100%", height: "100%", resizeMode: "cover" },
   categoryCardTitle: { color: "#2E2E2E", fontSize: 10.5, fontWeight: "800", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.4, minHeight: 28, lineHeight: 14 },
   categoryCardTitleActive: { color: "#FFFFFF" },
-  moreBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10, paddingVertical: 9, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
-  moreBtnText: { color: "#D4A017", fontSize: 12, fontWeight: "800", letterSpacing: 1.4, textTransform: "uppercase" },
-  card: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", gap: 8, shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 5 }, shadowRadius: 8, elevation: 1 },
-  cardUnavailable: { opacity: 0.82, borderColor: "rgba(239,83,80,0.45)" },
-  cardImage: { width: "100%", height: 150, borderRadius: 10 },
-  itemName: { color: "#F5EFE4", fontWeight: "700", fontSize: 15 },
-  price: { color: "#D4A017", fontWeight: "700" },
-  unavailableBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(239,83,80,0.16)",
-    borderColor: "rgba(239,83,80,0.45)",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  unavailableBadgeText: { color: "#FFB4AE", fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
-  variantBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: "#242424", borderWidth: 1, borderColor: "#303030" },
-  variantBtnActive: { borderColor: "#D4A017", backgroundColor: "rgba(212,160,23,0.2)" },
-  variantText: { color: "#BDBDBD", fontSize: 12 },
-  variantTextActive: { color: "#F5EFE4", fontWeight: "700" },
-  addBtn: { backgroundColor: "#8B0000", borderRadius: 10, paddingVertical: 10 },
-  addBtnDisabled: { opacity: 0.6 },
-  addBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700" },
   orderingClosedBanner: { position: "absolute", backgroundColor: "rgba(139, 0, 0, 0.9)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, zIndex: 2 },
   orderingClosedText: { color: "#F5EFE4", textAlign: "center", fontWeight: "600", fontSize: 12 },
   adBannerWrap: { position: "absolute", alignItems: "center" },

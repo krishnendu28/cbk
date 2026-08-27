@@ -15,7 +15,7 @@ type CartContextType = {
   setVariantSelections: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   isOrderingOpen: boolean;
   setIsOrderingOpen: (open: boolean) => void;
-  addToCart: (item: MenuItem) => void;
+  addToCart: (item: MenuItem, openCart?: boolean) => void;
   updateQuantity: (id: string, delta: number) => void;
 };
 
@@ -53,7 +53,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session]);
 
-  const addToCart = (item: MenuItem) => {
+  const addToCart = (item: MenuItem, openCart = true) => {
     if (!isOrderingOpen) {
       Alert.alert("Ordering closed", "The shop is currently closed. Please try again later.");
       return;
@@ -95,7 +95,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         },
       ];
     });
-    setCartVisible(true);
+    if (openCart) setCartVisible(true);
   };
 
   const updateQuantity = (id: string, delta: number) => {

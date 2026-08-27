@@ -6,6 +6,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View }
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MenuItemCard } from "@/components/menu-item-card";
+import { useCart } from "@/context/cart-context";
 import { useSession } from "@/context/session-context";
 import type { MenuCategory } from "@/types/menu";
 import { API_BASE_URL } from "@/utils/api";
@@ -14,8 +15,11 @@ export default function CategoryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useSession();
+  const { cartItems, setCartVisible } = useCart();
   const insets = useSafeAreaInsets();
   const horizontalSafePadding = Math.max(14, Math.max(insets.left, insets.right) + 10);
+
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,14 +99,16 @@ export default function CategoryScreen() {
         <FlatList
           data={category?.items || []}
           keyExtractor={(item) => `${category?.id}-${item.id}`}
-          contentContainerStyle={{ paddingHorizontal: horizontalSafePadding, paddingTop: 12, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: horizontalSafePadding, paddingTop: 12, paddingBottom: cartItems.length > 0 ? 90 : 40 }}
           showsVerticalScrollIndicator={false}
           initialNumToRender={6}
           maxToRenderPerBatch={6}
           windowSize={7}
           updateCellsBatchingPeriod={50}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-          renderItem={({ item }) => <MenuItemCard item={item} categoryTitle={category?.title || ""} />}
+          renderItem={({ item }) => (
+            <MenuItemCard item={item} categoryTitle={category?.title || ""} openCartOnAdd={false} />
+          )}
           ListEmptyComponent={
             <View style={styles.centerState}>
               <Text style={styles.stateTitle}>No items in this category</Text>
@@ -110,6 +116,22 @@ export default function CategoryScreen() {
             </View>
           }
         />
+      )}
+
+      {cartItems.length > 0 && (
+        <TouchableOpacity
+          activeOpacity={0.88}
+          style={[styles.cartPill, { bottom: Math.max(16, insets.bottom + 8), left: horizontalSafePadding, right: horizontalSafePadding }]}
+          onPress={() => {
+            setCartVisible(true);
+            router.back();
+          }}>
+          <Ionicons name="cart" size={16} color="#121212" />
+          <Text style={styles.cartPillText}>View Cart ({cartItems.length})</Text>
+          <View style={styles.cartPillTotalWrap}>
+            <Text style={styles.cartPillTotal}>Rs {cartTotal}</Text>
+          </View>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -128,4 +150,8 @@ const styles = StyleSheet.create({
   stateText: { color: "#AFA79A", fontSize: 13, textAlign: "center", lineHeight: 19 },
   retryBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10, marginTop: 6 },
   retryBtnText: { color: "#121212", fontWeight: "700", textAlign: "center" },
+  cartPill: { position: "absolute", backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E7507", shadowOpacity: 0.14, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
+  cartPillText: { color: "#121212", fontWeight: "800", flexShrink: 1 },
+  cartPillTotalWrap: { backgroundColor: "rgba(0,0,0,0.14)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  cartPillTotal: { color: "#121212", fontWeight: "700" },
 });

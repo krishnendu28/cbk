@@ -5,7 +5,7 @@ import { useCart } from "@/context/cart-context";
 import type { MenuItem } from "@/types/menu";
 import { getMenuItemImage } from "@/utils/get-menu-item-image";
 
-export function MenuItemCard({ item, categoryTitle }: { item: MenuItem; categoryTitle: string }) {
+export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { item: MenuItem; categoryTitle: string; openCartOnAdd?: boolean }) {
   const { variantSelections, setVariantSelections, isOrderingOpen, addToCart } = useCart();
 
   const variants = Object.keys(item.prices || {});
@@ -36,7 +36,7 @@ export function MenuItemCard({ item, categoryTitle }: { item: MenuItem; category
       </ScrollView>
       <TouchableOpacity
         style={[styles.addBtn, (!isOrderingOpen || isItemUnavailable) && styles.addBtnDisabled]}
-        onPress={() => addToCart(item)}
+        onPress={() => addToCart(item, openCartOnAdd)}
         activeOpacity={0.88}
         disabled={!isOrderingOpen || isItemUnavailable}>
         <Text style={styles.addBtnText}>{!isOrderingOpen ? "Ordering Closed" : isItemUnavailable ? "Unavailable" : "Add to Cart"}</Text>

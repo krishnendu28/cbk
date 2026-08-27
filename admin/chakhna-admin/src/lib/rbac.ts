@@ -17,6 +17,7 @@ export const NAV_ACCESS: NavItem[] = [
   { href: "/customers", label: "Customers", allowedRoles: ["owner", "manager", "cashier", "waiter"] },
   { href: "/reports", label: "Reports", allowedRoles: ["owner", "manager"] },
   { href: "/live-orders", label: "Live Orders", allowedRoles: ["owner", "manager", "cashier", "kitchen", "waiter"] },
+  { href: "/monthly-meals", label: "Monthly Meals", allowedRoles: ["owner", "manager"] },
   { href: "/staff", label: "Staff", allowedRoles: ["owner", "manager"] },
   { href: "/settings", label: "Settings", allowedRoles: ["owner", "manager"] },
 ];

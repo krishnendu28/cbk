@@ -25,6 +25,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="monthly"
+        options={{
+          title: 'Monthly',
+          tabBarIcon: ({ color, size }) => <Ionicons size={size} name="calendar" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="explore"
         options={{
           title: 'Orders',

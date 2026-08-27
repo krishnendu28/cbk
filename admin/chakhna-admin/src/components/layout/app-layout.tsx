@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, ShoppingCart, ChefHat, MenuSquare,
   LayoutGrid, Package, BarChart3, Users, Store, Settings,
-  LogOut, UserCircle
+  LogOut, UserCircle, CalendarDays
 } from "lucide-react";
 import { useAppOutlet, useAuth } from "@/lib/contexts";
 import { useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
@@ -25,6 +25,7 @@ const NAV_ICON_MAP = {
   "/customers": Users,
   "/reports": BarChart3,
   "/live-orders": ShoppingCart,
+  "/monthly-meals": CalendarDays,
   "/staff": UserCircle,
   "/settings": Settings,
 } as const;

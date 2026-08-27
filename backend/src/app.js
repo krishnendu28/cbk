@@ -12,6 +12,7 @@ import shopRoutes from "./routes/shopRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import outletRoutes from "./routes/outletRoutes.js";
+import monthlyRoutes from "./routes/monthlyRoutes.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
 import { requestContext } from "./middlewares/request-context.js";
 import { requestLogger } from "./middlewares/request-logger.js";
@@ -42,6 +43,7 @@ app.use("/api/shop", shopRoutes);
 app.use("/api", authRoutes);
 app.use("/api", outletRoutes);
 app.use("/api", settingsRoutes);
+app.use("/api/monthly", monthlyRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

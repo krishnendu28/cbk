@@ -4,12 +4,17 @@ import mongoose from "mongoose";
 import app from "./src/app.js";
 import { ensureMenuLoaded } from "./src/services/menuService.js";
 import { setMongoEnabled } from "./src/services/orderService.js";
+import { attachSocketIO } from "./src/realtime/index.js";
 import { setPushSubscriptionsMongoEnabled } from "./src/services/pushSubscriptionService.js";
 import { logger } from "./src/utils/logger.js";
 
 dotenv.config();
 
 const server = http.createServer(app);
+
+attachSocketIO(server).catch((error) => {
+  logger.warn("realtime.socket_attach_failed", { reason: error?.message || String(error) });
+});
 
 const PORT = Number(process.env.PORT) || 5000;
 const MONGO_URI = process.env.MONGO_URI;

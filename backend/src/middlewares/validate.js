@@ -10,7 +10,13 @@ export function validateRequest({ bodySchema, paramsSchema, querySchema }) {
         req.params = paramsSchema.parse(req.params);
       }
       if (querySchema) {
-        req.query = querySchema.parse(req.query);
+        const parsedQuery = querySchema.parse(req.query);
+        const target = req.query;
+        if (target && typeof target === "object") {
+          for (const key of Object.keys(parsedQuery)) {
+            target[key] = parsedQuery[key];
+          }
+        }
       }
       next();
     } catch (error) {

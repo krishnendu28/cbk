@@ -6,6 +6,14 @@ import { logger } from "../utils/logger.js";
 const memoryOrders = [];
 let useMongo = false;
 
+const IS_OFFLINE = process.env.IS_OFFLINE === "true";
+
+function generateOrderCode() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `CBK-${timestamp}${random}`;
+}
+
 function toMemoryOrder(payload) {
   return {
     _id: randomUUID(),
@@ -47,17 +55,31 @@ function validateOrderItems(items) {
 }
 
 async function withMongoFallback(operationName, mongoOperation, memoryOperation) {
-  if (!useMongo) return memoryOperation();
+  if (!useMongo) {
+    if (!IS_OFFLINE) {
+      const error = new Error(`Database unavailable. ${operationName} could not be completed.`);
+      error.statusCode = 503;
+      throw error;
+    }
+    return memoryOperation();
+  }
 
   try {
     return await mongoOperation();
   } catch (error) {
-    useMongo = false;
-    logger.warn("database.runtime_fallback_memory", {
+    logger.warn("database.operation_failed", {
       operation: operationName,
       reason: error?.message || String(error),
     });
-    return memoryOperation();
+
+    if (IS_OFFLINE) {
+      useMongo = false;
+      return memoryOperation();
+    }
+
+    const wrapped = new Error(`Database write failed for ${operationName}. Please try again.`);
+    wrapped.statusCode = 503;
+    throw wrapped;
   }
 }
 
@@ -95,6 +117,7 @@ export async function createOrder({
 
   const payload = {
     customerName,
+    orderCode: generateOrderCode(),
     phone,
     dateOfBirth,
     address,

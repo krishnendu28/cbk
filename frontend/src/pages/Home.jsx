@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -19,8 +18,9 @@ import CategoryBar from "../components/CategoryBar";
 import MenuCard from "../components/MenuCard";
 import { menuCategories as fallbackMenuCategories } from "../data/menuData";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
-const socket = io(API_BASE_URL, { autoConnect: true });
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+
+const POLL_INTERVAL_MS = 30000;
 
 const heroSlides = [
   {
@@ -128,20 +128,14 @@ function Home({ userSession, onLogout, onOpenHistory }) {
     loadMenu();
     loadOrderingStatus();
     loadOutletSettings();
-    const onMenuChanged = () => loadMenu();
-    const onOrderingStatusChanged = (status) => setIsOrderingOpen(Boolean(status?.isOrderingOpen));
 
-    socket.on("menu_created", onMenuChanged);
-    socket.on("menu_updated", onMenuChanged);
-    socket.on("menu_deleted", onMenuChanged);
-    socket.on("ordering_status_updated", onOrderingStatusChanged);
+    const pollTimer = window.setInterval(() => {
+      loadMenu();
+      loadOrderingStatus();
+      loadOutletSettings();
+    }, POLL_INTERVAL_MS);
 
-    return () => {
-      socket.off("menu_created", onMenuChanged);
-      socket.off("menu_updated", onMenuChanged);
-      socket.off("menu_deleted", onMenuChanged);
-      socket.off("ordering_status_updated", onOrderingStatusChanged);
-    };
+    return () => window.clearInterval(pollTimer);
   }, [activeCategory]);
 
   const activeCategoryData = useMemo(
@@ -260,7 +254,6 @@ function Home({ userSession, onLogout, onOpenHistory }) {
         total: grandTotal,
       };
       const response = await axios.post(`${API_BASE_URL}/api/orders`, payload);
-      socket.emit("new_order", response.data);
 
       toast.success("Your order is being prepared");
       setCartItems([]);

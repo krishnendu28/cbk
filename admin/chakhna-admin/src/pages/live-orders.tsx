@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { io } from "socket.io-client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { deleteBridgeOrder, fetchBridgeOrders, patchBridgeOrderStatus, USER_BACKEND_URL } from "@/lib/bridge";
+import { deleteBridgeOrder, fetchBridgeOrders, patchBridgeOrderStatus, subscribeBridgeOrders } from "@/lib/bridge";
 import { toast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
-import { DEMO_SESSION_KEY } from "@/lib/session";
 
-const socket = localStorage.getItem(DEMO_SESSION_KEY) === "1" ? null : io(USER_BACKEND_URL, { autoConnect: true });
 const statuses = ["Preparing", "Ready", "Delivered"] as const;
 
 type LiveOrderItem = {
@@ -57,26 +54,11 @@ export default function LiveOrders() {
 
     loadOrders();
 
-    if (socket) {
-      socket.on("new_order", (order: LiveOrder) => {
-        setOrders((prev) => [order, ...prev]);
-      });
-
-      socket.on("order_updated", (updatedOrder: LiveOrder) => {
-        setOrders((prev) => prev.map((order) => (order._id === updatedOrder._id ? updatedOrder : order)));
-      });
-
-      socket.on("order_deleted", (payload: { _id: string }) => {
-        setOrders((prev) => prev.filter((order) => order._id !== payload._id));
-      });
-    }
-
-    return () => {
-      socket?.off("new_order");
-      socket?.off("order_updated");
-      socket?.off("order_deleted");
-      socket?.disconnect();
-    };
+    return subscribeBridgeOrders(
+      (order) => setOrders((prev) => [order, ...prev]),
+      (updatedOrder) => setOrders((prev) => prev.map((order) => (order._id === updatedOrder._id ? updatedOrder : order))),
+      (payload) => setOrders((prev) => prev.filter((order) => order._id !== payload._id)),
+    );
   }, []);
 
   const activeCount = useMemo(() => orders.filter((order) => order.status !== "Delivered").length, [orders]);

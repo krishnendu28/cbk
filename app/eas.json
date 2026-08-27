@@ -5,7 +5,8 @@
   "build": {
     "production": {
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
       }
     },
     "apk-debug": {
@@ -14,7 +15,8 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
       }
     },
     "apk-release": {
@@ -23,7 +25,8 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
       }
     },
     "apk": {
@@ -31,7 +34,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
       }
     },
     "ios": {
@@ -39,7 +43,8 @@
         "simulator": false
       },
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_API_BASE_URL": "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
       }
     }
   }

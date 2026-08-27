@@ -1,4 +1,3 @@
-import { getIO } from "../config/socket.js";
 import {
   createMenuItem,
   deleteMenuItem,
@@ -13,7 +12,6 @@ export function listMenu(_req, res) {
 export function addMenuItem(req, res) {
   try {
     const payload = createMenuItem(req.body);
-    getIO().emit("menu_created", payload);
     return res.status(201).json(payload);
   } catch (error) {
     console.error(error);
@@ -30,7 +28,6 @@ export function editMenuItem(req, res) {
       return res.status(404).json({ message: "Menu item not found." });
     }
 
-    getIO().emit("menu_updated", payload);
     return res.json(payload);
   } catch (error) {
     console.error(error);
@@ -47,7 +44,6 @@ export function removeMenuItem(req, res) {
       return res.status(404).json({ message: "Menu item not found." });
     }
 
-    getIO().emit("menu_deleted", { id: itemId });
     return res.json({ ok: true, id: itemId });
   } catch (error) {
     console.error(error);

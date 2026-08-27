@@ -6,7 +6,6 @@ import { AppState, Linking, Modal, Platform, Pressable, Text, View } from 'react
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { io } from 'socket.io-client';
 import { SessionProvider } from '@/context/session-context';
 import { initializeAdMob } from '@/utils/admob';
 import { checkForPlayStoreUpdate } from '@/utils/update-check';
@@ -29,14 +28,6 @@ type UpdatePromptState = {
 
 type ExpoNotificationsModule = typeof import('expo-notifications');
 let notificationsModulePromise: Promise<ExpoNotificationsModule | null> | null = null;
-
-export const socket = io(API_BASE_URL, {
-  autoConnect: true,
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  reconnectionAttempts: Infinity,
-});
 
 async function getNotificationsModule() {
   if (Platform.OS === 'web') return null;
@@ -144,24 +135,6 @@ async function registerPushTokenWithBackend() {
   }
 }
 
-async function showBroadcastTaskbarNotification(message: string) {
-  const notifications = await getNotificationsModule();
-  if (!notifications) return;
-
-  const allowed = await ensureBroadcastNotificationSetup();
-  if (!allowed) return;
-
-  await notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Message From Chakhna',
-      body: message,
-      sound: 'default',
-      priority: notifications.AndroidNotificationPriority.MAX,
-    },
-    trigger: null,
-  });
-}
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [updatePrompt, setUpdatePrompt] = useState<UpdatePromptState>({
@@ -251,18 +224,8 @@ export default function RootLayout() {
       });
     });
 
-    const onBroadcastNotification = (payload: { message?: string }) => {
-      const message = String(payload?.message || '').trim();
-      if (!message) return;
-
-      showBroadcastTaskbarNotification(message).catch(() => undefined);
-    };
-
-    socket.on('broadcast_notification', onBroadcastNotification);
-
     return () => {
       appStateSubscription.remove();
-      socket.off('broadcast_notification', onBroadcastNotification);
     };
   }, []);
 

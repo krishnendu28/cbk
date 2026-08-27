@@ -1,4 +1,3 @@
-import { io } from "socket.io-client";
 import { DEMO_SESSION_KEY } from "@/lib/session";
 import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 
@@ -14,7 +13,7 @@ type RawMenuCategory = {
   items: RawMenuItem[];
 };
 
-export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
+export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
 const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
 const DEMO_ORDERS_KEY = "cbk_demo_orders";
@@ -244,22 +243,6 @@ export type BridgeStaff = {
   isActive: boolean;
   password?: string;
 };
-
-const socket = isDemoSessionActive() ? null : io(USER_BACKEND_URL, {
-  autoConnect: true,
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  reconnectionAttempts: Infinity,
-});
-
-if (typeof window !== "undefined") {
-  window.addEventListener("cbk-demo-auth-changed", () => {
-    if (localStorage.getItem(DEMO_SESSION_KEY) === "1") {
-      socket?.disconnect();
-    }
-  });
-}
 
 const rawMenuCategories: Array<{
   title: string;
@@ -701,6 +684,13 @@ export async function deleteBridgeMenuItem(itemId: number) {
   if (!response.ok) throw new Error("Failed to delete menu item");
 }
 
+const MENU_POLL_INTERVAL_MS = 30000;
+const ORDERS_POLL_INTERVAL_MS = 8000;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function subscribeBridgeMenu(onMenuChanged: () => void) {
   if (isDemoSessionActive()) {
     const handler = () => onMenuChanged();
@@ -713,18 +703,25 @@ export function subscribeBridgeMenu(onMenuChanged: () => void) {
     };
   }
 
-  if (!socket) return () => {};
+  let lastSignature = "";
 
-  const handler = () => onMenuChanged();
-  socket.on("menu_created", handler);
-  socket.on("menu_updated", handler);
-  socket.on("menu_deleted", handler);
-
-  return () => {
-    socket.off("menu_created", handler);
-    socket.off("menu_updated", handler);
-    socket.off("menu_deleted", handler);
+  const poll = async () => {
+    try {
+      const groups = await fetchBridgeMenuGroups();
+      const signature = JSON.stringify(groups);
+      if (signature !== lastSignature) {
+        lastSignature = signature;
+        onMenuChanged();
+      }
+    } catch {
+      // transient error, keep polling
+    }
   };
+
+  poll();
+  const timer = window.setInterval(poll, MENU_POLL_INTERVAL_MS);
+
+  return () => window.clearInterval(timer);
 }
 
 export const bridgeMenuGroups: BridgeMenuGroup[] = getBridgeMenuGroups();
@@ -1100,21 +1097,50 @@ export function subscribeBridgeOrders(
   onUpdatedOrder: (order: BridgeOrder) => void,
   onDeletedOrder?: (payload: { _id: string }) => void,
 ) {
-  if (!socket) return () => {};
+  const lastSnapshot = new Map<string, string>();
 
-  socket.on("new_order", onNewOrder);
-  socket.on("order_updated", onUpdatedOrder);
-  if (onDeletedOrder) {
-    socket.on("order_deleted", onDeletedOrder);
-  }
+  const poll = async () => {
+    let orders: BridgeOrder[];
+    try {
+      orders = await fetchBridgeOrders();
+    } catch {
+      return;
+    }
 
-  return () => {
-    socket.off("new_order", onNewOrder);
-    socket.off("order_updated", onUpdatedOrder);
+    const seen = new Set<string>();
+    const currentIds = new Set<string>();
+    for (const order of orders) {
+      const id = String(order._id);
+      currentIds.add(id);
+      const signature = JSON.stringify(order);
+      const previous = lastSnapshot.get(id);
+      if (previous === undefined) {
+        // New order that was not present in the previous snapshot.
+        if (lastSnapshot.size > 0 || orders.length > 0) {
+          onNewOrder(order);
+        }
+        lastSnapshot.set(id, signature);
+      } else if (previous !== signature) {
+        onUpdatedOrder(order);
+        lastSnapshot.set(id, signature);
+      }
+      seen.add(id);
+    }
+
     if (onDeletedOrder) {
-      socket.off("order_deleted", onDeletedOrder);
+      for (const id of Array.from(lastSnapshot.keys())) {
+        if (!currentIds.has(id)) {
+          onDeletedOrder({ _id: id });
+          lastSnapshot.delete(id);
+        }
+      }
     }
   };
+
+  poll();
+  const timer = window.setInterval(poll, ORDERS_POLL_INTERVAL_MS);
+
+  return () => window.clearInterval(timer);
 }
 
 export function deriveCustomersFromOrders(orders: BridgeOrder[]) {

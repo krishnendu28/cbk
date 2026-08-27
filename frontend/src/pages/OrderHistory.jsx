@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock3, PackageCheck, UtensilsCrossed } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-4dmf.onrender.com";
-const socket = io(API_BASE_URL, { autoConnect: true });
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const POLL_INTERVAL_MS = 15000;
 const orderSteps = ["Preparing", "Ready", "Delivered"];
 
 function formatINR(value) {
@@ -59,29 +58,9 @@ function OrderHistory({ userSession, onBack }) {
 
     loadOrders();
 
-    const onOrderCreated = (order) => {
-      if (!isSameUserPhone(order?.phone)) return;
-      setOrders((prev) => [order, ...prev.filter((item) => item._id !== order._id)]);
-    };
+    const pollTimer = window.setInterval(loadOrders, POLL_INTERVAL_MS);
 
-    const onOrderUpdated = (order) => {
-      if (!isSameUserPhone(order?.phone)) return;
-      setOrders((prev) => prev.map((item) => (item._id === order._id ? order : item)));
-    };
-
-    const onOrderDeleted = ({ _id }) => {
-      setOrders((prev) => prev.filter((item) => item._id !== _id));
-    };
-
-    socket.on("new_order", onOrderCreated);
-    socket.on("order_updated", onOrderUpdated);
-    socket.on("order_deleted", onOrderDeleted);
-
-    return () => {
-      socket.off("new_order", onOrderCreated);
-      socket.off("order_updated", onOrderUpdated);
-      socket.off("order_deleted", onOrderDeleted);
-    };
+    return () => window.clearInterval(pollTimer);
   }, [userPhoneNormalized]);
 
   const hasOrders = useMemo(() => orders.length > 0, [orders]);

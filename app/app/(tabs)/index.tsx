@@ -22,14 +22,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { AdBanner } from "@/components/admob/ad-banner";
 import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
-import { socket } from "@/app/_layout";
 
 type MenuItem = {
   id: number;
@@ -72,6 +70,40 @@ const heroSlides = [
     subtitle: "Charred perfection with authentic spice layers.",
   },
 ];
+
+type CategoryCardMeta = {
+  id: string;
+  imageFile: string;
+  bgColor: string;
+};
+
+const CATEGORY_CARD_ORDER = [
+  "non-veg-chakhna",
+  "veg-chakhna",
+  "biryani",
+  "thali",
+  "combos",
+  "main-course",
+  "noodles",
+  "rice",
+  "rolls",
+];
+
+const CATEGORY_CARD_META: Record<string, CategoryCardMeta> = {
+  "non-veg-chakhna": { id: "non-veg-chakhna", imageFile: "Fish Fry.jpg", bgColor: "#FBE3E0" },
+  "veg-chakhna": { id: "veg-chakhna", imageFile: "paneer-pakoda.jpg", bgColor: "#DFF2DC" },
+  biryani: { id: "biryani", imageFile: "chicken-handi-biryani.jpg", bgColor: "#FDEBD0" },
+  thali: { id: "thali", imageFile: "Curry-chawal.jpg", bgColor: "#DCE9F7" },
+  combos: { id: "combos", imageFile: "Dal-Tadka-combo.jpg", bgColor: "#EADFF7" },
+  "main-course": { id: "main-course", imageFile: "Double-egg-Curry.webp", bgColor: "#FAE8C8" },
+  noodles: { id: "noodles", imageFile: "veg-nodd.jpg", bgColor: "#E1EDF8" },
+  rice: { id: "rice", imageFile: "Mixed-Fried-Rice.webp", bgColor: "#FFF1D6" },
+  rolls: { id: "rolls", imageFile: "egg-roll.jpg", bgColor: "#F8E7DB" },
+  tandoor: { id: "tandoor", imageFile: "Tangdi-kebab.webp", bgColor: "#F4E1D4" },
+  "roti-paratha": { id: "roti-paratha", imageFile: "Lachha-Paratha.jpg", bgColor: "#EDE3F2" },
+  "chinese-chilli": { id: "chinese-chilli", imageFile: "Chilli-Chicken.jpg", bgColor: "#F9DFDF" },
+  "ahuna-champaran": { id: "ahuna-champaran", imageFile: "Handi Mutton.jpg", bgColor: "#DDF0EB" },
+};
 
 const RESTAURANT_PHONE_LABEL = "+91 8420252042";
 const RESTAURANT_PHONE_DIAL = "+918420252042";
@@ -134,7 +166,6 @@ function formatDateOfBirth(date: Date) {
 }
 
 export default function MenuScreen() {
-  const router = useRouter();
   const { session, isHydrated, login, logout } = useSession();
   const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
   const insets = useSafeAreaInsets();
@@ -145,6 +176,7 @@ export default function MenuScreen() {
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState("");
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [variantSelections, setVariantSelections] = useState<Record<string, string>>({});
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
@@ -276,42 +308,15 @@ export default function MenuScreen() {
   }, [session]);
 
   useEffect(() => {
-    const handleOutletSettingsUpdated = (payload: {
-      outletId?: number;
-      settings?: { discountEnabled?: boolean; discountRate?: number };
-    }) => {
-      if (Number(payload?.outletId) !== 1) return;
+    if (!session) return;
 
-      setDiscountEnabled(Boolean(payload?.settings?.discountEnabled));
-      setDiscountRate(Number(payload?.settings?.discountRate || 0));
-    };
+    let cancelled = false;
 
-    socket.on("outlet_settings_updated", handleOutletSettingsUpdated);
-
-    return () => {
-      socket.off("outlet_settings_updated", handleOutletSettingsUpdated);
-    };
-  }, []);
-
-  // Real-time listener for ordering status updates
-  useEffect(() => {
-    const handleOrderingStatusUpdate = (status: { isOrderingOpen: boolean }) => {
-      setIsOrderingOpen(Boolean(status?.isOrderingOpen));
-    };
-
-    socket.on("ordering_status_updated", handleOrderingStatusUpdate);
-
-    return () => {
-      socket.off("ordering_status_updated", handleOrderingStatusUpdate);
-    };
-  }, []);
-
-  // Real-time listeners for menu updates
-  useEffect(() => {
-    const handleMenuRefresh = async () => {
+    const refreshMenu = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/menu`);
         const categories = Array.isArray(response.data) ? response.data : [];
+        if (cancelled) return;
         setMenuCategories(categories);
         if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
           setActiveCategory(categories[0].id);
@@ -321,21 +326,53 @@ export default function MenuScreen() {
       }
     };
 
-    socket.on("menu_created", handleMenuRefresh);
-    socket.on("menu_updated", handleMenuRefresh);
-    socket.on("menu_deleted", handleMenuRefresh);
+    refreshMenu();
+    const intervalId = setInterval(refreshMenu, 30000);
 
     return () => {
-      socket.off("menu_created", handleMenuRefresh);
-      socket.off("menu_updated", handleMenuRefresh);
-      socket.off("menu_deleted", handleMenuRefresh);
+      cancelled = true;
+      clearInterval(intervalId);
     };
-  }, [activeCategory]);
+  }, [activeCategory, session]);
 
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
     [activeCategory, menuCategories],
   );
+
+  const categoryCards = useMemo(() => {
+    return menuCategories
+      .filter((category) => CATEGORY_CARD_META[category.id])
+      .map((category) => {
+        const meta = CATEGORY_CARD_META[category.id];
+        return {
+          id: category.id,
+          title: category.title,
+          imageUrl: getMenuImageByFileName(meta.imageFile),
+          bgColor: meta.bgColor,
+          isSelected: activeCategory === category.id,
+        };
+      });
+  }, [activeCategory, menuCategories]);
+
+  const visibleCategoryCards = useMemo(() => {
+    if (showAllCategories) return categoryCards;
+
+    const ordered = CATEGORY_CARD_ORDER.map((id) => categoryCards.find((card) => card.id === id)).filter(
+      (card): card is (typeof categoryCards)[number] => Boolean(card),
+    );
+
+    for (const card of categoryCards) {
+      if (!ordered.some((entry) => entry.id === card.id)) ordered.push(card);
+    }
+
+    if (ordered.length > 0 && !ordered.some((card) => card.isSelected)) {
+      const activeCard = categoryCards.find((card) => card.isSelected);
+      if (activeCard && !ordered.some((entry) => entry.id === activeCard.id)) ordered.push(activeCard);
+    }
+
+    return ordered;
+  }, [categoryCards, showAllCategories]);
 
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryCharge = cartItems.length ? 20 : 0;
@@ -439,17 +476,37 @@ export default function MenuScreen() {
       )}
 
       {!loadingMenu && !menuError && menuCategories.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesRow}>
-          {menuCategories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              onPress={() => setActiveCategory(category.id)}
-              activeOpacity={0.86}
-              style={[styles.categoryBtn, activeCategory === category.id && styles.categoryBtnActive]}>
-              <Text style={[styles.categoryText, activeCategory === category.id && styles.categoryTextActive]}>{category.title}</Text>
+        <View style={styles.categoriesSection}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.sectionDividerLine} />
+            <Text style={styles.sectionTitle}>What’s on your mind ?</Text>
+            <View style={styles.sectionDividerLine} />
+          </View>
+
+          <View style={styles.categoriesGrid}>
+            {visibleCategoryCards.map((card) => (
+              <TouchableOpacity
+                key={card.id}
+                onPress={() => setActiveCategory(card.id)}
+                activeOpacity={0.9}
+                style={[styles.categoryCard, { backgroundColor: card.bgColor }, card.isSelected && styles.categoryCardActive]}>
+                <View style={[styles.categoryCardEmblem, card.isSelected && styles.categoryCardEmblemActive]}>
+                  <ResilientImage primarySource={card.imageUrl} secondarySource={FALLBACK_IMAGE} style={styles.categoryCardImage} />
+                </View>
+                <Text style={[styles.categoryCardTitle, card.isSelected && styles.categoryCardTitleActive]} numberOfLines={2}>
+                  {card.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {categoryCards.length > CATEGORY_CARD_ORDER.length && (
+            <TouchableOpacity style={styles.moreBtn} activeOpacity={0.88} onPress={() => setShowAllCategories((prev) => !prev)}>
+              <Text style={styles.moreBtnText}>{showAllCategories ? "Less" : "More"}</Text>
+              <Ionicons name={showAllCategories ? "chevron-up" : "chevron-down"} size={14} color="#D4A017" />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          )}
+        </View>
       )}
     </View>
   );
@@ -951,11 +1008,20 @@ const styles = StyleSheet.create({
   },
   heroDot: { width: 6, height: 6, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.45)" },
   heroDotActive: { width: 20, backgroundColor: "#E3B447" },
-  categoriesRow: { paddingHorizontal: 14, gap: 8, paddingBottom: 10, paddingTop: 2 },
-  categoryBtn: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
-  categoryBtnActive: { backgroundColor: "rgba(139,0,0,0.9)", borderColor: "rgba(212,160,23,0.72)" },
-  categoryText: { color: "#C6C0B6", fontSize: 12, letterSpacing: 0.1 },
-  categoryTextActive: { color: "#F5EFE4", fontWeight: "700" },
+  categoriesSection: { paddingTop: 2, paddingBottom: 4 },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },
+  sectionDividerLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.16)" },
+  sectionTitle: { color: "#F5EFE4", fontSize: 13, fontWeight: "800", letterSpacing: 1.6, textTransform: "uppercase", textAlign: "center" },
+  categoriesGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10, paddingHorizontal: 2 },
+  categoryCard: { width: "31.6%", borderRadius: 14, alignItems: "center", paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
+  categoryCardActive: { backgroundColor: "#1DAE56", borderColor: "rgba(255,255,255,0.4)", shadowColor: "#0E7A3B", shadowOpacity: 0.35, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 4 },
+  categoryCardEmblem: { width: 66, height: 66, borderRadius: 33, overflow: "hidden", marginBottom: 8, borderWidth: 2, borderColor: "rgba(255,255,255,0.85)" },
+  categoryCardEmblemActive: { borderColor: "#FFFFFF" },
+  categoryCardImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  categoryCardTitle: { color: "#2E2E2E", fontSize: 10.5, fontWeight: "800", textAlign: "center", textTransform: "uppercase", letterSpacing: 0.4, minHeight: 28, lineHeight: 14 },
+  categoryCardTitleActive: { color: "#FFFFFF" },
+  moreBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 10, paddingVertical: 9, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  moreBtnText: { color: "#D4A017", fontSize: 12, fontWeight: "800", letterSpacing: 1.4, textTransform: "uppercase" },
   card: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", gap: 8, shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 5 }, shadowRadius: 8, elevation: 1 },
   cardUnavailable: { opacity: 0.82, borderColor: "rgba(239,83,80,0.45)" },
   cardImage: { width: "100%", height: 150, borderRadius: 10 },

@@ -46,8 +46,3 @@ export const corsOptions = {
   origin: resolveOrigin,
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 };
-
-export const socketCorsOptions = {
-  origin: resolveOrigin,
-  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-};

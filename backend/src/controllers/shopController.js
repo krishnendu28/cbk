@@ -1,4 +1,3 @@
-import { getIO } from "../config/socket.js";
 import { getOrderingStatus, setOrderingStatus } from "../services/shopService.js";
 
 export async function getOrderingStatusHandler(_req, res) {
@@ -15,7 +14,6 @@ export async function updateOrderingStatusHandler(req, res) {
   try {
     const { isOrderingOpen } = req.body;
     const status = await setOrderingStatus(isOrderingOpen);
-    getIO().emit("ordering_status_updated", status);
     return res.json(status);
   } catch (error) {
     console.error(error);

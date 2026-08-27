@@ -1,6 +1,6 @@
-import { menuCategories as seedMenuCategories } from "../../../frontend/src/data/menuData.js";
-import { getFoodImage } from "../../../frontend/src/data/menuImages.js";
 import { randomUUID } from "crypto";
+import { menuCategories as seedMenuCategories } from "../data/vendor/menuData.js";
+import { getFoodImage } from "../data/vendor/menuImages.js";
 
 export function createSeededMenuState() {
   let nextMenuItemId = 1;

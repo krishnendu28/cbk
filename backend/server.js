@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import http from "http";
 import mongoose from "mongoose";
 import app from "./src/app.js";
-import { initSocket } from "./src/config/socket.js";
+import { ensureMenuLoaded } from "./src/services/menuService.js";
 import { setMongoEnabled } from "./src/services/orderService.js";
 import { setPushSubscriptionsMongoEnabled } from "./src/services/pushSubscriptionService.js";
 import { logger } from "./src/utils/logger.js";
@@ -10,7 +10,6 @@ import { logger } from "./src/utils/logger.js";
 dotenv.config();
 
 const server = http.createServer(app);
-initSocket(server);
 
 const PORT = Number(process.env.PORT) || 5000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -36,6 +35,12 @@ async function startServer() {
     setMongoEnabled(false);
     setPushSubscriptionsMongoEnabled(false);
     logger.warn("database.memory_mode", { reason: "MONGO_URI not set" });
+  }
+
+  try {
+    await ensureMenuLoaded();
+  } catch (error) {
+    logger.warn("menu.initial_load_failed", { reason: error?.message || String(error) });
   }
 
   listenWithFallback(PORT);

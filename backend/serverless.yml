@@ -1,0 +1,35 @@
+service: chakhna-backend
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'ap-south-1'}
+  stage: ${opt:stage, 'prod'}
+  memorySize: 512
+  timeout: 29
+  logRetentionInDays: 14
+  environment:
+    MONGO_URI: ${env:MONGO_URI, ''}
+    ALLOWED_ORIGINS: ${env:ALLOWED_ORIGINS, ''}
+    ALLOW_RENDER_PREVIEWS: ${env:ALLOW_RENDER_PREVIEWS, 'true'}
+    ALLOW_VERCEL_PREVIEWS: ${env:ALLOW_VERCEL_PREVIEWS, 'true'}
+    ALLOW_PRIVATE_NETWORK_ORIGINS: ${env:ALLOW_PRIVATE_NETWORK_ORIGINS, 'false'}
+    ADMIN_API_KEYS: ${env:ADMIN_API_KEYS, ''}
+    ENFORCE_ADMIN_AUTH: ${env:ENFORCE_ADMIN_AUTH, 'false'}
+    EXPO_ACCESS_TOKEN: ${env:EXPO_ACCESS_TOKEN, ''}
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - httpApi: '*'
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 5000
+    noPrependStageInUrl: true

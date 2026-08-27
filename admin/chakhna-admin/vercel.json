@@ -2,7 +2,7 @@
   "version": 2,
   "framework": "vite",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build",
+  "buildCommand": "VITE_API_BASE_URL=https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com VITE_BRAND_LOGO_URL=https://cbk-gamma.vercel.app/logo.jpeg npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {

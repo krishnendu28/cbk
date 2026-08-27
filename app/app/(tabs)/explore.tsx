@@ -3,7 +3,6 @@ import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { io } from "socket.io-client";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { AdBanner } from "@/components/admob/ad-banner";
@@ -21,7 +20,6 @@ type Order = {
   items: { name: string; quantity: number; variant: string }[];
 };
 
-const socket = io(API_BASE_URL, { autoConnect: true });
 const steps = ["Preparing", "Ready", "Delivered"];
 
 export default function OrdersScreen() {
@@ -31,45 +29,31 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    async function loadOrders() {
-      if (!session) {
-        setOrders([]);
-        return;
-      }
+    if (!session) {
+      setOrders([]);
+      return;
+    }
 
+    const sessionPhone = session.phone;
+    let cancelled = false;
+
+    async function pollOrders() {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/orders`);
         const all = Array.isArray(response.data) ? response.data : [];
-        setOrders(all.filter((order: Order) => String(order.phone) === String(session.phone)));
+        const filtered = all.filter((order: Order) => String(order.phone) === String(sessionPhone));
+        if (!cancelled) setOrders(filtered);
       } catch {
-        setOrders([]);
+        if (!cancelled) setOrders([]);
       }
     }
 
-    loadOrders();
-
-    const onNewOrder = (order: Order) => {
-      if (!session || String(order.phone) !== String(session.phone)) return;
-      setOrders((prev) => [order, ...prev.filter((item) => item._id !== order._id)]);
-    };
-
-    const onOrderUpdated = (order: Order) => {
-      if (!session || String(order.phone) !== String(session.phone)) return;
-      setOrders((prev) => prev.map((item) => (item._id === order._id ? order : item)));
-    };
-
-    const onOrderDeleted = ({ _id }: { _id: string }) => {
-      setOrders((prev) => prev.filter((item) => item._id !== _id));
-    };
-
-    socket.on("new_order", onNewOrder);
-    socket.on("order_updated", onOrderUpdated);
-    socket.on("order_deleted", onOrderDeleted);
+    pollOrders();
+    const intervalId = setInterval(pollOrders, 8000);
 
     return () => {
-      socket.off("new_order", onNewOrder);
-      socket.off("order_updated", onOrderUpdated);
-      socket.off("order_deleted", onOrderDeleted);
+      cancelled = true;
+      clearInterval(intervalId);
     };
   }, [session]);
 

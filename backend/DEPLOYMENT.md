@@ -1,65 +1,59 @@
-Render deployment for backend
+# Backend deployment (AWS Lambda)
 
-1. Connect repo and use Blueprint deploy
-- Render dashboard -> New + -> Blueprint
-- Select this repository
-- Render reads render.yaml at repository root
+The production backend is deployed with the Serverless Framework to AWS Lambda (API Gateway HTTP API). It is NOT deployed on Render. See `serverless.yml` at the backend root.
 
-2. Configure web service env vars
-- Service: cbk-backend
-- Set MONGO_URI to your MongoDB connection string
-- Set ALLOWED_ORIGINS to your frontend URL(s), comma-separated
-  Example: https://your-frontend.onrender.com,https://your-custom-domain.com
-  Include your exact Vercel app URL if you use one, for example: https://cbk-gamma.vercel.app
-- Set ADMIN_API_KEYS for role-based admin access
-  Example: owner:super-secret-owner-key,manager:super-secret-manager-key
-- Optional: set ENFORCE_ADMIN_AUTH=true to strictly require admin keys for protected routes
-  - If false (default), protected routes are temporarily allowed when ADMIN_API_KEYS is not configured
-- ALLOW_RENDER_PREVIEWS defaults to true and allows *.onrender.com origins
-- ALLOW_VERCEL_PREVIEWS defaults to true and allows *.vercel.app origins
-- ALLOW_PRIVATE_NETWORK_ORIGINS controls LAN development origins (for example http://192.168.1.20:5174)
-  - Default behavior: true in development, false in production
-  - Set to true if you open frontend/admin from another laptop on the same Wi-Fi
-- Optional: set EXPO_ACCESS_TOKEN to enable authenticated requests to Expo Push API
-- For local development, use the origin `http://localhost:5174` (the `/pos` path is not part of CORS origin matching)
+## 1) Deploy
 
-Push notifications when app is closed
-- App must be a development build or production build. Expo Go does not support full background push behavior.
-- Build credentials must be configured (FCM for Android, APNs for iOS) in Expo/EAS.
-- App registers device push token at runtime via `/api/notifications/device-token`.
-- Admin broadcast endpoint (`/api/notifications/broadcast`) now sends both Socket.IO events and Expo push notifications.
+```bash
+cd backend
+npm ci
+npx serverless deploy --stage prod
+```
 
-3. Configure cron keepalive env var
-- Service: cbk-backend-keepwarm
-- Set BACKEND_HEALTHCHECK_URL to your backend health endpoint
-  Example: https://cbk-4dmf.onrender.com/api/health
+The endpoint is printed at the end of the deploy. Current production endpoint:
 
-4. Why this setup
-- Free tier web services can spin down when idle
-- Cron hits /api/health every 10 minutes to reduce cold starts
-- healthCheckPath is configured so Render can mark service healthy
+`https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com`
 
-5. Verify after deploy
-- Open backend health URL in browser
-- Expect JSON response: {"ok":true}
-- Place a test order from frontend and verify admin live updates
+Verify after deploy:
 
-6. Admin-protected route usage
-- For protected endpoints, send one of these headers:
-  - Authorization: Bearer <admin_key>
-  - x-admin-key: <admin_key>
+```bash
+curl https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com/api/health
+```
+
+Expected response: `{"ok":true,...,"database":"mongo"}` (must say `mongo`, not `memory`).
+
+## 2) Environment variables (serverless.yml / deploy env)
+
+Pass them when deploying (they are read from your shell environment into `serverless.yml`):
+
+- MONGO_URI: MongoDB connection string, e.g. `mongodb+srv://<username>:<password>@<cluster-url>/chakhna?retryWrites=true&w=majority`
+- ALLOWED_ORIGINS: comma-separated frontend origins. Not required because `ALLOW_VERCEL_PREVIEWS=true` and `ALLOW_PRIVATE_NETWORK_ORIGINS`/`localhost` are handled in `src/config/cors.js`.
+- ADMIN_API_KEYS: role-based admin access, e.g. `owner:secret-owner-key,manager:secret-manager-key`
+- ENFORCE_ADMIN_AUTH: `false` by default; set `true` to strictly require admin keys on protected routes
+- EXPO_ACCESS_TOKEN: enables authenticated requests to Expo Push API
+
+## 3) Lambda cold start + keepalive
+
+- Memory 512MB, timeout 29s (`serverless.yml`).
+- A keepalive can be scheduled anywhere (e.g. a cron hit to `/api/health`) to reduce cold starts.
+
+## 4) CORS
+
+- Any `*.vercel.app` and `*.onrender.com` preview origins are allowed by default.
+- All `localhost:<port>` origins are allowed by default.
+- For a custom domain, add it to `ALLOWED_ORIGINS` and redeploy.
+
+## 5) Admin-protected route usage
+
+- For protected endpoints, send `Authorization: Bearer <admin_key>` or `x-admin-key: <admin_key>`.
 - Role restrictions:
   - owner/manager: menu create/update, order status update
   - owner only: menu delete, order delete
 
-7. MongoDB checklist (Render + Atlas)
-- Render web service env var key must be exactly: MONGO_URI
-- Use a URI with an explicit database name:
-  - mongodb+srv://<username>:<password>@<cluster-url>/chakhna?retryWrites=true&w=majority
-- Atlas user permissions:
-  - Database Access -> Edit user -> Role must include readWrite on the target DB (for example chakhna)
-- Atlas network access:
-  - Network Access -> Add IP Address -> Allow Access from Anywhere (0.0.0.0/0) for initial testing
-  - After verification, tighten rules as needed
-- Redeploy backend after changing env vars
-- Verify /api/health shows database: "mongo" (not "memory")
+## 6) MongoDB
+
+- Lambda env var key must be exactly `MONGO_URI`.
+- Use a URI with an explicit database name.
+- Atlas user must have `readWrite` on the target DB.
+- Atlas network access must allow AWS (0.0.0.0/0 for initial testing).
+- Verify `/api/health` reports `database: "mongo"`.

@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import { getIO } from "../config/socket.js";
 import { sendBroadcastPushNotification } from "../services/pushNotificationService.js";
 import { getPushSubscriptionCount, registerPushSubscription } from "../services/pushSubscriptionService.js";
 import { logger } from "../utils/logger.js";
@@ -39,7 +38,6 @@ export async function broadcastNotificationHandler(req, res) {
       createdAt: new Date().toISOString(),
     };
 
-    getIO().emit("broadcast_notification", notification);
     const pushResult = await sendBroadcastPushNotification({
       title: "Message From Chakhna",
       body: message,

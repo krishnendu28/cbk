@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "framework": null,
+  "installCommand": "npm --prefix frontend ci && npm --prefix admin/chakhna-admin ci",
+  "buildCommand": "node build.mjs",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/admin/:path*", "destination": "/admin/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

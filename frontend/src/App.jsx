@@ -5,7 +5,7 @@ import OrderHistory from "./pages/OrderHistory";
 
 const USER_SESSION_KEY = "cbk_user_session";
 const ADMIN_DASHBOARD_URL =
-  import.meta.env.VITE_ADMIN_DASHBOARD_URL || "https://cbk-admin.vercel.app";
+  import.meta.env.VITE_ADMIN_DASHBOARD_URL || "/admin";
 
 function App() {
   const [userSession, setUserSession] = useState(() => {

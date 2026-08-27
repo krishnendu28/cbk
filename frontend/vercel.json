@@ -2,7 +2,7 @@
   "version": 2,
   "framework": "vite",
   "installCommand": "npm ci",
-  "buildCommand": "VITE_API_BASE_URL=https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com VITE_ADMIN_DASHBOARD_URL=https://cbk-admin.vercel.app npm run build",
+  "buildCommand": "VITE_API_BASE_URL=https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com VITE_ADMIN_DASHBOARD_URL=https://cbk-gamma.vercel.app/admin npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {

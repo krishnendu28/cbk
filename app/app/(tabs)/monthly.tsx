@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,7 @@ import { useSession } from "@/context/session-context";
 import { AdBanner } from "@/components/admob/ad-banner";
 import {
   MONTHLY_BADGES,
+  MONTHLY_CHINESE_SPECIAL,
   MONTHLY_CONTACT_DIAL,
   MONTHLY_CONTACT_LABEL,
   MONTHLY_FEATURES,
@@ -28,13 +30,33 @@ import {
   MONTHLY_NOTE,
   MONTHLY_PERFECT_FOR,
   MONTHLY_PLANS,
+  MONTHLY_PLAN_LABELS,
   MONTHLY_TAGLINE,
   MONTHLY_TITLE,
 } from "@/constants/monthly";
-import type { MonthlyPlan } from "@/constants/monthly";
+import type { MonthlyPlan, MonthlyPlanType } from "@/constants/monthly";
 import type { MonthlySubscription } from "@/types/monthly";
+import { getMenuImageByFileName } from "@/utils/get-menu-item-image";
 
-type PlanType = "Veg" | "NonVeg";
+type PlanType = MonthlyPlanType;
+
+const PLAN_OPTIONS: { key: PlanType; label: string }[] = [
+  { key: "Veg", label: "🌿 Only Veg" },
+  { key: "NonVeg", label: "🍗 Non-Veg + Veg" },
+  { key: "OnlyNonVeg", label: "🍗 Only NonVeg" },
+];
+
+const MENU_TYPE_IMAGE: Record<PlanType, string> = {
+  Veg: "Veg-Thali.jpg",
+  NonVeg: "Fish Thali.webp",
+  OnlyNonVeg: "Chicken-thali.jpeg",
+};
+
+const PLAN_CARDS: { key: PlanType; title: string; subtitle: string; color: string }[] = [
+  { key: "Veg", title: "ONLY VEG MENU", subtitle: "Healthy & home-style", color: "#1DAE56" },
+  { key: "NonVeg", title: "NON-VEG + VEG MENU", subtitle: "Balanced mix menu", color: "#C9672E" },
+  { key: "OnlyNonVeg", title: "ONLY NON-VEG MENU", subtitle: "Premium non-veg every meal", color: "#C0392B" },
+];
 
 export default function MonthlyScreen() {
   const { session, isHydrated } = useSession();
@@ -223,7 +245,7 @@ export default function MonthlyScreen() {
                 </View>
               </View>
               <View style={styles.statusDetailBox}>
-                <Text style={styles.statusDetailLine}>Plan: {activeSubscription.planType === "Veg" ? "Only Veg" : "Non-Veg + Veg"}</Text>
+                <Text style={styles.statusDetailLine}>Plan: {MONTHLY_PLAN_LABELS[activeSubscription.planType]}</Text>
                 <Text style={styles.statusDetailLine}>Period: {formatDate(activeSubscription.startDate)} → {formatDate(activeSubscription.endDate)}</Text>
                 <Text style={styles.statusDetailLine}>Delivery address: {activeSubscription.address}</Text>
               </View>
@@ -268,20 +290,16 @@ export default function MonthlyScreen() {
 
             <Text style={styles.fieldLabel}>Menu plan</Text>
             <View style={styles.segmentRow}>
-              <TouchableOpacity
-                style={[styles.segmentBtn, planType === "Veg" && styles.segmentBtnActive]}
-                onPress={() => setPlanType("Veg")}
-                activeOpacity={0.9}
-              >
-                <Text style={[styles.segmentBtnText, planType === "Veg" && styles.segmentBtnTextActive]}>Only Veg</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.segmentBtn, planType === "NonVeg" && styles.segmentBtnActive]}
-                onPress={() => setPlanType("NonVeg")}
-                activeOpacity={0.9}
-              >
-                <Text style={[styles.segmentBtnText, planType === "NonVeg" && styles.segmentBtnTextActive]}>Non-Veg + Veg</Text>
-              </TouchableOpacity>
+              {PLAN_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[styles.segmentBtn, planType === option.key && styles.segmentBtnActive]}
+                  onPress={() => setPlanType(option.key)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={[styles.segmentBtnText, planType === option.key && styles.segmentBtnTextActive]}>{option.label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             {MONTHLY_PLANS[planType].map((plan) => {
@@ -290,7 +308,10 @@ export default function MonthlyScreen() {
                 <TouchableOpacity
                   key={plan.id}
                   style={[styles.planOption, isSelected && styles.planOptionSelected]}
-                  onPress={() => setSelectedPlan(plan)}
+                  onPress={() => {
+                    setSelectedPlan(plan);
+                    setMenuType(plan.planType);
+                  }}
                   activeOpacity={0.9}
                 >
                   <View style={styles.planOptionLeft}>
@@ -322,30 +343,30 @@ export default function MonthlyScreen() {
           <Text style={styles.sectionTitle}>Pricing Plans</Text>
         </View>
         <View style={styles.plansRow}>
-          {renderPlanCard("Veg", "ONLY VEG MENU", "Healthy & home-style", "#1DAE56")}
+          {PLAN_CARDS.map((card) => renderPlanCard(card.key, card.title, card.subtitle, card.color))}
         </View>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Monthly Menu Chart</Text>
-          <Text style={styles.sectionSubtitle}>As per weekly rotation</Text>
+          <Text style={styles.sectionSubtitle}>Choose a menu option to see its picture</Text>
         </View>
         <View style={styles.segmentRow}>
-          <TouchableOpacity
-            style={[styles.segmentBtn, menuType === "Veg" && styles.segmentBtnActive]}
-            onPress={() => setMenuType("Veg")}
-            activeOpacity={0.9}
-          >
-            <Text style={[styles.segmentBtnText, menuType === "Veg" && styles.segmentBtnTextActive]}>Veg Menu</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segmentBtn, menuType === "NonVeg" && styles.segmentBtnActive]}
-            onPress={() => setMenuType("NonVeg")}
-            activeOpacity={0.9}
-          >
-            <Text style={[styles.segmentBtnText, menuType === "NonVeg" && styles.segmentBtnTextActive]}>Non-Veg + Veg</Text>
-          </TouchableOpacity>
+          {PLAN_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.key}
+              style={[styles.segmentBtn, menuType === option.key && styles.segmentBtnActive]}
+              onPress={() => setMenuType(option.key)}
+              activeOpacity={0.9}
+            >
+              <Text style={[styles.segmentBtnText, menuType === option.key && styles.segmentBtnTextActive]}>{option.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
         <View style={styles.menuCard}>
+          <View style={styles.menuImageWrap}>
+            <Image source={getMenuImageByFileName(MENU_TYPE_IMAGE[menuType])} style={styles.menuImage} resizeMode="cover" />
+            <Text style={styles.menuImageCaption}>{MONTHLY_PLAN_LABELS[menuType]} monthly menu</Text>
+          </View>
           <View style={styles.menuHeaderRow}>
             <Text style={[styles.menuColDay, styles.menuHeadText]}>Day</Text>
             <Text style={[styles.menuColMeal, styles.menuHeadText]}>Lunch</Text>
@@ -359,6 +380,16 @@ export default function MonthlyScreen() {
             </View>
           ))}
         </View>
+        {menuType !== "Veg" && (
+          <View style={styles.chineseCard}>
+            <Text style={styles.chineseTitle}>🥡 Chinese Special — 3-day rotation</Text>
+            {MONTHLY_CHINESE_SPECIAL.map((item) => (
+              <Text key={item} style={styles.chineseRow}>
+                • {item}
+              </Text>
+            ))}
+          </View>
+        )}
         <Text style={styles.menuNote}>{MONTHLY_NOTE}</Text>
 
         <View style={styles.sectionHeader}>
@@ -446,9 +477,9 @@ const styles = StyleSheet.create({
     maxHeight: 90,
   },
   segmentRow: { flexDirection: "row", gap: 8, marginTop: 2 },
-  segmentBtn: { flex: 1, backgroundColor: "#1C1C1C", borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: "#303030", alignItems: "center" },
+  segmentBtn: { flex: 1, backgroundColor: "#1C1C1C", borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: "#303030", alignItems: "center", justifyContent: "center" },
   segmentBtnActive: { backgroundColor: "#2B4A2E", borderColor: "#1DAE56" },
-  segmentBtnText: { color: "#A5A5A5", fontSize: 13, fontWeight: "700" },
+  segmentBtnText: { color: "#A5A5A5", fontSize: 11, fontWeight: "700", textAlign: "center" },
   segmentBtnTextActive: { color: "#D9F2DD" },
   planOption: {
     flexDirection: "row",
@@ -503,6 +534,9 @@ const styles = StyleSheet.create({
   priceValue: { color: "#D4A017", fontSize: 13.5, fontWeight: "800" },
 
   menuCard: { backgroundColor: "#171717", borderRadius: 14, borderWidth: 1, borderColor: "#2D2D2D", overflow: "hidden", marginTop: 10 },
+  menuImageWrap: { width: "100%", aspectRatio: 16 / 9, backgroundColor: "#0F0F0F" },
+  menuImage: { width: "100%", height: "100%" },
+  menuImageCaption: { position: "absolute", left: 10, bottom: 9, color: "#FFFFFF", fontSize: 12.5, fontWeight: "800", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 6, paddingHorizontal: 9, paddingVertical: 4, overflow: "hidden" },
   menuHeaderRow: { flexDirection: "row", backgroundColor: "#202A22", paddingVertical: 9, paddingHorizontal: 10 },
   menuHeadText: { color: "#B8E9C6", fontSize: 11.5, fontWeight: "800", letterSpacing: 0.4 },
   menuRow: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: "#232323" },
@@ -511,6 +545,10 @@ const styles = StyleSheet.create({
   menuDayText: { color: "#F3D48B", fontWeight: "700" },
   menuMealText: { color: "#D8D8D8" },
   menuNote: { color: "#8C8C8C", fontSize: 11, textAlign: "center", marginTop: 8, fontStyle: "italic" },
+
+  chineseCard: { backgroundColor: "#1C1606", borderRadius: 12, borderWidth: 1, borderColor: "#5A4510", padding: 12, gap: 5, marginTop: 10 },
+  chineseTitle: { color: "#F3D48B", fontSize: 12.5, fontWeight: "800" },
+  chineseRow: { color: "#D8C59B", fontSize: 12, lineHeight: 17 },
 
   featuresCard: { backgroundColor: "#171717", borderRadius: 14, borderWidth: 1, borderColor: "#2D2D2D", padding: 12, gap: 9 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 9 },

@@ -15,7 +15,7 @@ const monthlySubscriptionSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true, index: true },
     address: { type: String, required: true, trim: true },
-    planType: { type: String, enum: ["Veg", "NonVeg"], required: true },
+    planType: { type: String, enum: ["Veg", "NonVeg", "OnlyNonVeg"], required: true },
     planId: { type: String, trim: true },
     mealsTotal: { type: Number, required: true, min: 1 },
     mealsRemaining: { type: Number, required: true, min: 0 },

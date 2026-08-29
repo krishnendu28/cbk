@@ -1,6 +1,8 @@
+export type MonthlyPlanType = "Veg" | "NonVeg" | "OnlyNonVeg";
+
 export type MonthlyPlan = {
   id: string;
-  planType: "Veg" | "NonVeg";
+  planType: MonthlyPlanType;
   meals: number;
   label: string;
   price: number;
@@ -15,6 +17,12 @@ export type MonthlyMenuRow = {
 
 export const MONTHLY_TITLE = "Monthly Food Subscription";
 export const MONTHLY_TAGLINE = '"By Kilo By Choice By Taste"';
+
+export const MONTHLY_PLAN_LABELS: Record<MonthlyPlanType, string> = {
+  Veg: "Only Veg",
+  NonVeg: "Non-Veg + Veg",
+  OnlyNonVeg: "Only NonVeg",
+};
 
 export const MONTHLY_HIGHLIGHTS = [
   "Healthy - Homely - Hassle-Free",
@@ -45,7 +53,7 @@ export const MONTHLY_CONTACT_DIAL = "+918420252042";
 export const MONTHLY_FOOTER_QUOTE = "Ghar Ka Khana, Har Din.";
 export const MONTHLY_FOOTER_TAGLINE = "By Kilo By Choice By Taste";
 
-export const MONTHLY_PLANS: Record<"Veg" | "NonVeg", MonthlyPlan[]> = {
+export const MONTHLY_PLANS: Record<MonthlyPlanType, MonthlyPlan[]> = {
   Veg: [
     { id: "veg-60", planType: "Veg", meals: 60, label: "60 Meals – Lunch + Dinner", price: 4100, delivery: "Lunch + Dinner" },
     { id: "veg-30", planType: "Veg", meals: 30, label: "30 Meals – Lunch or Dinner", price: 2200, delivery: "Lunch or Dinner" },
@@ -56,9 +64,14 @@ export const MONTHLY_PLANS: Record<"Veg" | "NonVeg", MonthlyPlan[]> = {
     { id: "nonveg-30", planType: "NonVeg", meals: 30, label: "30 Meals – Lunch or Dinner", price: 2900, delivery: "Lunch or Dinner" },
     { id: "nonveg-15", planType: "NonVeg", meals: 15, label: "15 Meals – Lunch or Dinner", price: 1600, delivery: "Lunch or Dinner" },
   ],
+  OnlyNonVeg: [
+    { id: "onlynonveg-60", planType: "OnlyNonVeg", meals: 60, label: "60 Meals – Lunch + Dinner", price: 6700, delivery: "Lunch + Dinner" },
+    { id: "onlynonveg-30", planType: "OnlyNonVeg", meals: 30, label: "30 Meals – Lunch or Dinner", price: 3500, delivery: "Lunch or Dinner" },
+    { id: "onlynonveg-15", planType: "OnlyNonVeg", meals: 15, label: "15 Meals – Lunch or Dinner", price: 2150, delivery: "Lunch or Dinner" },
+  ],
 };
 
-export const MONTHLY_MENU: Record<"Veg" | "NonVeg", MonthlyMenuRow[]> = {
+export const MONTHLY_MENU: Record<MonthlyPlanType, MonthlyMenuRow[]> = {
   NonVeg: [
     { day: "Monday", lunch: "Veg Thali", dinner: "Dal Tadka Combo" },
     { day: "Tuesday", lunch: "Veg Thali", dinner: "Aalu Paratha" },
@@ -77,6 +90,21 @@ export const MONTHLY_MENU: Record<"Veg" | "NonVeg", MonthlyMenuRow[]> = {
     { day: "Saturday", lunch: "Kadhi Chawal", dinner: "Aalu Dum Combo" },
     { day: "Sunday", lunch: "Veg Fried Rice + Paneer Chilli", dinner: "Mushroom Masala (Roti)" },
   ],
+  OnlyNonVeg: [
+    { day: "Monday", lunch: "🍳 Egg Thali", dinner: "🍗 Chicken + Roti" },
+    { day: "Tuesday", lunch: "🐟 Fish Thali", dinner: "🍗 Chicken Tadka + Roti" },
+    { day: "Wednesday", lunch: "🍳 Egg Thali", dinner: "🥡 Chinese: Chili Chicken (3pcs) + Veg Noodles" },
+    { day: "Thursday", lunch: "🐟 Fish Thali", dinner: "🥡 Chinese: Veg Fried Rice + Chili Chicken (3pcs)" },
+    { day: "Friday", lunch: "🍗 Biryani", dinner: "🍗 Chicken + Roti" },
+    { day: "Saturday", lunch: "🐟 Fish Thali", dinner: "🍗 Chicken Bharta + Roti" },
+    { day: "Sunday", lunch: "🍗 Chicken Thali", dinner: "🥡 Chinese: Egg Chicken / Schezwan Noodles" },
+  ],
 };
+
+export const MONTHLY_CHINESE_SPECIAL = [
+  "Day 1: Chili Chicken (3pcs) + Veg Noodles",
+  "Day 2: Veg Fried Rice + Chili Chicken (3pcs)",
+  "Day 3: Egg Chicken Noodles / Schezwan Noodles",
+];
 
 export const MONTHLY_NOTE = "Menu may change slightly based on seasonal availability & freshness.";

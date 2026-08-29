@@ -34,6 +34,7 @@ import {
   fetchMonthlyPlans,
   MonthlyPlan,
   MonthlyPlanCatalog,
+  MonthlyPlanType,
   MonthlyStatus,
   MonthlySubscription,
   MonthlyStats,
@@ -47,6 +48,18 @@ const statusStyles: Record<MonthlyStatus, string> = {
   Active: "bg-emerald-100 text-emerald-800 border-emerald-200",
   Completed: "bg-sky-100 text-sky-800 border-sky-200",
   Cancelled: "bg-rose-100 text-rose-800 border-rose-200",
+};
+
+const planTypeStyles: Record<MonthlyPlanType, string> = {
+  Veg: "bg-lime-100 text-lime-800 border-lime-200",
+  NonVeg: "bg-orange-100 text-orange-800 border-orange-200",
+  OnlyNonVeg: "bg-rose-100 text-rose-800 border-rose-200",
+};
+
+const planTypeLabels: Record<MonthlyPlanType, string> = {
+  Veg: "Only Veg",
+  NonVeg: "Non-Veg + Veg",
+  OnlyNonVeg: "Only NonVeg",
 };
 
 function formatDate(value?: string) {
@@ -104,7 +117,7 @@ type FormState = {
   name: string;
   phone: string;
   address: string;
-  planType: "Veg" | "NonVeg";
+  planType: MonthlyPlanType;
   meals: string;
 };
 
@@ -135,12 +148,13 @@ export default function MonthlyMeals() {
     revenue: 0,
     vegCount: 0,
     nonVegCount: 0,
+    onlyNonVegCount: 0,
   });
   const [catalog, setCatalog] = useState<MonthlyPlanCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<MonthlyStatus | "All">("All");
-  const [planFilter, setPlanFilter] = useState<"All" | "Veg" | "NonVeg">("All");
+  const [planFilter, setPlanFilter] = useState<"All" | MonthlyPlanType>("All");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState("");
 
@@ -320,7 +334,7 @@ export default function MonthlyMeals() {
     }
   }
 
-  const selectPlans = (planType: "Veg" | "NonVeg") => catalog?.plans[planType] ?? [];
+  const selectPlans = (planType: MonthlyPlanType) => catalog?.plans[planType] ?? [];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -341,7 +355,7 @@ export default function MonthlyMeals() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center"><Activity className="w-5 h-5 text-emerald-600" /></div>
@@ -387,6 +401,15 @@ export default function MonthlyMeals() {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center"><Beef className="w-5 h-5 text-rose-600" /></div>
+            <div>
+              <p className="text-xs text-muted-foreground">Only Non-Veg Plans</p>
+              <p className="text-2xl font-bold">{stats.onlyNonVegCount ?? 0}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -405,12 +428,13 @@ export default function MonthlyMeals() {
             <SelectItem value="Cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={planFilter} onValueChange={(value) => setPlanFilter(value as "All" | "Veg" | "NonVeg")}>
+        <Select value={planFilter} onValueChange={(value) => setPlanFilter(value as "All" | MonthlyPlanType)}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Plan" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All plans</SelectItem>
             <SelectItem value="Veg">Veg only</SelectItem>
             <SelectItem value="NonVeg">Non-Veg + Veg</SelectItem>
+            <SelectItem value="OnlyNonVeg">Only NonVeg</SelectItem>
           </SelectContent>
         </Select>
         {isLoading && (
@@ -457,9 +481,9 @@ export default function MonthlyMeals() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <Badge variant="secondary" className={row.planType === "NonVeg" ? "bg-orange-100 text-orange-800 border-orange-200" : "bg-lime-100 text-lime-800 border-lime-200"}>
-                        {row.planType === "NonVeg" ? <Beef className="w-3 h-3 mr-1" /> : <UtensilsCrossed className="w-3 h-3 mr-1" />}
-                        {row.planType}
+                      <Badge variant="secondary" className={planTypeStyles[row.planType]}>
+                        {row.planType === "Veg" ? <UtensilsCrossed className="w-3 h-3 mr-1" /> : <Beef className="w-3 h-3 mr-1" />}
+                        {planTypeLabels[row.planType]}
                       </Badge>
                     </div>
                     <div className="text-xs mt-1">{planLabel(plan, row)}</div>
@@ -535,11 +559,12 @@ export default function MonthlyMeals() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Plan type</Label>
-                <Select value={form.planType} onValueChange={(value) => setForm({ ...form, planType: value as "Veg" | "NonVeg", meals: "" })}>
+                <Select value={form.planType} onValueChange={(value) => setForm({ ...form, planType: value as MonthlyPlanType, meals: "" })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Veg">Only Veg</SelectItem>
                     <SelectItem value="NonVeg">Non-Veg + Veg</SelectItem>
+                    <SelectItem value="OnlyNonVeg">Only NonVeg</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

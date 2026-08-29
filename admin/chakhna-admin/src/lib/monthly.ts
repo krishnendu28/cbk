@@ -1,6 +1,6 @@
 import { USER_BACKEND_URL } from "@/lib/bridge";
 
-export type MonthlyPlanType = "Veg" | "NonVeg";
+export type MonthlyPlanType = "Veg" | "NonVeg" | "OnlyNonVeg";
 export type MonthlyStatus = "Active" | "Completed" | "Cancelled";
 
 export type MonthlyPlan = {
@@ -57,6 +57,7 @@ export type MonthlyStats = {
   revenue: number;
   vegCount: number;
   nonVegCount: number;
+  onlyNonVegCount?: number;
 };
 
 export type MonthlySubscriptionResponse = {
@@ -143,6 +144,7 @@ function emptyDemoStats(subscriptions: MonthlySubscription[]): MonthlyStats {
     revenue: subscriptions.reduce((sum, row) => sum + Number(row.price || 0), 0),
     vegCount: active.filter((row) => row.planType === "Veg").length,
     nonVegCount: active.filter((row) => row.planType === "NonVeg").length,
+    onlyNonVegCount: active.filter((row) => row.planType === "OnlyNonVeg").length,
   };
 }
 

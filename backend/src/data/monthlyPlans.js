@@ -32,11 +32,15 @@ const basePlans = [
   { id: "nonveg-60", planType: "NonVeg", meals: 60, label: "60 Meals (Lunch + Dinner)", price: 5000, delivery: "Lunch + Dinner" },
   { id: "nonveg-30", planType: "NonVeg", meals: 30, label: "30 Meals (Lunch or Dinner)", price: 2900, delivery: "Lunch or Dinner" },
   { id: "nonveg-15", planType: "NonVeg", meals: 15, label: "15 Meals (Lunch or Dinner)", price: 1600, delivery: "Lunch or Dinner" },
+  { id: "onlynonveg-60", planType: "OnlyNonVeg", meals: 60, label: "60 Meals (Lunch + Dinner)", price: 6700, delivery: "Lunch + Dinner" },
+  { id: "onlynonveg-30", planType: "OnlyNonVeg", meals: 30, label: "30 Meals (Lunch or Dinner)", price: 3500, delivery: "Lunch or Dinner" },
+  { id: "onlynonveg-15", planType: "OnlyNonVeg", meals: 15, label: "15 Meals (Lunch or Dinner)", price: 2150, delivery: "Lunch or Dinner" },
 ];
 
 export const MONTHLY_PLANS = {
   Veg: basePlans.filter((plan) => plan.planType === "Veg"),
   NonVeg: basePlans.filter((plan) => plan.planType === "NonVeg"),
+  OnlyNonVeg: basePlans.filter((plan) => plan.planType === "OnlyNonVeg"),
 };
 
 export const MONTHLY_PLANS_FLAT = basePlans;
@@ -65,9 +69,26 @@ const vegMenu = [
   { day: "Sunday", lunch: "Veg Fried Rice + Paneer Chilli", dinner: "Mushroom Masala (Roti)" },
 ];
 
+const onlyNonVegMenu = [
+  { day: "Monday", lunch: "Egg Thali", dinner: "Chicken + Roti" },
+  { day: "Tuesday", lunch: "Fish Thali", dinner: "Chicken Tadka + Roti" },
+  { day: "Wednesday", lunch: "Egg Thali", dinner: "Chinese: Chili Chicken (3pcs) + Veg Noodles" },
+  { day: "Thursday", lunch: "Fish Thali", dinner: "Chinese: Veg Fried Rice + Chili Chicken (3pcs)" },
+  { day: "Friday", lunch: "Chicken Biryani", dinner: "Chicken + Roti" },
+  { day: "Saturday", lunch: "Fish Thali", dinner: "Chicken Bharta + Roti" },
+  { day: "Sunday", lunch: "Chicken Thali", dinner: "Chinese: Egg Chicken / Schezwan Noodles" },
+];
+
+export const MONTHLY_CHINESE_SPECIAL = [
+  "Day 1: Chili Chicken (3pcs) + Veg Noodles",
+  "Day 2: Veg Fried Rice + Chili Chicken (3pcs)",
+  "Day 3: Egg Chicken Noodles / Schezwan Noodles",
+];
+
 export const MONTHLY_MENU = {
   NonVeg: nonVegMenu,
   Veg: vegMenu,
+  OnlyNonVeg: onlyNonVegMenu,
 };
 
 export const MONTHLY_LOCATION = "Opposite of C Gate, Shapoorji Complex";
@@ -75,5 +96,5 @@ export const MONTHLY_CONTACT_PHONE = "+918420252042";
 export const MONTHLY_CONTACT_PHONE_LABEL = "8420252042";
 export const MONTHLY_FOOTER_QUOTE = "Ghar Ka Khana, Har Din.";
 
-export const MONTHLY_PLAN_TYPES = Object.freeze(["Veg", "NonVeg"]);
+export const MONTHLY_PLAN_TYPES = Object.freeze(["Veg", "NonVeg", "OnlyNonVeg"]);
 export const MONTHLY_STATUSES = Object.freeze(["Active", "Completed", "Cancelled"]);

@@ -32,6 +32,21 @@ server.listen(port, async () => {
   try {
     const plans = await req("GET", "/api/monthly/plans");
     console.log("plans status:", plans.status, "| title:", plans.json?.title, "| veg plans:", plans.json?.plans?.Veg?.length, "| menu days:", plans.json?.menu?.Veg?.length);
+    console.log("only-nonveg plans:", JSON.stringify(plans.json?.plans?.OnlyNonVeg));
+
+    const createdNonVegOnly = await req("POST", "/api/monthly/subscriptions", {
+      name: "NonVeg Only User",
+      phone: "9812345670",
+      address: "Flat 202, Tower B, Shapoorji",
+      planType: "OnlyNonVeg",
+      meals: 60,
+    });
+    console.log("only-nonveg create:", createdNonVegOnly.status, "| price:", createdNonVegOnly.json?.price, "| remaining:", createdNonVegOnly.json?.mealsRemaining);
+    if (createdNonVegOnly.json?._id) {
+      await req("DELETE", `/api/monthly/subscriptions/${createdNonVegOnly.json._id}`);
+    }
+    const onlyNonVegMenu = await req("GET", "/api/monthly/plans");
+    console.log("only-nonveg menu Sunday dinner:", onlyNonVegMenu.json?.menu?.OnlyNonVeg?.find((row) => row.day === "Sunday")?.dinner);
 
     const created = await req("POST", "/api/monthly/subscriptions", {
       name: "Test User",

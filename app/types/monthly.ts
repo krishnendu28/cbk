@@ -12,7 +12,7 @@ export type MonthlySubscription = {
   name: string;
   phone: string;
   address: string;
-  planType: "Veg" | "NonVeg";
+  planType: "Veg" | "NonVeg" | "OnlyNonVeg";
   planId?: string;
   mealsTotal: number;
   mealsRemaining: number;

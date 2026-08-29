@@ -332,5 +332,6 @@ export function getMonthlyStats(subscriptions) {
     revenue: rows.reduce((sum, row) => sum + Number(row.price || 0), 0),
     vegCount: active.filter((row) => row.planType === "Veg").length,
     nonVegCount: active.filter((row) => row.planType === "NonVeg").length,
+    onlyNonVegCount: active.filter((row) => row.planType === "OnlyNonVeg").length,
   };
 }

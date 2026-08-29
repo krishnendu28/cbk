@@ -55,7 +55,7 @@ export default function LiveOrders() {
     loadOrders();
 
     return subscribeBridgeOrders(
-      (order) => setOrders((prev) => [order, ...prev]),
+      (order) => setOrders((prev) => (prev.some((o) => o._id === order._id) ? prev : [order, ...prev])),
       (updatedOrder) => setOrders((prev) => prev.map((order) => (order._id === updatedOrder._id ? updatedOrder : order))),
       (payload) => setOrders((prev) => prev.filter((order) => order._id !== payload._id)),
     );

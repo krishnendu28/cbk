@@ -1,9 +1,6 @@
+process.env.IS_OFFLINE = "true";
+
 import http from "http";
-import mongoose from "mongoose";
-import app from "../src/app.js";
-import { ensureMenuLoaded } from "../src/services/menuService.js";
-import { setMongoEnabled } from "../src/services/orderService.js";
-import { setPushSubscriptionsMongoEnabled } from "../src/services/pushSubscriptionService.js";
 
 function request(port, path, { method = "GET", body, headers = {} } = {}) {
   return new Promise((resolve, reject) => {
@@ -41,6 +38,11 @@ function request(port, path, { method = "GET", body, headers = {} } = {}) {
 }
 
 async function main() {
+  const { default: app } = await import("../src/app.js");
+  const { setMongoEnabled } = await import("../src/services/orderService.js");
+  const { setPushSubscriptionsMongoEnabled } = await import("../src/services/pushSubscriptionService.js");
+  const { ensureMenuLoaded } = await import("../src/services/menuService.js");
+
   setMongoEnabled(false);
   setPushSubscriptionsMongoEnabled(false);
   await ensureMenuLoaded();
@@ -52,30 +54,24 @@ async function main() {
 
   const helper = (path, opts) => request(port, path, opts);
 
-  // Health
   let r = await helper("/api/health");
   console.log("health", r.status, JSON.stringify(r.body));
 
-  // Menu list
   r = await helper("/api/menu");
   console.log("menu list status", r.status, "categories", r.body?.length);
 
-  // Shop ordering status
   r = await helper("/api/shop/ordering-status");
   console.log("ordering status", r.status, JSON.stringify(r.body));
 
-  // Outlet settings
   r = await helper("/api/outlets/1/settings");
   console.log("settings get", r.status);
 
-  // Auth login
   r = await helper("/api/auth/login", {
     method: "POST",
     body: { email: "owner@tabio.com", password: "demo1234" },
   });
   console.log("login", r.status, "role", r.body?.user?.role);
 
-  // Create order
   r = await helper("/api/orders", {
     method: "POST",
     headers: { origin: "http://localhost:5173" },
@@ -87,11 +83,29 @@ async function main() {
       total: 100,
     },
   });
-  console.log("create order", r.status, r.body?._id ? "OK" : JSON.stringify(r.body));
+  console.log("create order", r.status, r.body?._id ? `OK ${r.body.orderCode}` : JSON.stringify(r.body));
+  if (r.status !== 201) {
+    throw new Error("create order did not return 201");
+  }
+  const orderId = r.body._id;
+  const orderCode = r.body.orderCode;
 
-  // List orders
   r = await helper("/api/orders");
   console.log("list orders", r.status, "count", r.body?.length);
+
+  r = await helper(`/api/orders/${orderId}`, {
+    method: "PATCH",
+    body: { status: "Ready" },
+  });
+  console.log("patch status", r.status, "status", r.body?.status);
+
+  r = await helper(`/api/orders/${orderId}`, {
+    method: "DELETE",
+  });
+  console.log("delete order", r.status, "ok", r.body?.ok, "code", orderCode);
+
+  r = await helper("/api/orders");
+  console.log("list orders after delete", r.status, "count", r.body?.length);
 
   console.log("\nALL SMOKE TESTS DONE");
   await new Promise((resolve) => server.close(resolve));

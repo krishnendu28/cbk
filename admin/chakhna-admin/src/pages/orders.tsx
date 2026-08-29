@@ -34,7 +34,7 @@ export default function Orders() {
     load();
 
     return subscribeBridgeOrders(
-      (order) => setOrders((prev) => [order, ...prev]),
+      (order) => setOrders((prev) => (prev.some((o) => o._id === order._id) ? prev : [order, ...prev])),
       (updated) => setOrders((prev) => prev.map((order) => (order._id === updated._id ? updated : order))),
       (deleted) => setOrders((prev) => prev.filter((order) => order._id !== deleted._id)),
     );

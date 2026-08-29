@@ -1116,7 +1116,8 @@ export function subscribeBridgeOrders(
       const previous = lastSnapshot.get(id);
       if (previous === undefined) {
         // New order that was not present in the previous snapshot.
-        if (lastSnapshot.size > 0 || orders.length > 0) {
+        // On the first poll there is no previous snapshot, so seed it without emitting anything.
+        if (lastSnapshot.size > 0) {
           onNewOrder(order);
         }
         lastSnapshot.set(id, signature);

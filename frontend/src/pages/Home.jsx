@@ -290,16 +290,80 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
       </section>
 
       <main id="best-sellers" className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-heading text-3xl text-[var(--cbk-crimson)]">Bestsellers</h3>
-          <button type="button" onClick={onOpenMenu} className="text-sm font-semibold text-[var(--cbk-orange)] hover:underline">
-            View full menu →
+        <section className="relative mb-10 overflow-hidden rounded-3xl border-2 border-[var(--cbk-crimson)]/25 bg-gradient-to-br from-[var(--cbk-crimson)] via-white to-[var(--cbk-cream)] p-6 shadow-lg sm:p-8">
+          <span className="absolute -top-2.5 left-6 rotate-[-2deg] rounded-full bg-[var(--cbk-crimson)] px-4 py-1.5 text-xs font-black tracking-widest text-white shadow">
+            NEW LAUNCH
+          </span>
+          <div className="grid items-center gap-5 sm:grid-cols-[auto_1fr_auto]">
+            <div className="relative h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 border-white shadow-lg sm:h-48 sm:w-48">
+              <img
+                src={DRY_FRUIT_ITEM.image}
+                alt="Dry Fruit Delight"
+                className="h-full w-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = "/menu4.jpeg";
+                }}
+              />
+              <span className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-[var(--cbk-crimson)]/20 to-transparent" />
+            </div>
+            <div>
+              <h4 className="font-heading text-3xl leading-tight text-[var(--cbk-crimson)] sm:text-4xl">
+                Our New Product — Dry Fruit
+              </h4>
+              <p className="mt-2 text-sm text-[var(--cbk-text)]/75 sm:text-base">
+                {DRY_FRUIT_ITEM.itemName} — premium assorted dry fruits, packed fresh and delivered to your door.
+              </p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-[var(--cbk-orange)]">
+                Just {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))} per pack
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={!isOrderingOpen}
+              onClick={() => {
+                if (!isOrderingOpen) {
+                  toast.error("Ordering is closed right now.");
+                  return;
+                }
+                addToCart({ ...DRY_FRUIT_ITEM, name: DRY_FRUIT_ITEM.itemName }, DRY_FRUIT_ITEM.image);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-7 py-4 text-sm font-bold text-white shadow-xl disabled:opacity-50"
+            >
+              <ShoppingCart size={16} />
+              Order {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))}
+            </button>
+          </div>
+        </section>
+
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-5 py-4 text-white shadow-md sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/90">Hot List</p>
+            <h3 className="font-heading text-2xl leading-tight sm:text-3xl">Best Seller Items of the Restaurant</h3>
+            <p className="mt-1 text-sm text-white/85">Tap Order on any dish — or click a box to open the full menu.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenMenu}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[var(--cbk-crimson)] shadow"
+          >
+            <UtensilsCrossed size={15} />
+            Open Full Menu
           </button>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           {SELLER_GROUPS.map((group) => (
-            <section key={group.id} className="rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm">
+            <section
+              key={group.id}
+              onClick={onOpenMenu}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") onOpenMenu();
+              }}
+              className="cursor-pointer rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
               <div className="mb-4 flex items-center justify-between">
                 <h4 className="font-heading text-xl text-[var(--cbk-text)]">{group.title}</h4>
                 <span className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wide ${group.accent} bg-[var(--cbk-bg)] border`}>
@@ -329,7 +393,10 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                           <button
                             type="button"
                             aria-label="Favorite"
-                            onClick={() => toggleFavorite(seller.itemName)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFavorite(seller.itemName);
+                            }}
                             className="shrink-0 rounded-full p-1 text-[var(--cbk-crimson)]"
                           >
                             <Heart size={15} fill={isFavorite(seller.itemName) ? "currentColor" : "none"} />
@@ -342,7 +409,10 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                         <button
                           type="button"
                           disabled={!isOrderingOpen || dish.available === false}
-                          onClick={() => handleQuickAdd(dish)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleQuickAdd(dish);
+                          }}
                           className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                         >
                           <ShoppingCart size={13} />
@@ -356,48 +426,6 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
             </section>
           ))}
         </div>
-
-        <section className="mt-10 overflow-hidden rounded-3xl border border-[var(--cbk-orange)]/25 bg-gradient-to-br from-white to-[var(--cbk-cream)] shadow-sm">
-          <div className="grid items-center gap-4 p-5 sm:grid-cols-[auto_1fr_auto]">
-            <div className="relative">
-              <div className="h-24 w-24 overflow-hidden rounded-2xl">
-                <img
-                  src={DRY_FRUIT_ITEM.image}
-                  alt="Dry Fruit Delight"
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.currentTarget.src = "/menu1.jpeg";
-                  }}
-                />
-              </div>
-              <span className="absolute -right-2 -top-2 rounded-full bg-[var(--cbk-crimson)] px-2.5 py-1 text-[10px] font-bold text-white shadow">
-                NEW
-              </span>
-            </div>
-            <div>
-              <h4 className="font-heading text-2xl text-[var(--cbk-crimson)]">Our New Product — Dry Fruit</h4>
-              <p className="mt-1 text-sm text-[var(--cbk-text)]/75">
-                {DRY_FRUIT_ITEM.itemName} — premium assorted dry fruits, ready to order for {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))}.
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={!isOrderingOpen}
-              onClick={() => {
-                if (!isOrderingOpen) {
-                  toast.error("Ordering is closed right now.");
-                  return;
-                }
-                addToCart({ ...DRY_FRUIT_ITEM, name: DRY_FRUIT_ITEM.itemName }, DRY_FRUIT_ITEM.image);
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-6 py-3 text-sm font-semibold text-white shadow disabled:opacity-50"
-            >
-              <ShoppingCart size={15} />
-              Order {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))}
-            </button>
-          </div>
-        </section>
       </main>
 
       <footer className="mx-auto max-w-7xl px-4 pb-6 pt-2 text-center text-xs text-[var(--cbk-text)]/55 sm:px-6">

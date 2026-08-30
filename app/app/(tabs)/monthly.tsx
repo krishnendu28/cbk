@@ -147,8 +147,8 @@ export default function MonthlyScreen() {
       Alert.alert("Select a plan", "Choose a meal plan to continue.");
       return;
     }
-    if (address.trim().length < 5) {
-      Alert.alert("Address required", "Please enter your full delivery address.");
+    if (address.trim().length < 3) {
+      Alert.alert("Address required", "Please enter your delivery address.");
       return;
     }
 
@@ -283,7 +283,7 @@ export default function MonthlyScreen() {
             <TextInput
               value={address}
               onChangeText={setAddress}
-              placeholder="Flat / Tower / Landmark"
+              placeholder="Enter your delivery address"
               placeholderTextColor="#888"
               style={styles.input}
               multiline

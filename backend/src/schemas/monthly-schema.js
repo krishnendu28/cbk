@@ -12,7 +12,7 @@ export const createMonthlySubscriptionSchema = z
   .object({
     name: z.string().trim().min(2).max(120),
     phone: z.string().trim().min(7).max(25),
-    address: z.string().trim().min(5).max(300),
+    address: z.string().trim().min(3).max(300),
     planType: z.enum(MONTHLY_PLAN_TYPES),
     planId: z.string().trim().optional(),
     meals: z.coerce.number().int().positive().refine((value) => mealsOptions.includes(value), {
@@ -45,7 +45,7 @@ export const redeemMonthlyMealSchema = z.object({
 export const updateMonthlySubscriptionSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   phone: z.string().trim().min(7).max(25).optional(),
-  address: z.string().trim().min(5).max(300).optional(),
+  address: z.string().trim().min(3).max(300).optional(),
   mealsTotal: z.coerce.number().int().positive().max(240).optional(),
   price: z.coerce.number().nonnegative().optional(),
   status: z.enum(MONTHLY_STATUSES).optional(),

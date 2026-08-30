@@ -169,6 +169,17 @@ export default function MonthlyScreen() {
       setSelectedPlan(null);
       await refreshSubscriptions();
     } catch (error: any) {
+      if (error?.response?.status === 404) {
+        Alert.alert(
+          "Subscription service unavailable",
+          `The monthly plan service is being updated. Please call us on ${MONTHLY_CONTACT_LABEL} to enroll, or try again shortly.`,
+          [
+            { text: "Call Now", onPress: callRestaurant },
+            { text: "OK" },
+          ],
+        );
+        return;
+      }
       Alert.alert("Subscription failed", error?.response?.data?.message || "Please try again.");
     } finally {
       setSubmitting(false);

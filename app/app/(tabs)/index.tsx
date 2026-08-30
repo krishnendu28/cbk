@@ -29,7 +29,7 @@ import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
 import { getMenuImageByFileName } from "@/utils/get-menu-item-image";
-import type { MenuCategory } from "@/types/menu";
+import type { MenuCategory, MenuItem } from "@/types/menu";
 
 const heroSlides = [
   {
@@ -46,6 +46,48 @@ const heroSlides = [
     image: getMenuImageByFileName("Tandoori-Chicken.jpg"),
     title: "Smoky Tandoor Specials",
     subtitle: "Charred perfection with authentic spice layers.",
+  },
+];
+
+const DRY_FRUIT_ITEM_ID = 900001;
+const DRY_FRUIT_IMAGE_URL =
+  "https://images.pexels.com/photos/14878106/pexels-photo-14878106.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop";
+const SPECIALS_CATEGORY: MenuCategory = {
+  id: "specials",
+  title: "Specials",
+  items: [{ id: DRY_FRUIT_ITEM_ID, name: "Dry Fruit Delight (250gm)", prices: { Regular: 299 } }],
+};
+const DRY_FRUIT_ITEM: MenuItem = SPECIALS_CATEGORY.items[0];
+
+const SELLER_GROUPS: {
+  id: string;
+  title: string;
+  badge: string;
+  badgeColor: string;
+  items: { label: string; itemName: string }[];
+}[] = [
+  {
+    id: "veg",
+    title: "Vegetarian Bestsellers",
+    badge: "VEG",
+    badgeColor: Palette.orange,
+    items: [
+      { label: "Paneer Masala", itemName: "Paneer Butter Masala 8pcs" },
+      { label: "Mushroom Masala", itemName: "Mushroom Masala" },
+      { label: "Paneer Pakoda", itemName: "Paneer Pakoda 8pcs" },
+    ],
+  },
+  {
+    id: "nonveg",
+    title: "Non-Veg Bestsellers",
+    badge: "NON-VEG",
+    badgeColor: Palette.crimson,
+    items: [
+      { label: "Handi Mutton", itemName: "Handi Mutton 250gm" },
+      { label: "Handi Chicken", itemName: "Handi Chicken 250gm" },
+      { label: "Chicken 65", itemName: "Chicken 65/69 8pc" },
+      { label: "Chicken Lollipop", itemName: "Chicken Lollipop 8pcs" },
+    ],
   },
 ];
 
@@ -69,6 +111,7 @@ const CATEGORY_CARD_META: Record<string, CategoryCardMeta> = {
   "roti-paratha": { id: "roti-paratha", imageFile: "Lachha-Paratha.jpg", bgColor: "#EDE3F2" },
   "chinese-chilli": { id: "chinese-chilli", imageFile: "Chilli-Chicken.jpg", bgColor: "#F9DFDF" },
   "ahuna-champaran": { id: "ahuna-champaran", imageFile: "Handi Mutton.jpg", bgColor: "#DDF0EB" },
+  specials: { id: "specials", imageFile: "Kashmiri-Pulao.jpg", bgColor: "#FCEEDC" },
 };
 
 const RESTAURANT_PHONE_LABEL = "+91 8420252042";
@@ -86,6 +129,7 @@ export default function MenuScreen() {
     setCartVisible,
     isOrderingOpen,
     setIsOrderingOpen,
+    addToCart,
     updateQuantity,
     deliveryCharge,
     etaMinutes,
@@ -125,6 +169,22 @@ export default function MenuScreen() {
     return null;
   }, [menuCategories]);
 
+  const findMenuItemByName = useCallback((itemName: string) => {
+    for (const category of menuCategories) {
+      const item = category.items.find((entry) => entry.name === itemName);
+      if (item) {
+        return item;
+      }
+    }
+
+    return null;
+  }, [menuCategories]);
+
+  const mergeSpecials = useCallback((categories: MenuCategory[]): MenuCategory[] => {
+    if (categories.some((category) => category.id === SPECIALS_CATEGORY.id)) return categories;
+    return [...categories, SPECIALS_CATEGORY];
+  }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setHeroIndex((prev) => (prev + 1) % heroSlides.length);
@@ -139,7 +199,7 @@ export default function MenuScreen() {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/menu`);
         const categories = Array.isArray(response.data) ? response.data : [];
-        setMenuCategories(categories);
+        setMenuCategories(mergeSpecials(categories));
         setMenuError("");
         if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
           setActiveCategory(categories[0].id);
@@ -155,7 +215,7 @@ export default function MenuScreen() {
     if (session) {
       loadMenu();
     }
-  }, [activeCategory, session]);
+  }, [activeCategory, session, mergeSpecials]);
 
   useEffect(() => {
     if (!menuCategories.length || !cartItems.length) return;
@@ -188,7 +248,7 @@ export default function MenuScreen() {
         const response = await axios.get(`${API_BASE_URL}/api/menu`);
         const categories = Array.isArray(response.data) ? response.data : [];
         if (cancelled) return;
-        setMenuCategories(categories);
+        setMenuCategories(mergeSpecials(categories));
         if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
           setActiveCategory(categories[0].id);
         }
@@ -204,7 +264,7 @@ export default function MenuScreen() {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [activeCategory, session]);
+  }, [activeCategory, session, mergeSpecials]);
 
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
@@ -310,7 +370,7 @@ export default function MenuScreen() {
               try {
                 const response = await axios.get(`${API_BASE_URL}/api/menu`);
                 const categories = Array.isArray(response.data) ? response.data : [];
-                setMenuCategories(categories);
+                setMenuCategories(mergeSpecials(categories));
                 setMenuError("");
                 if (categories.length > 0 && !categories.some((c: MenuCategory) => c.id === activeCategory)) {
                   setActiveCategory(categories[0].id);
@@ -345,6 +405,34 @@ export default function MenuScreen() {
             </View>
           ) : null}
 
+          <View style={styles.newLaunchCard}>
+            <View style={styles.newLaunchBadge}>
+              <Text style={styles.newLaunchBadgeText}>NEW LAUNCH</Text>
+            </View>
+            <View style={styles.newLaunchRow}>
+              <View style={styles.newLaunchImageWrap}>
+                <ResilientImage primarySource={{ uri: DRY_FRUIT_IMAGE_URL }} secondarySource={FALLBACK_IMAGE} style={styles.newLaunchImage} />
+                <View style={styles.newLaunchPricePill}>
+                  <Text style={styles.newLaunchPriceText}>Rs {DRY_FRUIT_ITEM.prices.Regular}</Text>
+                </View>
+              </View>
+              <View style={styles.newLaunchBody}>
+                <Text style={styles.newLaunchTitle}>Our New Product — Dry Fruit</Text>
+                <Text style={styles.newLaunchSubtitle}>{DRY_FRUIT_ITEM.name} — premium assorted dry fruits, packed fresh.</Text>
+                <TouchableOpacity
+                  style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
+                  onPress={() => {
+                    if (isOrderingOpen) addToCart(DRY_FRUIT_ITEM);
+                  }}
+                  activeOpacity={0.88}
+                  disabled={!isOrderingOpen}>
+                  <Ionicons name="cart" size={14} color={Palette.crimson} />
+                  <Text style={styles.orderBtnText}>Order Rs {DRY_FRUIT_ITEM.prices.Regular}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
           <View style={styles.sectionHeaderRow}>
             <View style={styles.sectionDividerLine} />
             <Text style={styles.sectionTitle}>What’s on your mind ?</Text>
@@ -369,6 +457,45 @@ export default function MenuScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          <View style={styles.bestSellersWrap}>
+            <View style={styles.bestSellersBanner}>
+              <Text style={styles.bestSellersEyebrow}>HOT LIST</Text>
+              <Text style={styles.bestSellersTitle}>Best Seller Items of the Restaurant</Text>
+              <Text style={styles.bestSellersSubtitle}>Tap Order on any dish below to add it to your cart.</Text>
+            </View>
+            <View style={styles.bestSellersColumns}>
+              {SELLER_GROUPS.map((group) => (
+                <View key={group.id} style={styles.sellerCard}>
+                  <View style={styles.sellerCardHeader}>
+                    <Text style={styles.sellerCardTitle}>{group.title}</Text>
+                    <View style={[styles.sellerBadge, { borderColor: group.badgeColor }]}>
+                      <Text style={[styles.sellerBadgeText, { color: group.badgeColor }]}>{group.badge}</Text>
+                    </View>
+                  </View>
+                  {group.items.map((seller) => {
+                    const menuItem = findMenuItemByName(seller.itemName);
+                    const price = menuItem ? Number(Object.values(menuItem.prices || {})[0] || 0) : 0;
+                    return (
+                      <View key={seller.itemName} style={styles.sellerRow}>
+                        <Text style={styles.sellerName} numberOfLines={1}>{seller.label}</Text>
+                        <Text style={styles.sellerPrice}>Rs {price}</Text>
+                        <TouchableOpacity
+                          style={[styles.sellerOrderBtn, (!isOrderingOpen || !menuItem) && styles.disabledBtn]}
+                          onPress={() => {
+                            if (menuItem) addToCart(menuItem);
+                          }}
+                          activeOpacity={0.85}
+                          disabled={!isOrderingOpen || !menuItem}>
+                          <Text style={styles.sellerOrderText}>Order</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
           </View>
         </View>
       )}
@@ -797,6 +924,91 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   offersText: { color: Palette.crimson, fontSize: 11.5, fontWeight: "700" },
+  newLaunchCard: {
+    backgroundColor: Palette.crimson,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 4,
+    shadowColor: "#9E1826",
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  newLaunchBadge: {
+    position: "absolute",
+    top: -9,
+    right: 14,
+    backgroundColor: Palette.orange,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    transform: [{ rotate: "3deg" }],
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  newLaunchBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800", letterSpacing: 1.4 },
+  newLaunchRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 },
+  newLaunchImageWrap: { position: "relative" },
+  newLaunchImage: { width: 110, height: 110, borderRadius: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.55)" },
+  newLaunchPricePill: {
+    position: "absolute",
+    left: 6,
+    bottom: 6,
+    backgroundColor: "rgba(255,247,237,0.95)",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  newLaunchPriceText: { color: Palette.crimson, fontSize: 11, fontWeight: "800" },
+  newLaunchBody: { flex: 1, gap: 5, minWidth: 0 },
+  newLaunchTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", lineHeight: 21 },
+  newLaunchSubtitle: { color: "rgba(255,241,220,0.92)", fontSize: 11.5, lineHeight: 16 },
+  orderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignSelf: "flex-start",
+  },
+  orderBtnText: { color: Palette.crimson, fontWeight: "800", fontSize: 12.5 },
+  disabledBtn: { opacity: 0.55 },
+  bestSellersWrap: { marginTop: 14, gap: 10 },
+  bestSellersBanner: { backgroundColor: Palette.crimson, borderRadius: 14, padding: 13, gap: 2 },
+  bestSellersEyebrow: { color: "rgba(255,241,220,0.9)", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+  bestSellersTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", lineHeight: 21 },
+  bestSellersSubtitle: { color: "rgba(255,241,220,0.9)", fontSize: 11.5 },
+  bestSellersColumns: { gap: 10 },
+  sellerCard: { backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, padding: 10, gap: 6 },
+  sellerCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
+  sellerCardTitle: { color: Palette.text, fontSize: 13, fontWeight: "800" },
+  sellerBadge: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  sellerBadgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  sellerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Palette.cardSoft,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+  },
+  sellerName: { flex: 1, color: Palette.text, fontSize: 12.5, fontWeight: "600" },
+  sellerPrice: { color: Palette.orange, fontWeight: "800", fontSize: 12.5 },
+  sellerOrderBtn: { backgroundColor: Palette.crimson, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  sellerOrderText: { color: "#FFFFFF", fontWeight: "800", fontSize: 11.5 },
   categoriesSection: { paddingTop: 2, paddingBottom: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Palette.border },

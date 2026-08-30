@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { useCart } from "@/context/cart-context";
 import { useSession } from "@/context/session-context";
+import { Palette } from "@/constants/theme";
 import type { MenuCategory } from "@/types/menu";
 import { API_BASE_URL } from "@/utils/api";
 
@@ -66,7 +67,7 @@ export default function CategoryScreen() {
     <View style={[styles.container, { paddingTop: insets.top + 10 }]}>
       <View style={[styles.header, { paddingHorizontal: horizontalSafePadding }]}>
         <TouchableOpacity style={styles.backBtn} onPress={goBack} activeOpacity={0.85}>
-          <Ionicons name="chevron-back" size={20} color="#F5EFE4" />
+          <Ionicons name="chevron-back" size={20} color={Palette.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>
@@ -83,12 +84,12 @@ export default function CategoryScreen() {
 
       {loading ? (
         <View style={styles.centerState}>
-          <ActivityIndicator size="large" color="#D4A017" />
+          <ActivityIndicator size="large" color={Palette.orange} />
           <Text style={styles.stateText}>Loading {category?.title || ""}...</Text>
         </View>
       ) : error ? (
         <View style={styles.centerState}>
-          <Ionicons name="warning-outline" size={40} color="#EF5350" />
+          <Ionicons name="warning-outline" size={40} color={Palette.crimson} />
           <Text style={styles.stateTitle}>Oops!</Text>
           <Text style={styles.stateText}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => setLoading(true)} activeOpacity={0.88}>
@@ -126,7 +127,7 @@ export default function CategoryScreen() {
             setCartVisible(true);
             router.back();
           }}>
-          <Ionicons name="cart" size={16} color="#121212" />
+          <Ionicons name="cart" size={16} color="#FFFFFF" />
           <Text style={styles.cartPillText}>View Cart ({cartItems.length})</Text>
           <View style={styles.cartPillTotalWrap}>
             <Text style={styles.cartPillTotal}>Rs {cartTotal}</Text>
@@ -138,20 +139,20 @@ export default function CategoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#121212" },
+  container: { flex: 1, backgroundColor: Palette.bg },
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 8 },
-  backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" },
+  backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: Palette.card, borderWidth: 1, borderColor: Palette.border },
   backBtnSpacer: { width: 38 },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { color: "#F5EFE4", fontSize: 16, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
-  headerSubtitle: { color: "#A7A29A", fontSize: 11, marginTop: 2 },
+  headerTitle: { color: Palette.text, fontSize: 16, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
+  headerSubtitle: { color: Palette.textMuted, fontSize: 11, marginTop: 2 },
   centerState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 24, paddingVertical: 60 },
-  stateTitle: { color: "#F5EFE4", fontSize: 16, fontWeight: "700", textAlign: "center" },
-  stateText: { color: "#AFA79A", fontSize: 13, textAlign: "center", lineHeight: 19 },
-  retryBtn: { backgroundColor: "#D4A017", borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10, marginTop: 6 },
-  retryBtnText: { color: "#121212", fontWeight: "700", textAlign: "center" },
-  cartPill: { position: "absolute", backgroundColor: "#D4A017", borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E7507", shadowOpacity: 0.14, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
-  cartPillText: { color: "#121212", fontWeight: "800", flexShrink: 1 },
-  cartPillTotalWrap: { backgroundColor: "rgba(0,0,0,0.14)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  cartPillTotal: { color: "#121212", fontWeight: "700" },
+  stateTitle: { color: Palette.text, fontSize: 16, fontWeight: "700", textAlign: "center" },
+  stateText: { color: Palette.textMuted, fontSize: 13, textAlign: "center", lineHeight: 19 },
+  retryBtn: { backgroundColor: Palette.crimson, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10, marginTop: 6 },
+  retryBtnText: { color: "#FFFFFF", fontWeight: "700", textAlign: "center" },
+  cartPill: { position: "absolute", backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E1826", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
+  cartPillText: { color: "#FFFFFF", fontWeight: "800", flexShrink: 1 },
+  cartPillTotalWrap: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  cartPillTotal: { color: "#FFFFFF", fontWeight: "700" },
 });

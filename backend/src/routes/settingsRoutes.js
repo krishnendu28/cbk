@@ -19,4 +19,11 @@ router.patch(
   updateOutletSettingsHandler,
 );
 
+router.put(
+  "/outlets/:outletId/settings",
+  requireAdmin(["owner", "manager"]),
+  validateRequest({ paramsSchema: outletIdParamSchema, bodySchema: updateOutletSettingsSchema }),
+  updateOutletSettingsHandler,
+);
+
 export default router;

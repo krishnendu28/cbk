@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import { ArrowLeft, Clock3, PackageCheck, UtensilsCrossed } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
@@ -34,11 +34,6 @@ function OrderHistory({ userSession, onBack }) {
   const [loading, setLoading] = useState(true);
 
   const userPhoneNormalized = normalizePhone(userSession?.phone).slice(-10);
-  const isSameUserPhone = (orderPhone) => {
-    const normalizedOrderPhone = normalizePhone(orderPhone);
-    if (!normalizedOrderPhone || !userPhoneNormalized) return false;
-    return normalizedOrderPhone.slice(-10) === userPhoneNormalized;
-  };
 
   useEffect(() => {
     async function loadOrders() {
@@ -46,7 +41,11 @@ function OrderHistory({ userSession, onBack }) {
         const response = await axios.get(`${API_BASE_URL}/api/orders`);
         const data = Array.isArray(response.data) ? response.data : [];
         const filtered = data
-          .filter((order) => isSameUserPhone(order.phone))
+          .filter((order) => {
+            const normalizedOrderPhone = normalizePhone(order.phone);
+            if (!normalizedOrderPhone || !userPhoneNormalized) return false;
+            return normalizedOrderPhone.slice(-10) === userPhoneNormalized;
+          })
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setOrders(filtered);
       } catch {
@@ -98,7 +97,7 @@ function OrderHistory({ userSession, onBack }) {
             const activeIndex = Math.max(0, orderSteps.indexOf(order.status || "Preparing"));
 
             return (
-              <motion.article
+              <Motion.article
                 key={order._id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -159,7 +158,7 @@ function OrderHistory({ userSession, onBack }) {
                     )}
                   </div>
                 </div>
-              </motion.article>
+              </Motion.article>
             );
           })}
         </div>

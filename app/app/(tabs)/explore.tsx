@@ -5,6 +5,7 @@ import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
+import { Palette } from "@/constants/theme";
 import { AdBanner } from "@/components/admob/ad-banner";
 
 type Order = {
@@ -59,13 +60,14 @@ export default function OrdersScreen() {
 
   const emptyText = useMemo(() => {
     if (!session) return "Sign in on the Menu tab to view your orders.";
+    if (session.guest) return "Sign in with your phone number to track your orders.";
     return "No orders yet.";
   }, [session]);
 
   if (!isHydrated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: horizontalSafePadding, alignItems: "center", justifyContent: "center" }]}>
-        <Text style={{ color: "#D4A017", fontSize: 16, fontWeight: "600" }}>Loading session...</Text>
+        <Text style={{ color: Palette.orange, fontSize: 16, fontWeight: "600" }}>Loading session...</Text>
       </View>
     );
   }
@@ -126,7 +128,7 @@ export default function OrdersScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Ionicons name="checkmark-done-circle" size={18} color="#D4A017" />
+                <Ionicons name="checkmark-done-circle" size={18} color={Palette.orange} />
               </View>
             </View>
           );
@@ -137,26 +139,26 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#121212" },
+  container: { flex: 1, backgroundColor: Palette.bg },
   header: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 12 },
-  title: { color: "#F5EFE4", fontSize: 28, fontWeight: "700" },
-  subtitle: { color: "#A5A5A5", marginTop: 4 },
+  title: { color: Palette.text, fontSize: 28, fontWeight: "700" },
+  subtitle: { color: Palette.textMuted, marginTop: 4 },
   emptyWrap: { alignItems: "center", gap: 12, paddingTop: 18 },
-  emptyText: { color: "#A5A5A5", textAlign: "center", marginTop: 18 },
+  emptyText: { color: Palette.textMuted, textAlign: "center", marginTop: 18 },
   inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center" },
-  orderCard: { backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "#2D2D2D", borderRadius: 14, padding: 12, gap: 9 },
+  orderCard: { backgroundColor: Palette.card, borderWidth: 1, borderColor: Palette.border, borderRadius: 14, padding: 12, gap: 9 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  orderId: { color: "#F5EFE4", fontWeight: "700" },
-  statusPill: { backgroundColor: "rgba(139,0,0,0.45)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: "#D4A017" },
-  statusText: { color: "#F5EFE4", fontSize: 12, fontWeight: "700" },
-  meta: { color: "#B6B6B6", fontSize: 12 },
-  savedText: { color: "#78D79C", fontSize: 12, fontWeight: "600", marginTop: 4 },
+  orderId: { color: Palette.text, fontWeight: "700" },
+  statusPill: { backgroundColor: "rgba(194,31,46,0.1)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: Palette.crimson },
+  statusText: { color: Palette.crimson, fontSize: 12, fontWeight: "700" },
+  meta: { color: Palette.textMuted, fontSize: 12 },
+  savedText: { color: Palette.orange, fontSize: 12, fontWeight: "700", marginTop: 4 },
   progressRow: { flexDirection: "row", gap: 10 },
   progressStep: { flexDirection: "row", alignItems: "center", gap: 5 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#3A3A3A" },
-  dotActive: { backgroundColor: "#D4A017" },
-  stepLabel: { color: "#8D8D8D", fontSize: 11 },
-  stepLabelActive: { color: "#F5EFE4" },
-  itemsBox: { backgroundColor: "#1C1C1C", borderRadius: 8, padding: 8, gap: 3 },
-  itemLine: { color: "#D8D8D8", fontSize: 12 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#E0CDB2" },
+  dotActive: { backgroundColor: Palette.orange },
+  stepLabel: { color: Palette.textMuted, fontSize: 11 },
+  stepLabelActive: { color: Palette.text },
+  itemsBox: { backgroundColor: Palette.cardSoft, borderRadius: 8, padding: 8, gap: 3 },
+  itemLine: { color: Palette.text, fontSize: 12 },
 });

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
+import { Palette } from "@/constants/theme";
 import { AdBanner } from "@/components/admob/ad-banner";
 import {
   MONTHLY_BADGES,
@@ -53,9 +54,9 @@ const MENU_TYPE_IMAGE: Record<PlanType, string> = {
 };
 
 const PLAN_CARDS: { key: PlanType; title: string; subtitle: string; color: string }[] = [
-  { key: "Veg", title: "ONLY VEG MENU", subtitle: "Healthy & home-style", color: "#1DAE56" },
-  { key: "NonVeg", title: "NON-VEG + VEG MENU", subtitle: "Balanced mix menu", color: "#C9672E" },
-  { key: "OnlyNonVeg", title: "ONLY NON-VEG MENU", subtitle: "Premium non-veg every meal", color: "#C0392B" },
+  { key: "Veg", title: "ONLY VEG MENU", subtitle: "Healthy & home-style", color: "#EA580C" },
+  { key: "NonVeg", title: "NON-VEG + VEG MENU", subtitle: "Balanced mix menu", color: "#D97706" },
+  { key: "OnlyNonVeg", title: "ONLY NON-VEG MENU", subtitle: "Premium non-veg every meal", color: "#C21F2E" },
 ];
 
 export default function MonthlyScreen() {
@@ -194,7 +195,7 @@ export default function MonthlyScreen() {
   if (!isHydrated) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, paddingHorizontal: horizontalSafePadding, alignItems: "center", justifyContent: "center" }]}>
-        <Text style={{ color: "#D4A017", fontSize: 16, fontWeight: "600" }}>Loading session...</Text>
+        <Text style={{ color: Palette.orange, fontSize: 16, fontWeight: "600" }}>Loading session...</Text>
       </View>
     );
   }
@@ -213,7 +214,7 @@ export default function MonthlyScreen() {
           <View style={styles.highlightsRow}>
             {MONTHLY_HIGHLIGHTS.map((highlight, index) => (
               <View key={highlight} style={styles.highlightItem}>
-                <Ionicons name="checkmark-circle" size={14} color="#78D79C" />
+                <Ionicons name="checkmark-circle" size={14} color={Palette.orange} />
                 <Text style={styles.highlightText}>{highlight}</Text>
                 {index < MONTHLY_HIGHLIGHTS.length - 1 && <Text style={styles.highlightSeparator}>|</Text>}
               </View>
@@ -250,7 +251,7 @@ export default function MonthlyScreen() {
                 <Text style={styles.statusDetailLine}>Delivery address: {activeSubscription.address}</Text>
               </View>
               <TouchableOpacity style={styles.callBtn} onPress={callRestaurant} activeOpacity={0.86}>
-                <Ionicons name="call-outline" size={16} color="#F5EFE4" />
+                <Ionicons name="call-outline" size={16} color={Palette.crimson} />
                 <Text style={styles.callBtnText}>Need more meals? Call {MONTHLY_CONTACT_LABEL}</Text>
               </TouchableOpacity>
             </View>
@@ -259,7 +260,7 @@ export default function MonthlyScreen() {
           <View style={styles.enrollCard}>
             {subsLoading && (
               <View style={styles.checkingRow}>
-                <ActivityIndicator size="small" color="#D4A017" />
+                <ActivityIndicator size="small" color={Palette.orange} />
                 <Text style={styles.checkingText}>Checking your subscription...</Text>
               </View>
             )}
@@ -315,7 +316,7 @@ export default function MonthlyScreen() {
                   activeOpacity={0.9}
                 >
                   <View style={styles.planOptionLeft}>
-                    <Ionicons name={isSelected ? "radio-button-on" : "radio-button-off"} size={18} color={isSelected ? "#D4A017" : "#777"} />
+                    <Ionicons name={isSelected ? "radio-button-on" : "radio-button-off"} size={18} color={isSelected ? Palette.orange : "#C7B5A0"} />
                     <Text style={styles.planOptionLabel}>{plan.label}</Text>
                   </View>
                   <Text style={styles.planOptionPrice}>₹{plan.price}/-</Text>
@@ -330,7 +331,7 @@ export default function MonthlyScreen() {
               activeOpacity={0.88}
             >
               {submitting ? (
-                <ActivityIndicator color="#121212" />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <Text style={styles.subscribeBtnText}>Subscribe for Monthly Meals</Text>
               )}
@@ -398,7 +399,7 @@ export default function MonthlyScreen() {
         <View style={styles.featuresCard}>
           {MONTHLY_FEATURES.map((feature) => (
             <View key={feature} style={styles.featureRow}>
-              <Ionicons name="checkmark-done-circle" size={17} color="#D4A017" />
+              <Ionicons name="checkmark-done-circle" size={17} color={Palette.orange} />
               <Text style={styles.featureText}>{feature}</Text>
             </View>
           ))}
@@ -410,7 +411,7 @@ export default function MonthlyScreen() {
         <View style={styles.badgeWrap}>
           {MONTHLY_BADGES.map((badge) => (
             <View key={badge} style={styles.badgePill}>
-              <Ionicons name="shield-checkmark" size={13} color="#78D79C" />
+              <Ionicons name="shield-checkmark" size={13} color={Palette.orange} />
               <Text style={styles.badgePillText}>{badge}</Text>
             </View>
           ))}
@@ -422,7 +423,7 @@ export default function MonthlyScreen() {
         <View style={styles.badgeWrap}>
           {MONTHLY_PERFECT_FOR.map((item) => (
             <View key={item} style={styles.badgePill}>
-              <Ionicons name="people" size={13} color="#F3D48B" />
+              <Ionicons name="people" size={13} color={Palette.orange} />
               <Text style={styles.badgePillText}>{item}</Text>
             </View>
           ))}
@@ -446,122 +447,122 @@ export default function MonthlyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#121212" },
+  container: { flex: 1, backgroundColor: Palette.bg },
   header: { paddingTop: 10, paddingBottom: 6, gap: 10 },
   headerTopRow: { alignItems: "center", gap: 2 },
-  brand: { color: "#F5EFE4", fontSize: 24, fontWeight: "800", textAlign: "center" },
-  brandBy: { color: "#D4A017", fontSize: 15, fontWeight: "600" },
-  tagline: { color: "#A5A5A5", fontSize: 13, fontStyle: "italic" },
-  titlePill: { backgroundColor: "#D4A017", borderRadius: 8, alignSelf: "center", paddingHorizontal: 16, paddingVertical: 8 },
-  titlePillText: { color: "#121212", fontSize: 14, fontWeight: "800", letterSpacing: 0.6 },
+  brand: { color: Palette.text, fontSize: 24, fontWeight: "800", textAlign: "center" },
+  brandBy: { color: Palette.orange, fontSize: 15, fontWeight: "600" },
+  tagline: { color: Palette.textMuted, fontSize: 13, fontStyle: "italic" },
+  titlePill: { backgroundColor: Palette.crimson, borderRadius: 8, alignSelf: "center", paddingHorizontal: 16, paddingVertical: 8 },
+  titlePillText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800", letterSpacing: 0.6 },
   highlightsRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 6 },
   highlightItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  highlightText: { color: "#B8E9C6", fontSize: 11.5, fontWeight: "600" },
-  highlightSeparator: { color: "#4a5b50", marginLeft: 4 },
+  highlightText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
+  highlightSeparator: { color: Palette.borderStrong, marginLeft: 4 },
 
-  enrollCard: { backgroundColor: "#171717", borderRadius: 16, borderWidth: 1, borderColor: "#2D2D2D", padding: 14, gap: 8, marginTop: 12 },
-  enrollTitle: { color: "#F5EFE4", fontSize: 17, fontWeight: "700" },
-  enrollSubtitle: { color: "#A5A5A5", fontSize: 12.5, lineHeight: 18 },
-  fieldLabel: { color: "#D7CEC0", fontSize: 12, fontWeight: "600", marginTop: 4 },
-  fieldBox: { backgroundColor: "#1C1C1C", borderRadius: 10, borderWidth: 1, borderColor: "#303030", paddingHorizontal: 12, paddingVertical: 11 },
-  fieldValue: { color: "#F5EFE4", fontSize: 14 },
+  enrollCard: { backgroundColor: Palette.card, borderRadius: 16, borderWidth: 1, borderColor: Palette.border, padding: 14, gap: 8, marginTop: 12 },
+  enrollTitle: { color: Palette.text, fontSize: 17, fontWeight: "700" },
+  enrollSubtitle: { color: Palette.textMuted, fontSize: 12.5, lineHeight: 18 },
+  fieldLabel: { color: Palette.textMuted, fontSize: 12, fontWeight: "600", marginTop: 4 },
+  fieldBox: { backgroundColor: Palette.surface, borderRadius: 10, borderWidth: 1, borderColor: Palette.borderStrong, paddingHorizontal: 12, paddingVertical: 11 },
+  fieldValue: { color: Palette.text, fontSize: 14 },
   input: {
-    backgroundColor: "#1C1C1C",
-    color: "#F5EFE4",
+    backgroundColor: Palette.surface,
+    color: Palette.text,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#303030",
+    borderColor: Palette.borderStrong,
     paddingHorizontal: 12,
     paddingVertical: 10,
     minHeight: 42,
     maxHeight: 90,
   },
   segmentRow: { flexDirection: "row", gap: 8, marginTop: 2 },
-  segmentBtn: { flex: 1, backgroundColor: "#1C1C1C", borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: "#303030", alignItems: "center", justifyContent: "center" },
-  segmentBtnActive: { backgroundColor: "#2B4A2E", borderColor: "#1DAE56" },
-  segmentBtnText: { color: "#A5A5A5", fontSize: 11, fontWeight: "700", textAlign: "center" },
-  segmentBtnTextActive: { color: "#D9F2DD" },
+  segmentBtn: { flex: 1, backgroundColor: Palette.surface, borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: Palette.borderStrong, alignItems: "center", justifyContent: "center" },
+  segmentBtnActive: { backgroundColor: Palette.cream, borderColor: Palette.crimson },
+  segmentBtnText: { color: Palette.textMuted, fontSize: 11, fontWeight: "700", textAlign: "center" },
+  segmentBtnTextActive: { color: Palette.crimson },
   planOption: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#1C1C1C",
+    backgroundColor: Palette.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#303030",
+    borderColor: Palette.borderStrong,
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
-  planOptionSelected: { borderColor: "#D4A017", backgroundColor: "#231C09" },
+  planOptionSelected: { borderColor: Palette.crimson, backgroundColor: Palette.cardSoft },
   planOptionLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  planOptionLabel: { color: "#F5EFE4", fontSize: 13, fontWeight: "600" },
-  planOptionPrice: { color: "#D4A017", fontSize: 14, fontWeight: "800" },
-  subscribeBtn: { backgroundColor: "#D4A017", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  planOptionLabel: { color: Palette.text, fontSize: 13, fontWeight: "600" },
+  planOptionPrice: { color: Palette.orange, fontSize: 14, fontWeight: "800" },
+  subscribeBtn: { backgroundColor: Palette.crimson, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   subscribeBtnDisabled: { opacity: 0.55 },
-  subscribeBtnText: { color: "#121212", fontSize: 14, fontWeight: "800" },
-  enrollNote: { color: "#8A8478", fontSize: 11, textAlign: "center", lineHeight: 15 },
+  subscribeBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  enrollNote: { color: Palette.textMuted, fontSize: 11, textAlign: "center", lineHeight: 15 },
 
-  statusCard: { backgroundColor: "#14261A", borderRadius: 16, borderWidth: 1, borderColor: "#1DAE56", padding: 14, gap: 10, marginTop: 12 },
+  statusCard: { backgroundColor: Palette.cardSoft, borderRadius: 16, borderWidth: 1, borderColor: Palette.orange, padding: 14, gap: 10, marginTop: 12 },
   statusHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  statusTitle: { color: "#F5EFE4", fontSize: 17, fontWeight: "700" },
+  statusTitle: { color: Palette.text, fontSize: 17, fontWeight: "700" },
   statusPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1 },
-  statusPillActive: { backgroundColor: "rgba(29,174,86,0.2)", borderColor: "#1DAE56" },
-  statusPillClosed: { backgroundColor: "rgba(255,255,255,0.08)", borderColor: "#666" },
-  statusPillText: { color: "#F5EFE4", fontSize: 12, fontWeight: "700" },
+  statusPillActive: { backgroundColor: "rgba(234,88,12,0.14)", borderColor: Palette.orange },
+  statusPillClosed: { backgroundColor: Palette.cardSoft, borderColor: Palette.borderStrong },
+  statusPillText: { color: Palette.text, fontSize: 12, fontWeight: "700" },
   statusBody: { gap: 10 },
   statusGrid: { flexDirection: "row", gap: 8 },
-  statusMetric: { flex: 1, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 10, alignItems: "center" },
-  statusMetricValue: { color: "#78D79C", fontSize: 22, fontWeight: "800" },
-  statusMetricLabel: { color: "#AACDB4", fontSize: 11, marginTop: 2 },
-  statusDetailBox: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 10, gap: 3 },
-  statusDetailLine: { color: "#D9E7DD", fontSize: 12.5 },
+  statusMetric: { flex: 1, backgroundColor: Palette.surface, borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: Palette.border },
+  statusMetricValue: { color: Palette.crimson, fontSize: 22, fontWeight: "800" },
+  statusMetricLabel: { color: Palette.textMuted, fontSize: 11, marginTop: 2 },
+  statusDetailBox: { backgroundColor: Palette.surface, borderRadius: 10, padding: 10, gap: 3 },
+  statusDetailLine: { color: Palette.text, fontSize: 12.5 },
   checkingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 },
-  checkingText: { color: "#A5A5A5", fontSize: 12 },
-  callBtn: { backgroundColor: "#1E3A28", borderRadius: 10, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: "#2A5B3B" },
-  callBtnText: { color: "#F5EFE4", textAlign: "center", fontWeight: "700", fontSize: 13 },
+  checkingText: { color: Palette.textMuted, fontSize: 12 },
+  callBtn: { backgroundColor: Palette.surface, borderRadius: 10, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: Palette.borderStrong },
+  callBtnText: { color: Palette.crimson, textAlign: "center", fontWeight: "700", fontSize: 13 },
 
   sectionHeader: { paddingTop: 22, paddingBottom: 10, gap: 3, alignItems: "center" },
-  sectionTitle: { color: "#F5EFE4", fontSize: 16, fontWeight: "800", letterSpacing: 0.4 },
-  sectionSubtitle: { color: "#8C8C8C", fontSize: 12 },
+  sectionTitle: { color: Palette.text, fontSize: 16, fontWeight: "800", letterSpacing: 0.4 },
+  sectionSubtitle: { color: Palette.textMuted, fontSize: 12 },
 
   plansRow: { gap: 12 },
-  planCard: { backgroundColor: "#161616", borderRadius: 12, borderWidth: 1.5, borderColor: "#1DAE56", overflow: "hidden" },
+  planCard: { backgroundColor: Palette.card, borderRadius: 12, borderWidth: 1.5, borderColor: Palette.orange, overflow: "hidden" },
   planCardHeader: { paddingVertical: 10, alignItems: "center" },
   planCardHeaderText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", letterSpacing: 0.8 },
-  planCardSubtitle: { color: "#9C9C9C", fontSize: 11.5, textAlign: "center", paddingTop: 8 },
-  priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#262626" },
-  priceLabel: { color: "#E6E6E6", fontSize: 12.5, flex: 1, paddingRight: 8 },
-  priceValue: { color: "#D4A017", fontSize: 13.5, fontWeight: "800" },
+  planCardSubtitle: { color: Palette.textMuted, fontSize: 11.5, textAlign: "center", paddingTop: 8 },
+  priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 12, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: Palette.border },
+  priceLabel: { color: Palette.text, fontSize: 12.5, flex: 1, paddingRight: 8 },
+  priceValue: { color: Palette.orange, fontSize: 13.5, fontWeight: "800" },
 
-  menuCard: { backgroundColor: "#171717", borderRadius: 14, borderWidth: 1, borderColor: "#2D2D2D", overflow: "hidden", marginTop: 10 },
-  menuImageWrap: { width: "100%", aspectRatio: 16 / 9, backgroundColor: "#0F0F0F" },
+  menuCard: { backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, overflow: "hidden", marginTop: 10 },
+  menuImageWrap: { width: "100%", aspectRatio: 16 / 9, backgroundColor: Palette.cardSoft },
   menuImage: { width: "100%", height: "100%" },
-  menuImageCaption: { position: "absolute", left: 10, bottom: 9, color: "#FFFFFF", fontSize: 12.5, fontWeight: "800", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 6, paddingHorizontal: 9, paddingVertical: 4, overflow: "hidden" },
-  menuHeaderRow: { flexDirection: "row", backgroundColor: "#202A22", paddingVertical: 9, paddingHorizontal: 10 },
-  menuHeadText: { color: "#B8E9C6", fontSize: 11.5, fontWeight: "800", letterSpacing: 0.4 },
-  menuRow: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: "#232323" },
+  menuImageCaption: { position: "absolute", left: 10, bottom: 9, color: "#FFFFFF", fontSize: 12.5, fontWeight: "800", backgroundColor: "rgba(62,31,18,0.62)", borderRadius: 6, paddingHorizontal: 9, paddingVertical: 4, overflow: "hidden" },
+  menuHeaderRow: { flexDirection: "row", backgroundColor: Palette.cream, paddingVertical: 9, paddingHorizontal: 10 },
+  menuHeadText: { color: Palette.crimson, fontSize: 11.5, fontWeight: "800", letterSpacing: 0.4 },
+  menuRow: { flexDirection: "row", paddingVertical: 9, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: Palette.border },
   menuColDay: { width: 74, fontSize: 11.5 },
   menuColMeal: { flex: 1, fontSize: 11.5 },
-  menuDayText: { color: "#F3D48B", fontWeight: "700" },
-  menuMealText: { color: "#D8D8D8" },
-  menuNote: { color: "#8C8C8C", fontSize: 11, textAlign: "center", marginTop: 8, fontStyle: "italic" },
+  menuDayText: { color: Palette.orange, fontWeight: "700" },
+  menuMealText: { color: Palette.text },
+  menuNote: { color: Palette.textMuted, fontSize: 11, textAlign: "center", marginTop: 8, fontStyle: "italic" },
 
-  chineseCard: { backgroundColor: "#1C1606", borderRadius: 12, borderWidth: 1, borderColor: "#5A4510", padding: 12, gap: 5, marginTop: 10 },
-  chineseTitle: { color: "#F3D48B", fontSize: 12.5, fontWeight: "800" },
-  chineseRow: { color: "#D8C59B", fontSize: 12, lineHeight: 17 },
+  chineseCard: { backgroundColor: Palette.cardSoft, borderRadius: 12, borderWidth: 1, borderColor: Palette.borderStrong, padding: 12, gap: 5, marginTop: 10 },
+  chineseTitle: { color: Palette.orange, fontSize: 12.5, fontWeight: "800" },
+  chineseRow: { color: Palette.text, fontSize: 12, lineHeight: 17 },
 
-  featuresCard: { backgroundColor: "#171717", borderRadius: 14, borderWidth: 1, borderColor: "#2D2D2D", padding: 12, gap: 9 },
+  featuresCard: { backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, padding: 12, gap: 9 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 9 },
-  featureText: { color: "#E0E0E0", fontSize: 13 },
+  featureText: { color: Palette.text, fontSize: 13 },
 
   badgeWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  badgePill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#1C1C1C", borderRadius: 999, borderWidth: 1, borderColor: "#363636", paddingHorizontal: 11, paddingVertical: 7 },
-  badgePillText: { color: "#DCD6CB", fontSize: 11.5, fontWeight: "600" },
+  badgePill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: Palette.surface, borderRadius: 999, borderWidth: 1, borderColor: Palette.borderStrong, paddingHorizontal: 11, paddingVertical: 7 },
+  badgePillText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
 
-  footerCard: { backgroundColor: "#153A2C", borderRadius: 14, padding: 16, alignItems: "center", gap: 6, marginTop: 8 },
-  footerLocation: { color: "#E6F0E8", fontSize: 13.5, fontWeight: "700", textAlign: "center" },
-  footerPhone: { color: "#FFD54F", fontSize: 15, fontWeight: "800" },
-  footerQuote: { color: "#C8E0D1", fontSize: 12.5, fontStyle: "italic", marginTop: 2 },
-  footerTagline: { color: "#A8C9B6", fontSize: 11.5 },
+  footerCard: { backgroundColor: Palette.crimson, borderRadius: 14, padding: 16, alignItems: "center", gap: 6, marginTop: 8 },
+  footerLocation: { color: "#FFFFFF", fontSize: 13.5, fontWeight: "700", textAlign: "center" },
+  footerPhone: { color: "#F3B13B", fontSize: 15, fontWeight: "800" },
+  footerQuote: { color: "#FFE3D6", fontSize: 12.5, fontStyle: "italic", marginTop: 2 },
+  footerTagline: { color: "#FFD9C7", fontSize: 11.5 },
   inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center", marginTop: 14 },
 });

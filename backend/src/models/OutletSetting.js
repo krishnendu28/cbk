@@ -24,6 +24,27 @@ const outletSettingSchema = new mongoose.Schema(
     zomatoApiKey: { type: String, default: null, trim: true },
     swiggyApiKey: { type: String, default: null, trim: true },
     carbonTrackingEnabled: { type: Boolean, required: true, default: false },
+    deliveryCharge: { type: Number, required: true, default: 10, min: 0 },
+    etaMinutes: { type: Number, required: true, default: 45, min: 15, max: 180 },
+    orderWindows: {
+      type: [
+        {
+          name: { type: String, trim: true },
+          start: { type: String, trim: true },
+          end: { type: String, trim: true },
+        },
+      ],
+      default: [
+        { name: "Lunch", start: "12:30", end: "17:30" },
+        { name: "Dinner", start: "18:30", end: "23:30" },
+      ],
+    },
+    firstOrderDiscountEnabled: { type: Boolean, required: true, default: true },
+    firstOrderDiscountRate: { type: Number, required: true, default: 15, min: 0, max: 100 },
+    promoDiscountRate: { type: Number, required: true, default: 0, min: 0, max: 100 },
+    promoDiscountCode: { type: String, default: "", trim: true },
+    promoActive: { type: Boolean, required: true, default: false },
+    promoExpiresAt: { type: Date, default: null },
   },
   {
     versionKey: false,

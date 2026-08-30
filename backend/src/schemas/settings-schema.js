@@ -31,4 +31,22 @@ export const updateOutletSettingsSchema = z.object({
   zomatoApiKey: nullableTrimmedString.optional().default(null),
   swiggyApiKey: nullableTrimmedString.optional().default(null),
   carbonTrackingEnabled: z.boolean(),
+  deliveryCharge: z.number().nonnegative().max(200).optional(),
+  etaMinutes: z.number().int().min(15).max(180).optional(),
+  orderWindows: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(40),
+        start: z.string().trim().regex(/^\d{2}:\d{2}$/),
+        end: z.string().trim().regex(/^\d{2}:\d{2}$/),
+      }),
+    )
+    .min(1)
+    .optional(),
+  firstOrderDiscountEnabled: z.boolean().optional(),
+  firstOrderDiscountRate: z.number().min(0).max(100).optional(),
+  promoDiscountRate: z.number().min(0).max(100).optional(),
+  promoDiscountCode: z.string().trim().max(40).optional(),
+  promoActive: z.boolean().optional(),
+  promoExpiresAt: z.union([z.string().datetime({ offset: true }), z.null()]).optional(),
 });

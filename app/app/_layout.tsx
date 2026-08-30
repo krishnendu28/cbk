@@ -230,6 +230,41 @@ export default function RootLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    let unsubscribe: { remove: () => void } | undefined;
+
+    const attach = async () => {
+      const notifications = await getNotificationsModule();
+      if (!notifications) return;
+
+      const persistDiscountMeta = (content: unknown) => {
+        const payload = content as { data?: Record<string, unknown> };
+        const data = payload?.data || {};
+        if (data?.type !== 'discount') return;
+
+        const rate = Number(data?.discountRate || 0);
+        const code = String(data?.discountCode || '').trim();
+        if (!code && !rate) return;
+
+        AsyncStorage.setItem(
+          'cbk_promo_meta',
+          JSON.stringify({ rate, code, receivedAt: Date.now() }),
+        ).catch(() => null);
+      };
+
+      unsubscribe = notifications.addNotificationReceivedListener((notification) => {
+        persistDiscountMeta(notification?.request?.content);
+      });
+    };
+
+    attach();
+    return () => {
+      unsubscribe?.remove();
+    };
+  }, []);
+
   return (
     <SessionProvider>
       <CartProvider>

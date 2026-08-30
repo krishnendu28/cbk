@@ -1,624 +1,427 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion as Motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
-  Building2,
-  ChevronRight,
+  Clock3,
+  Heart,
   House,
-  Landmark,
   LogOut,
-  MapPinned,
+  Phone,
   ReceiptText,
   ShoppingCart,
+  Sparkles,
+  TicketPercent,
+  UserRound,
   UtensilsCrossed,
-  X,
 } from "lucide-react";
-import CategoryBar from "../components/CategoryBar";
-import MenuCard from "../components/MenuCard";
-import { menuCategories as fallbackMenuCategories } from "../data/menuData";
+import { useCart } from "../context/cart-context";
+import { getFoodImage } from "../utils/getFoodImage";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const CONTACT_PHONE = "+918420252042";
 
-const POLL_INTERVAL_MS = 30000;
-
-const heroSlides = [
+const SELLER_GROUPS = [
   {
-    title: "Chef Signature Platters",
-    image: "https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg?auto=compress&cs=tinysrgb&w=1800&h=1200&fit=crop",
+    id: "veg",
+    title: "Vegetarian Bestsellers",
+    badge: "VEG",
+    accent: "text-[var(--cbk-orange)]",
+    items: [
+      { label: "Paneer Masala", itemName: "Paneer Butter Masala 8pcs", prices: { Half: 100, Full: 170 } },
+      { label: "Mushroom Masala", itemName: "Mushroom Masala", prices: { Half: 110, Full: 180 } },
+      { label: "Paneer Pakoda", itemName: "Paneer Pakoda 8pcs", prices: { Half: 120, Full: 190 } },
+    ],
   },
   {
-    title: "Smoky Tandoor Nights",
-    image: "https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg?auto=compress&cs=tinysrgb&w=1800&h=1200&fit=crop",
-  },
-  {
-    title: "Royal Biryani Moments",
-    image: "https://images.pexels.com/photos/9609838/pexels-photo-9609838.jpeg?auto=compress&cs=tinysrgb&w=1800&h=1200&fit=crop",
-  },
-  {
-    title: "Curated Street Classics",
-    image: "https://images.pexels.com/photos/9609850/pexels-photo-9609850.jpeg?auto=compress&cs=tinysrgb&w=1800&h=1200&fit=crop",
+    id: "nonveg",
+    title: "Non-Vegetarian Bestsellers",
+    badge: "NON-VEG",
+    accent: "text-[var(--cbk-crimson)]",
+    items: [
+      { label: "Handi Mutton", itemName: "Handi Mutton 250gm", prices: { Half: 220, Full: 350 } },
+      { label: "Handi Chicken", itemName: "Handi Chicken 250gm", prices: { Half: 120, Full: 185 } },
+      { label: "Chicken 65", itemName: "Chicken 65/69 8pc", prices: { Half: 130, Full: 210 } },
+      { label: "Chicken Lollipop", itemName: "Chicken Lollipop 8pcs", prices: { Half: 130, Full: 210 } },
+    ],
   },
 ];
+
+const DRY_FRUIT_ITEM = {
+  label: "Dry Fruit Delight",
+  itemName: "Dry Fruit Delight (250gm)",
+  prices: { Regular: 299 },
+  image:
+    "https://images.pexels.com/photos/14878106/pexels-photo-14878106.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop",
+};
 
 function formatINR(value) {
   return `Rs ${value}`;
 }
 
-function buildDeliveryAddress(customer) {
-  return `Flat: ${customer.flatNo}, Room/Floor: ${customer.roomOrFloor}, Landmark: ${customer.landmark}`;
+function priceFrom(variants) {
+  const values = Object.values(variants || {});
+  return values.length ? Math.min(...values) : 0;
 }
 
-function Home({ userSession, onLogout, onOpenHistory }) {
-  const [menuCategories, setMenuCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState("");
-  const [variantSelections, setVariantSelections] = useState({});
-  const [cartOpen, setCartOpen] = useState(false);
-  const [placingOrder, setPlacingOrder] = useState(false);
-  const [isOrderingOpen, setIsOrderingOpen] = useState(true);
-  const [cartItems, setCartItems] = useState([]);
-  const [discountEnabled, setDiscountEnabled] = useState(false);
-  const [discountRate, setDiscountRate] = useState(0);
-  const [flyItem, setFlyItem] = useState(null);
-  const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
-  const [customer, setCustomer] = useState({
-    customerName: userSession?.name || "",
-    phone: userSession?.phone || "",
-    flatNo: "",
-    roomOrFloor: "",
-    landmark: "",
-  });
+function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
+  const {
+    menuCategories,
+    isOrderingOpen,
+    addToCart,
+    toggleFavorite,
+    isFavorite,
+    setCartOpen,
+    cartItems,
+    settings,
+    deliveryCharge,
+    firstOrderEligible,
+    showMobileCartActions,
+  } = useCart();
 
-  const cartButtonRef = useRef(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setCurrentHeroSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 3500);
-
-    return () => window.clearInterval(intervalId);
+    const close = () => setProfileOpen(false);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
   }, []);
 
-  useEffect(() => {
-    setCustomer((prev) => ({
-      ...prev,
-      customerName: userSession?.name || "",
-      phone: userSession?.phone || "",
-    }));
-  }, [userSession]);
-
-  useEffect(() => {
-    async function loadMenu() {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/menu`);
-        const categories = Array.isArray(response.data) && response.data.length ? response.data : fallbackMenuCategories;
-        setMenuCategories(categories);
-        if (!categories.some((category) => category.id === activeCategory)) {
-          setActiveCategory(categories[0]?.id || "");
-        }
-      } catch {
-        setMenuCategories(fallbackMenuCategories);
-        if (!fallbackMenuCategories.some((category) => category.id === activeCategory)) {
-          setActiveCategory(fallbackMenuCategories[0]?.id || "");
-        }
-      }
+  const findDish = (itemName) => {
+    for (const category of menuCategories) {
+      const match = category.items.find((entry) => entry.name === itemName);
+      if (match) return match;
     }
-
-    async function loadOrderingStatus() {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/shop/ordering-status`);
-        setIsOrderingOpen(Boolean(response.data?.isOrderingOpen));
-      } catch {
-        // Keep ordering enabled on transient API failures to avoid blocking users by mistake.
-        setIsOrderingOpen(true);
-      }
-    }
-
-    async function loadOutletSettings() {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/outlets/1/settings`);
-        setDiscountEnabled(Boolean(response.data?.discountEnabled));
-        setDiscountRate(Number(response.data?.discountRate || 0));
-      } catch {
-        setDiscountEnabled(false);
-        setDiscountRate(0);
-      }
-    }
-
-    loadMenu();
-    loadOrderingStatus();
-    loadOutletSettings();
-
-    const pollTimer = window.setInterval(() => {
-      loadMenu();
-      loadOrderingStatus();
-      loadOutletSettings();
-    }, POLL_INTERVAL_MS);
-
-    return () => window.clearInterval(pollTimer);
-  }, [activeCategory]);
-
-  const activeCategoryData = useMemo(
-    () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
-    [activeCategory, menuCategories],
-  );
-
-  const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
-  const deliveryCharge = cartItems.length > 0 ? 20 : 0;
-  const discountAmount = discountEnabled ? Number(((subtotal * discountRate) / 100).toFixed(2)) : 0;
-  const grandTotal = Math.max(0, subtotal - discountAmount + deliveryCharge);
-  const showMobileCartActions = cartItems.length > 0;
-
-  const handleVariantChange = (itemName, variant) => {
-    setVariantSelections((prev) => ({ ...prev, [itemName]: variant }));
+    return null;
   };
 
-  const addToCart = (item, imageSrc, event) => {
+  const sellerWithLiveData = (seller) => {
+    const live = findDish(seller.itemName);
+    return {
+      ...seller,
+      prices: live?.prices || seller.prices,
+      available: live ? live.available !== false : true,
+      image: getFoodImage(seller.itemName, "Main Course"),
+    };
+  };
+
+  const handleQuickAdd = (seller) => {
     if (!isOrderingOpen) {
       toast.error("Ordering is closed right now.");
       return;
     }
-
-    const variants = Object.entries(item.prices);
-    const selectedVariant = variantSelections[item.name] || variants[0][0];
-    const selectedPrice = item.prices[selectedVariant];
-
-    setCartItems((prev) => {
-      const existing = prev.find((cartItem) => cartItem.name === item.name && cartItem.variant === selectedVariant);
-      if (existing) {
-        return prev.map((cartItem) =>
-          cartItem.id === existing.id
-            ? {
-                ...cartItem,
-                quantity: cartItem.quantity + 1,
-                totalPrice: (cartItem.quantity + 1) * cartItem.unitPrice,
-              }
-            : cartItem,
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          id: `${item.name}-${selectedVariant}`,
-          name: item.name,
-          variant: selectedVariant,
-          quantity: 1,
-          unitPrice: selectedPrice,
-          totalPrice: selectedPrice,
-        },
-      ];
-    });
-
-    const imageElement = event.currentTarget.closest("article")?.querySelector("img");
-    const imageRect = imageElement?.getBoundingClientRect();
-    const cartRect = cartButtonRef.current?.getBoundingClientRect();
-
-    if (imageRect && cartRect) {
-      setFlyItem({
-        id: `${item.name}-${Date.now()}`,
-        src: imageSrc,
-        start: imageRect,
-        end: cartRect,
-      });
-      window.setTimeout(() => setFlyItem(null), 700);
-    }
-
-    setCartOpen(true);
-    toast.success(`${item.name} added to cart`);
+    addToCart({ ...seller, name: seller.itemName }, seller.image);
   };
 
-  const updateQuantity = (id, delta) => {
-    setCartItems((prev) =>
-      prev
-        .map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                quantity: Math.max(0, item.quantity + delta),
-                totalPrice: Math.max(0, item.quantity + delta) * item.unitPrice,
-              }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
-    );
-  };
-
-  const placeOrder = async () => {
-    if (!isOrderingOpen) {
-      toast.error("Ordering is currently closed. Please come back when the shop reopens.");
-      return;
-    }
-
-    if (!customer.customerName || !customer.phone || !customer.flatNo || !customer.roomOrFloor || !customer.landmark) {
-      toast.error("Please complete flat number, room/floor, and nearby landmark.");
-      return;
-    }
-    if (cartItems.length === 0) {
-      toast.error("Cart is empty.");
-      return;
-    }
-
-    setPlacingOrder(true);
-    try {
-      const payload = {
-        customerName: customer.customerName,
-        phone: customer.phone,
-        address: buildDeliveryAddress(customer),
-        items: cartItems,
-        subtotal,
-        discountEnabled,
-        discountRate,
-        discountAmount,
-        deliveryCharge,
-        total: grandTotal,
-      };
-      const response = await axios.post(`${API_BASE_URL}/api/orders`, payload);
-
-      toast.success("Your order is being prepared");
-      setCartItems([]);
-      setCustomer({
-        customerName: userSession?.name || "",
-        phone: userSession?.phone || "",
-        flatNo: "",
-        roomOrFloor: "",
-        landmark: "",
-      });
-      setCartOpen(false);
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Order failed. Please try again.");
-    } finally {
-      setPlacingOrder(false);
+  const handleContact = () => {
+    if (CONTACT_PHONE) {
+      window.location.href = `tel:${CONTACT_PHONE}`;
+    } else {
+      toast("Restaurant contact number coming soon.");
     }
   };
 
-  const menuContainerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.06,
-        delayChildren: 0.03,
-      },
-    },
-    exit: { opacity: 0, transition: { duration: 0.2 } },
-  };
+  const timings = settings.orderWindows
+    .map((window) => `${window.name}: ${window.start} – ${window.end}`)
+    .join("  |  ");
 
   return (
-    <div className="relative min-h-screen bg-[var(--cbk-bg)] pb-24 text-[var(--cbk-text)]">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[rgba(18,18,18,.75)] backdrop-blur-xl">
+    <div className="min-h-screen bg-[var(--cbk-bg)] pb-24 text-[var(--cbk-text)]">
+      <header className="sticky top-0 z-40 border-b border-[var(--cbk-orange)]/15 bg-[rgba(255,247,237,.92)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <img src="/logo.jpeg" alt="Chakhna By Kilo" className="h-11 w-11 rounded-full border border-[var(--cbk-gold)]/60 object-cover" />
+            <img src="/logo.jpeg" alt="Chakhna By Kilo" className="h-11 w-11 rounded-full border border-[var(--cbk-orange)]/40 object-cover" />
             <div>
-              <h1 className="font-heading text-xl leading-none">Chakhna By Kilo</h1>
-              <p className="text-xs text-white/70">By Kilo, By Choice, By Taste</p>
+              <h1 className="font-heading text-xl leading-none text-[var(--cbk-crimson)]">Chakhna By Kilo</h1>
+              <p className="text-xs text-[var(--cbk-text)]/60">By Kilo, By Choice, By Taste</p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" })}
-              className="hidden rounded-full border border-[var(--cbk-gold)]/35 bg-white/5 px-4 py-2 text-sm md:inline-flex"
+              onClick={onOpenMenu}
+              className="hidden rounded-full border border-[var(--cbk-orange)]/30 bg-white px-4 py-2 text-sm font-medium text-[var(--cbk-text)] md:inline-flex"
             >
-              Explore Menu
+              <UtensilsCrossed size={16} className="mr-1" />
+              Menu
             </button>
             <button
               type="button"
               onClick={onOpenHistory}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium"
+              className="hidden rounded-full border border-[var(--cbk-orange)]/30 bg-white px-4 py-2 text-sm font-medium text-[var(--cbk-text)] md:inline-flex"
             >
-              <ReceiptText size={16} />
+              <ReceiptText size={16} className="mr-1" />
               Orders
             </button>
-            <button type="button" onClick={onLogout} className="inline-flex items-center gap-2 rounded-full bg-[var(--cbk-crimson)] px-4 py-2 text-sm font-medium">
-              <LogOut size={16} />
-              Logout
-            </button>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setProfileOpen((prev) => !prev);
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-2 text-sm font-semibold text-white"
+              >
+                <UserRound size={16} />
+                {userSession?.name ? userSession.name.split(" ")[0] : "Profile"}
+              </button>
+
+              {profileOpen && (
+                <div
+                  className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-[var(--cbk-orange)]/20 bg-white shadow-xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="border-b border-[var(--cbk-text)]/10 px-4 py-3">
+                    <p className="text-sm font-semibold">{userSession?.name || "Guest User"}</p>
+                    <p className="text-xs text-[var(--cbk-text)]/60">{userSession?.phone || "Not logged in"}</p>
+                  </div>
+                  <button type="button" onClick={handleContact} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-[var(--cbk-bg)]">
+                    <Phone size={15} className="text-[var(--cbk-orange)]" />
+                    Contact Restaurant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!settings.promoActive || Number(settings.promoDiscountRate || 0) <= 0) {
+                        toast("No active coupon right now.");
+                        return;
+                      }
+                      toast(
+                        settings.promoDiscountCode
+                          ? `Use code ${settings.promoDiscountCode} for ${settings.promoDiscountRate}% OFF!`
+                          : `${settings.promoDiscountRate}% OFF auto-applied on your next order!`,
+                      );
+                    }}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-[var(--cbk-bg)]"
+                  >
+                    <TicketPercent size={15} className="text-[var(--cbk-orange)]" />
+                    Coupons
+                    {settings.promoActive && Number(settings.promoDiscountRate || 0) > 0 && (
+                      <span className="ml-auto rounded-full bg-[var(--cbk-orange)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--cbk-orange)]">
+                        {settings.promoDiscountRate}% OFF
+                      </span>
+                    )}
+                  </button>
+                  <button type="button" onClick={onLogout} className="flex w-full items-center gap-2 border-t border-[var(--cbk-text)]/10 px-4 py-3 text-left text-sm text-[var(--cbk-crimson)] hover:bg-[var(--cbk-bg)]">
+                    <LogOut size={15} />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="relative overflow-hidden px-4 pb-14 pt-16 sm:px-6 sm:pt-20">
-        <div className="absolute inset-0">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={heroSlides[currentHeroSlide].image}
-              src={heroSlides[currentHeroSlide].image}
-              alt={heroSlides[currentHeroSlide].title}
-              className="h-full w-full object-cover"
-              onError={(event) => {
-                event.currentTarget.src = "/menu1.jpeg";
-              }}
-              initial={{ opacity: 0, scale: 1.04 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.7 }}
-            />
-          </AnimatePresence>
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(18,18,18,.86),rgba(18,18,18,.62),rgba(139,0,0,.5))]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(212,160,23,.24),transparent_35%)]" />
-        </div>
-
-        <div className="relative z-10 mx-auto flex min-h-[78vh] w-full max-w-7xl flex-col justify-end">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-2xl">
-            <p className="mb-3 text-sm tracking-[0.2em] text-[var(--cbk-gold)]">PREMIUM DELIVERY EXPERIENCE</p>
-            <h2 className="font-heading text-4xl leading-tight sm:text-6xl">Crafted flavors, delivered with finesse.</h2>
-            <p className="mt-5 max-w-xl text-sm text-white/80 sm:text-base">
-              A refined menu of bold Kolkata favorites with smooth ordering, elegant interactions, and chef-driven quality.
+      <section className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+        <div className="grid items-center gap-8 lg:grid-cols-2">
+          <Motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <p className="mb-3 text-sm font-semibold tracking-[0.18em] text-[var(--cbk-orange)]">PREMIUM DELIVERY EXPERIENCE</p>
+            <h2 className="font-heading text-4xl leading-tight text-[var(--cbk-crimson)] sm:text-6xl">
+              Crafted flavors, delivered with finesse.
+            </h2>
+            <p className="mt-5 max-w-xl text-[var(--cbk-text)]/75 sm:text-base">
+              Bold Kolkata favourites, chef-crafted and delivered hot. Order in a tap and track it live.
             </p>
 
-            <motion.button
-              type="button"
-              onClick={() => document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" })}
-              animate={{ y: [0, 8, 0], opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-              className="mt-10 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm backdrop-blur"
-            >
-              Scroll to Menu
-              <span className="text-lg">↓</span>
-            </motion.button>
-          </motion.div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={onOpenMenu}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-6 py-3 text-sm font-semibold text-white shadow-lg"
+              >
+                <UtensilsCrossed size={16} />
+                Explore Menu
+              </Motion.button>
+              <button
+                type="button"
+                onClick={() => document.getElementById("best-sellers")?.scrollIntoView({ behavior: "smooth" })}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--cbk-orange)]/30 bg-white px-6 py-3 text-sm font-semibold text-[var(--cbk-text)]"
+              >
+                <Sparkles size={16} className="text-[var(--cbk-orange)]" />
+                Today's Favourites
+              </button>
+            </div>
+
+            {firstOrderEligible && (
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--cbk-crimson)]/25 bg-white px-4 py-2 text-sm font-semibold text-[var(--cbk-crimson)]">
+                <TicketPercent size={15} />
+                Welcome! {settings.firstOrderDiscountRate}% OFF your first order
+              </div>
+            )}
+          </Motion.div>
+
+          <Motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7 }}
+            className="relative overflow-hidden rounded-3xl border border-[var(--cbk-orange)]/20 shadow-xl"
+          >
+            <img
+              src="/menu4.jpeg"
+              alt="Chakhna by Kilo signature spread"
+              className="h-64 w-full object-cover sm:h-80"
+              onError={(e) => {
+                e.currentTarget.src = "/menu1.jpeg";
+              }}
+            />
+            <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-[var(--cbk-crimson)] shadow">
+              <Clock3 size={14} className="text-[var(--cbk-orange)]" />
+              {timings || "Lunch 12:30 – 5:30 | Dinner 6:30 – 11:30"}
+            </div>
+          </Motion.div>
+        </div>
+
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cbk-orange)]">Order Timings</p>
+            <p className="mt-1 text-sm text-[var(--cbk-text)]/80">{timings || "Lunch 12:30 – 5:30 | Dinner 6:30 – 11:30"}</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cbk-orange)]">Delivery Time</p>
+            <p className="mt-1 text-sm text-[var(--cbk-text)]/80">Approx. {settings.etaMinutes} minutes</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cbk-orange)]">Delivery Charge</p>
+            <p className="mt-1 text-sm text-[var(--cbk-text)]/80">{formatINR(deliveryCharge)} within delivery area</p>
+          </div>
         </div>
       </section>
 
-      <main id="menu" className="mx-auto max-w-7xl space-y-6 px-4 pb-8 pt-8 sm:px-6">
-        {!isOrderingOpen && (
-          <div className="rounded-xl border border-red-300/35 bg-[rgba(139,0,0,.28)] px-4 py-3 text-sm text-red-100">
-            Ordering is closed for now. You can browse the menu, but checkout is disabled.
+      <main id="best-sellers" className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-heading text-3xl text-[var(--cbk-crimson)]">Bestsellers</h3>
+          <button type="button" onClick={onOpenMenu} className="text-sm font-semibold text-[var(--cbk-orange)] hover:underline">
+            View full menu →
+          </button>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {SELLER_GROUPS.map((group) => (
+            <section key={group.id} className="rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h4 className="font-heading text-xl text-[var(--cbk-text)]">{group.title}</h4>
+                <span className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wide ${group.accent} bg-[var(--cbk-bg)] border`}>
+                  {group.badge}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {group.items.map((seller) => {
+                  const dish = sellerWithLiveData(seller);
+                  const fromPrice = priceFrom(dish.prices);
+                  return (
+                    <div key={seller.itemName} className="flex items-center gap-3 rounded-2xl border border-[var(--cbk-text)]/10 bg-[var(--cbk-bg)] p-2.5">
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
+                        <img
+                          src={dish.image}
+                          alt={seller.itemName}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = "/menu1.jpeg";
+                          }}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="truncate text-sm font-semibold">{seller.label}</p>
+                          <button
+                            type="button"
+                            aria-label="Favorite"
+                            onClick={() => toggleFavorite(seller.itemName)}
+                            className="shrink-0 rounded-full p-1 text-[var(--cbk-crimson)]"
+                          >
+                            <Heart size={15} fill={isFavorite(seller.itemName) ? "currentColor" : "none"} />
+                          </button>
+                        </div>
+                        <p className="text-xs text-[var(--cbk-text)]/60">
+                          {Object.keys(dish.prices).length > 1 ? "from " : ""}
+                          <span className="text-sm font-bold text-[var(--cbk-orange)]">{formatINR(fromPrice)}</span>
+                        </p>
+                        <button
+                          type="button"
+                          disabled={!isOrderingOpen || dish.available === false}
+                          onClick={() => handleQuickAdd(dish)}
+                          className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          <ShoppingCart size={13} />
+                          {dish.available === false ? "Unavailable" : "Order"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <section className="mt-10 overflow-hidden rounded-3xl border border-[var(--cbk-orange)]/25 bg-gradient-to-br from-white to-[var(--cbk-cream)] shadow-sm">
+          <div className="grid items-center gap-4 p-5 sm:grid-cols-[auto_1fr_auto]">
+            <div className="relative">
+              <div className="h-24 w-24 overflow-hidden rounded-2xl">
+                <img
+                  src={DRY_FRUIT_ITEM.image}
+                  alt="Dry Fruit Delight"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = "/menu1.jpeg";
+                  }}
+                />
+              </div>
+              <span className="absolute -right-2 -top-2 rounded-full bg-[var(--cbk-crimson)] px-2.5 py-1 text-[10px] font-bold text-white shadow">
+                NEW
+              </span>
+            </div>
+            <div>
+              <h4 className="font-heading text-2xl text-[var(--cbk-crimson)]">Our New Product — Dry Fruit</h4>
+              <p className="mt-1 text-sm text-[var(--cbk-text)]/75">
+                {DRY_FRUIT_ITEM.itemName} — premium assorted dry fruits, ready to order for {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))}.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={!isOrderingOpen}
+              onClick={() => {
+                if (!isOrderingOpen) {
+                  toast.error("Ordering is closed right now.");
+                  return;
+                }
+                addToCart({ ...DRY_FRUIT_ITEM, name: DRY_FRUIT_ITEM.itemName }, DRY_FRUIT_ITEM.image);
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-6 py-3 text-sm font-semibold text-white shadow disabled:opacity-50"
+            >
+              <ShoppingCart size={15} />
+              Order {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))}
+            </button>
           </div>
-        )}
-
-        <CategoryBar categories={menuCategories} activeCategory={activeCategory} onSelect={setActiveCategory} />
-
-        <AnimatePresence mode="wait">
-          <motion.section
-            key={activeCategoryData?.id || "empty"}
-            layout
-            variants={menuContainerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          >
-            {(activeCategoryData?.items || []).map((item) => (
-              <MenuCard
-                key={`${activeCategoryData.id}-${item.name}`}
-                item={item}
-                categoryTitle={activeCategoryData.title}
-                selectedVariant={variantSelections[item.name]}
-                onVariantChange={handleVariantChange}
-                onAdd={addToCart}
-                orderingOpen={isOrderingOpen}
-              />
-            ))}
-          </motion.section>
-        </AnimatePresence>
+        </section>
       </main>
 
-      <motion.button
-        ref={cartButtonRef}
-        type="button"
-        onClick={() => setCartOpen(true)}
-        disabled={!isOrderingOpen}
-        animate={{ scale: [1, 1.04, 1] }}
-        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-        className={[
-          "fixed right-4 z-50 rounded-full border border-[var(--cbk-gold)]/50 bg-[rgba(139,0,0,.82)] px-5 py-3 text-sm font-semibold shadow-[0_12px_30px_rgba(0,0,0,.45)] backdrop-blur disabled:cursor-not-allowed disabled:opacity-50 md:bottom-6",
-          showMobileCartActions ? "bottom-20 inline-flex" : "hidden md:inline-flex md:bottom-6",
-        ].join(" ")}
-      >
-        <span className="inline-flex items-center gap-2">
-          <ShoppingCart size={16} />
-          Checkout Cart ({cartItems.length})
-        </span>
-      </motion.button>
+      <footer className="mx-auto max-w-7xl px-4 pb-6 pt-2 text-center text-xs text-[var(--cbk-text)]/55 sm:px-6">
+        Chakhna By Kilo · Kolkata · {timings || "Lunch 12:30 – 5:30 | Dinner 6:30 – 11:30"}
+      </footer>
 
-      <AnimatePresence>
-        {flyItem && (
-          <motion.img
-            key={flyItem.id}
-            src={flyItem.src}
-            alt="Item moving to cart"
-            initial={{
-              position: "fixed",
-              left: flyItem.start.left,
-              top: flyItem.start.top,
-              width: flyItem.start.width,
-              height: flyItem.start.height,
-              borderRadius: 12,
-              zIndex: 80,
-              opacity: 0.95,
-            }}
-            animate={{
-              left: flyItem.end.left + flyItem.end.width / 2 - 20,
-              top: flyItem.end.top + flyItem.end.height / 2 - 20,
-              width: 40,
-              height: 40,
-              opacity: 0.45,
-              scale: 0.6,
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.65, ease: "easeInOut" }}
-            className="pointer-events-none object-cover"
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {cartOpen && (
-          <>
-            <motion.button
-              type="button"
-              aria-label="Close cart"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setCartOpen(false)}
-              className="fixed inset-0 z-40 bg-black/60"
-            />
-
-            <motion.aside
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 220, damping: 28 }}
-              className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[linear-gradient(180deg,rgba(25,25,25,.98),rgba(18,18,18,.98))] p-4"
-            >
-              <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart size={18} className="text-[var(--cbk-gold)]" />
-                  <h3 className="font-heading text-2xl">Your Cart</h3>
-                </div>
-                <button type="button" onClick={() => setCartOpen(false)} className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-sm">
-                  <X size={14} />
-                  Close
-                </button>
-              </div>
-
-              <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-                {cartItems.length === 0 && <p className="text-sm text-white/70">Your cart is empty.</p>}
-                {cartItems.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-white/10 bg-white/[0.06] p-3 shadow-[0_10px_22px_rgba(0,0,0,.22)]">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-white/70">{item.variant}</p>
-                      </div>
-                      <p className="text-sm font-semibold text-[var(--cbk-gold)]">{formatINR(item.totalPrice)}</p>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <button type="button" onClick={() => updateQuantity(item.id, -1)} className="h-7 w-7 rounded-md bg-white/10">
-                        -
-                      </button>
-                      <span className="text-sm">{item.quantity}</span>
-                      <button type="button" onClick={() => updateQuantity(item.id, 1)} className="h-7 w-7 rounded-md bg-white/10">
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
-                <div className="grid grid-cols-1 gap-2">
-                  <input
-                    type="text"
-                    value={customer.customerName}
-                    disabled
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="tel"
-                    value={customer.phone}
-                    disabled
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <label className="space-y-1">
-                    <span className="inline-flex items-center gap-1 text-xs text-white/75">
-                      <Building2 size={13} />
-                      Flat No
-                    </span>
-                    <input
-                      type="text"
-                      value={customer.flatNo}
-                      onChange={(event) => setCustomer((prev) => ({ ...prev, flatNo: event.target.value }))}
-                      placeholder="Flat / House no"
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-[var(--cbk-gold)]/60"
-                    />
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="inline-flex items-center gap-1 text-xs text-white/75">
-                      <House size={13} />
-                      Room No / Floor
-                    </span>
-                    <input
-                      type="text"
-                      value={customer.roomOrFloor}
-                      onChange={(event) => setCustomer((prev) => ({ ...prev, roomOrFloor: event.target.value }))}
-                      placeholder="Room number or floor"
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-[var(--cbk-gold)]/60"
-                    />
-                  </label>
-                </div>
-
-                <label className="space-y-1">
-                  <span className="inline-flex items-center gap-1 text-xs text-white/75">
-                    <Landmark size={13} />
-                    Nearby Landmark
-                  </span>
-                  <input
-                    type="text"
-                    value={customer.landmark}
-                    onChange={(event) => setCustomer((prev) => ({ ...prev, landmark: event.target.value }))}
-                    placeholder="e.g. Opposite Technocity Gate"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-[var(--cbk-gold)]/60"
-                  />
-                </label>
-
-                <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-white/80">
-                  <p className="flex justify-between"><span>Subtotal</span><span>{formatINR(subtotal)}</span></p>
-                  {discountEnabled && discountAmount > 0 && (
-                    <p className="flex justify-between text-emerald-300"><span>Discount ({discountRate}%)</span><span>-{formatINR(discountAmount)}</span></p>
-                  )}
-                  <p className="flex justify-between"><span>Delivery</span><span>{formatINR(deliveryCharge)}</span></p>
-                  <p className="mt-1 flex justify-between font-semibold text-[var(--cbk-gold)]"><span>Payable</span><span>{formatINR(grandTotal)}</span></p>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={placingOrder || !isOrderingOpen}
-                  onClick={placeOrder}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-gold)] to-[#bf8d15] px-4 py-3 font-semibold text-black disabled:opacity-70"
-                >
-                  <MapPinned size={16} />
-                  {placingOrder ? "Processing Checkout..." : isOrderingOpen ? "Checkout Cart" : "Ordering Closed"}
-                  {!placingOrder && <ChevronRight size={16} />}
-                </button>
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[rgba(18,18,18,.95)] backdrop-blur md:hidden">
-        <div className="mx-auto flex max-w-md items-center justify-around py-2 text-xs">
-          <button
-            type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="inline-flex min-w-20 flex-col items-center gap-1 rounded-lg px-4 py-2"
-          >
+      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--cbk-orange)]/15 bg-[rgba(255,247,237,.96)] backdrop-blur md:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-around py-2 text-xs text-[var(--cbk-text)]">
+          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="inline-flex min-w-20 flex-col items-center gap-1 rounded-lg px-4 py-2">
             <House size={16} />
             Home
           </button>
-          <button
-            type="button"
-            onClick={() => document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" })}
-            className="inline-flex min-w-20 flex-col items-center gap-1 rounded-lg px-4 py-2"
-          >
+          <button type="button" onClick={onOpenMenu} className="inline-flex min-w-20 flex-col items-center gap-1 rounded-lg px-4 py-2">
             <UtensilsCrossed size={16} />
             Menu
           </button>
-          <button
-            type="button"
-            onClick={onOpenHistory}
-            className="inline-flex min-w-20 flex-col items-center gap-1 rounded-lg px-4 py-2"
-          >
+          <button type="button" onClick={onOpenHistory} className="inline-flex min-w-20 flex-col items-center gap-1 rounded-lg px-4 py-2">
             <ReceiptText size={16} />
             Orders
           </button>
           {showMobileCartActions && (
-            <button
-              type="button"
-              onClick={() => setCartOpen(true)}
-              className="inline-flex min-w-24 flex-col items-center gap-1 rounded-lg px-4 py-2 text-[var(--cbk-gold)]"
-            >
+            <button type="button" onClick={() => setCartOpen(true)} className="inline-flex min-w-24 flex-col items-center gap-1 rounded-lg px-4 py-2 text-[var(--cbk-orange)]">
               <ShoppingCart size={16} />
-              Checkout Cart
+              Cart ({cartItems.length})
             </button>
           )}
         </div>

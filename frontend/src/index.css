@@ -2,10 +2,12 @@
 @import "tailwindcss";
 
 :root {
-  --cbk-bg: #121212;
-  --cbk-crimson: #8b0000;
-  --cbk-gold: #d4a017;
-  --cbk-text: #f5efe4;
+  --cbk-bg: #fff7ed;
+  --cbk-cream: #fff1dc;
+  --cbk-crimson: #c21f2e;
+  --cbk-orange: #ea580c;
+  --cbk-gold: #ea580c;
+  --cbk-text: #3e1f12;
 }
 
 * {

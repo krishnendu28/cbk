@@ -19,12 +19,46 @@ const defaultSettings = {
   zomatoApiKey: null,
   swiggyApiKey: null,
   carbonTrackingEnabled: false,
+  deliveryCharge: 10,
+  etaMinutes: 45,
+  orderWindows: [
+    { name: "Lunch", start: "12:30", end: "17:30" },
+    { name: "Dinner", start: "18:30", end: "23:30" },
+  ],
+  firstOrderDiscountEnabled: true,
+  firstOrderDiscountRate: 15,
+  promoDiscountRate: 0,
+  promoDiscountCode: "",
+  promoActive: false,
+  promoExpiresAt: null,
 };
 
 const memorySettings = new Map();
 
 function isMongoConnected() {
   return mongoose.connection.readyState === 1;
+}
+
+function normalizeOrderWindows(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return defaultSettings.orderWindows;
+  }
+
+  const windows = value
+    .filter((entry) => entry && String(entry.start || "").match(/^\d{2}:\d{2}$/) && String(entry.end || "").match(/^\d{2}:\d{2}$/))
+    .map((entry) => ({
+      name: String(entry.name || "").trim() || "Slot",
+      start: String(entry.start).trim(),
+      end: String(entry.end).trim(),
+    }));
+
+  return windows.length > 0 ? windows : defaultSettings.orderWindows;
+}
+
+function normalizePromoExpiry(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function normalizeSettings(settings) {
@@ -46,6 +80,15 @@ function normalizeSettings(settings) {
     zomatoApiKey: source.zomatoApiKey ? String(source.zomatoApiKey) : null,
     swiggyApiKey: source.swiggyApiKey ? String(source.swiggyApiKey) : null,
     carbonTrackingEnabled: Boolean(source.carbonTrackingEnabled),
+    deliveryCharge: Number(source.deliveryCharge ?? defaultSettings.deliveryCharge),
+    etaMinutes: Number(source.etaMinutes ?? defaultSettings.etaMinutes),
+    orderWindows: normalizeOrderWindows(source.orderWindows),
+    firstOrderDiscountEnabled: Boolean(source.firstOrderDiscountEnabled),
+    firstOrderDiscountRate: Number(source.firstOrderDiscountRate ?? defaultSettings.firstOrderDiscountRate),
+    promoDiscountRate: Number(source.promoDiscountRate ?? 0),
+    promoDiscountCode: String(source.promoDiscountCode || "").trim(),
+    promoActive: Boolean(source.promoActive),
+    promoExpiresAt: normalizePromoExpiry(source.promoExpiresAt),
   };
 }
 

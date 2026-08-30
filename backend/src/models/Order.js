@@ -18,6 +18,7 @@ const orderSchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     dateOfBirth: { type: String, trim: true },
     address: { type: String, required: true, trim: true },
+    instructions: { type: String, default: "", trim: true, maxlength: 300 },
     items: { type: [orderItemSchema], required: true },
     subtotal: { type: Number, min: 0, default: 0 },
     discountEnabled: { type: Boolean, default: false },
@@ -25,6 +26,9 @@ const orderSchema = new mongoose.Schema(
     discountAmount: { type: Number, min: 0, default: 0 },
     total: { type: Number, required: true, min: 0 },
     deliveryCharge: { type: Number, default: 0, min: 0 },
+    deliveryEtaMinutes: { type: Number, min: 15, max: 180, default: 45 },
+    isFirstOrder: { type: Boolean, default: false },
+    promoCode: { type: String, default: "", trim: true, maxlength: 40 },
     status: {
       type: String,
       enum: ["Preparing", "Ready", "Delivered"],

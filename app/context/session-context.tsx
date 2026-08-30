@@ -3,16 +3,24 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 
 const USER_SESSION_KEY = "cbk_user_session_mobile";
 
-type Session = {
+export type Session = {
   name: string;
   phone: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
+  guest?: boolean;
 } | null;
+
+type LoginPayload = {
+  name?: string;
+  phone: string;
+  dateOfBirth?: string;
+};
 
 type SessionContextType = {
   session: Session;
   isHydrated: boolean;
-  login: (name: string, phone: string, dateOfBirth: string) => void;
+  login: (payload: LoginPayload) => void;
+  loginAsGuest: () => void;
   logout: () => void;
 };
 
@@ -28,7 +36,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(USER_SESSION_KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as Session;
-          if (parsed?.name && parsed?.phone && parsed?.dateOfBirth) {
+          if (parsed?.phone || parsed?.guest) {
             setSession(parsed);
           }
         }
@@ -46,8 +54,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       isHydrated,
-      login: (name: string, phone: string, dateOfBirth: string) => {
-        const nextSession = { name: name.trim(), phone: phone.trim(), dateOfBirth: dateOfBirth.trim() };
+      login: ({ name, phone, dateOfBirth }: LoginPayload) => {
+        const nextSession = {
+          name: (name || "").trim(),
+          phone: (phone || "").trim(),
+          ...(dateOfBirth ? { dateOfBirth: dateOfBirth.trim() } : {}),
+        };
+        setSession(nextSession);
+        AsyncStorage.setItem(USER_SESSION_KEY, JSON.stringify(nextSession)).catch(() => null);
+      },
+      loginAsGuest: () => {
+        const nextSession = { guest: true, name: "", phone: "" };
         setSession(nextSession);
         AsyncStorage.setItem(USER_SESSION_KEY, JSON.stringify(nextSession)).catch(() => null);
       },

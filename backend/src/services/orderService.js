@@ -1,8 +1,10 @@
 import { randomUUID } from "crypto";
 import { Order } from "../models/Order.js";
 import { findMenuItemById, getAllMenuCategories } from "./menuService.js";
+import { getOutletSettings } from "./settingsService.js";
 import { logger } from "../utils/logger.js";
 
+const DEFAULT_OUTLET_ID = 1;
 const memoryOrders = [];
 let useMongo = false;
 
@@ -91,11 +93,42 @@ export function isMongoEnabled() {
   return useMongo;
 }
 
+async function countOrdersByPhone(phone) {
+  const normalizedPhone = String(phone || "").trim();
+  return withMongoFallback(
+    "countOrdersByPhone",
+    () => Order.countDocuments({ phone: normalizedPhone }),
+    () => memoryOrders.filter((order) => String(order.phone || "").trim() === normalizedPhone).length,
+  );
+}
+
+function applyFirstOrderDiscount(outletSettings, subtotal) {
+  if (!outletSettings.firstOrderDiscountEnabled) {
+    return null;
+  }
+  const rate = Math.min(100, Math.max(0, Number(outletSettings.firstOrderDiscountRate) || 0));
+  if (rate <= 0) {
+    return null;
+  }
+  return { rate, amount: Math.round((subtotal * rate) / 100) };
+}
+
+function promoIsLive(outletSettings) {
+  if (!outletSettings.promoActive || Number(outletSettings.promoDiscountRate || 0) <= 0) {
+    return false;
+  }
+  if (outletSettings.promoExpiresAt) {
+    return new Date(outletSettings.promoExpiresAt).getTime() > Date.now();
+  }
+  return true;
+}
+
 export async function createOrder({
   customerName,
   phone,
   dateOfBirth,
   address,
+  instructions,
   items,
   subtotal,
   discountEnabled,
@@ -103,6 +136,8 @@ export async function createOrder({
   discountAmount,
   total,
   deliveryCharge,
+  deliveryEtaMinutes,
+  promoCode,
 }) {
   validateOrderItems(items);
 
@@ -115,19 +150,58 @@ export async function createOrder({
     totalPrice: Number(item.totalPrice) || 0,
   }));
 
+  const outletSettings = await getOutletSettings(DEFAULT_OUTLET_ID);
+  const computedSubtotal = normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
+  const orderSubtotal = Number(subtotal) >= 0 ? Number(subtotal) : computedSubtotal;
+
+  const finalDeliveryCharge = deliveryCharge !== undefined && deliveryCharge !== null
+    ? Number(deliveryCharge || 0)
+    : Number(outletSettings.deliveryCharge || 0);
+
+  const finalEtaMinutes = Number(deliveryEtaMinutes) || Number(outletSettings.etaMinutes) || 45;
+  const isFirstOrder = (await countOrdersByPhone(phone)) === 0;
+  const normalizedPromoCode = String(promoCode || "").trim();
+  const promoCodeActive = String(outletSettings.promoDiscountCode || "").trim();
+  const usePromo = promoIsLive(outletSettings) && (!promoCodeActive || normalizedPromoCode === promoCodeActive);
+
+  let finalDiscountEnabled = Boolean(discountEnabled);
+  let finalDiscountRate = Number(discountRate) || 0;
+  let finalDiscountAmount = Number(discountAmount) || 0;
+  let finalPromoCode = normalizedPromoCode;
+
+  if (usePromo) {
+    finalDiscountEnabled = true;
+    finalDiscountRate = Number(outletSettings.promoDiscountRate || 0);
+    finalDiscountAmount = Math.round((orderSubtotal * finalDiscountRate) / 100);
+    finalPromoCode = promoCodeActive || normalizedPromoCode;
+  } else if (isFirstOrder) {
+    const firstOrderDiscount = applyFirstOrderDiscount(outletSettings, orderSubtotal);
+    if (firstOrderDiscount) {
+      finalDiscountEnabled = true;
+      finalDiscountRate = firstOrderDiscount.rate;
+      finalDiscountAmount = firstOrderDiscount.amount;
+    }
+  }
+
+  const finalTotal = Math.max(0, orderSubtotal - finalDiscountAmount + finalDeliveryCharge);
+
   const payload = {
     customerName,
     orderCode: generateOrderCode(),
     phone,
     dateOfBirth,
     address,
+    instructions: String(instructions || "").trim(),
     items: normalizedItems,
-    subtotal: Number(subtotal) || normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0),
-    discountEnabled: Boolean(discountEnabled),
-    discountRate: Number(discountRate) || 0,
-    discountAmount: Number(discountAmount) || 0,
-    total: Number(total) || 0,
-    deliveryCharge: Number(deliveryCharge) || 0,
+    subtotal: orderSubtotal,
+    discountEnabled: finalDiscountEnabled,
+    discountRate: finalDiscountRate,
+    discountAmount: finalDiscountAmount,
+    total: finalTotal,
+    deliveryCharge: finalDeliveryCharge,
+    deliveryEtaMinutes: finalEtaMinutes,
+    isFirstOrder,
+    promoCode: finalPromoCode,
     status: "Preparing",
     createdAt: new Date(),
   };

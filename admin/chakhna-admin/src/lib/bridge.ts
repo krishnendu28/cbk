@@ -1025,13 +1025,21 @@ export async function deleteBridgeOrder(orderId: string): Promise<void> {
   if (!response.ok) throw await buildRequestError(response, "Failed to delete order");
 }
 
-export async function sendBroadcastNotification(message: string): Promise<{
+export type BroadcastNotificationOptions = {
+  message?: string;
+  discountRate?: number;
+  discountCode?: string;
+  expiresInHours?: number;
+};
+
+export async function sendBroadcastNotification(options: BroadcastNotificationOptions): Promise<{
   notification: { id: string; message: string; createdAt: string };
   push: BridgePushResult;
 }> {
-  const trimmedMessage = String(message || "").trim();
-  if (!trimmedMessage) {
-    throw new Error("Notification message is required");
+  const trimmedMessage = String(options?.message || "").trim();
+  const discountRate = Number(options?.discountRate || 0);
+  if (!trimmedMessage && discountRate <= 0) {
+    throw new Error("Notification message or discount offer is required");
   }
 
   if (isDemoSessionActive()) {
@@ -1043,7 +1051,16 @@ export async function sendBroadcastNotification(message: string): Promise<{
     headers: buildAdminHeaders({
       "Content-Type": "application/json",
     }),
-    body: JSON.stringify({ message: trimmedMessage }),
+    body: JSON.stringify({
+      ...(trimmedMessage ? { message: trimmedMessage } : {}),
+      ...(discountRate > 0
+        ? {
+            discountRate,
+            discountCode: String(options?.discountCode || "").trim() || undefined,
+            expiresInHours: Math.max(1, Number(options?.expiresInHours || 48)),
+          }
+        : {}),
+    }),
   });
 
   if (!response.ok) {

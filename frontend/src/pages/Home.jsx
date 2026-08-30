@@ -45,12 +45,12 @@ const SELLER_GROUPS = [
   },
 ];
 
-const DRY_FRUIT_ITEM = {
-  label: "Dry Fruit Delight",
-  itemName: "Dry Fruit Delight (250gm)",
-  prices: { Regular: 299 },
+const MAKHANA_ITEM = {
+  label: "Makhana",
+  itemName: "Makhana Roasted (200gm)",
+  prices: { Regular: 199 },
   image:
-    "https://images.pexels.com/photos/14878106/pexels-photo-14878106.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dried_lotus_seeds_snack.jpg/960px-Dried_lotus_seeds_snack.jpg",
 };
 
 function formatINR(value) {
@@ -297,8 +297,8 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
           <div className="grid items-center gap-5 sm:grid-cols-[auto_1fr_auto]">
             <div className="relative h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 border-white shadow-lg sm:h-48 sm:w-48">
               <img
-                src={DRY_FRUIT_ITEM.image}
-                alt="Dry Fruit Delight"
+                src={MAKHANA_ITEM.image}
+                alt="Makhana Roasted"
                 className="h-full w-full object-cover"
                 loading="lazy"
                 onError={(e) => {
@@ -309,13 +309,13 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
             </div>
             <div>
               <h4 className="font-heading text-3xl leading-tight text-[var(--cbk-crimson)] sm:text-4xl">
-                Our New Product — Dry Fruit
+                Our New Product — Makhana
               </h4>
               <p className="mt-2 text-sm text-[var(--cbk-text)]/75 sm:text-base">
-                {DRY_FRUIT_ITEM.itemName} — premium assorted dry fruits, packed fresh and delivered to your door.
+                {MAKHANA_ITEM.itemName} — premium roasted fox nuts, packed fresh and delivered to your door.
               </p>
               <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-[var(--cbk-orange)]">
-                Just {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))} per pack
+                Just {formatINR(priceFrom(MAKHANA_ITEM.prices))} per pack
               </p>
             </div>
             <button
@@ -326,12 +326,12 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                   toast.error("Ordering is closed right now.");
                   return;
                 }
-                addToCart({ ...DRY_FRUIT_ITEM, name: DRY_FRUIT_ITEM.itemName }, DRY_FRUIT_ITEM.image);
+                addToCart({ ...MAKHANA_ITEM, name: MAKHANA_ITEM.itemName }, MAKHANA_ITEM.image);
               }}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-7 py-4 text-sm font-bold text-white shadow-xl disabled:opacity-50"
             >
               <ShoppingCart size={16} />
-              Order {formatINR(priceFrom(DRY_FRUIT_ITEM.prices))}
+              Order {formatINR(priceFrom(MAKHANA_ITEM.prices))}
             </button>
           </div>
         </section>

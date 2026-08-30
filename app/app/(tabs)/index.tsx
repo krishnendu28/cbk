@@ -49,15 +49,15 @@ const heroSlides = [
   },
 ];
 
-const DRY_FRUIT_ITEM_ID = 900001;
-const DRY_FRUIT_IMAGE_URL =
-  "https://images.pexels.com/photos/14878106/pexels-photo-14878106.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop";
+const MAKHANA_ITEM_ID = 900001;
+const MAKHANA_IMAGE_URL =
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dried_lotus_seeds_snack.jpg/960px-Dried_lotus_seeds_snack.jpg";
 const SPECIALS_CATEGORY: MenuCategory = {
   id: "specials",
   title: "Specials",
-  items: [{ id: DRY_FRUIT_ITEM_ID, name: "Dry Fruit Delight (250gm)", prices: { Regular: 299 } }],
+  items: [{ id: MAKHANA_ITEM_ID, name: "Makhana Roasted (200gm)", prices: { Regular: 199 } }],
 };
-const DRY_FRUIT_ITEM: MenuItem = SPECIALS_CATEGORY.items[0];
+const MAKHANA_ITEM: MenuItem = SPECIALS_CATEGORY.items[0];
 
 const SELLER_GROUPS: {
   id: string;
@@ -411,23 +411,23 @@ export default function MenuScreen() {
             </View>
             <View style={styles.newLaunchRow}>
               <View style={styles.newLaunchImageWrap}>
-                <ResilientImage primarySource={{ uri: DRY_FRUIT_IMAGE_URL }} secondarySource={FALLBACK_IMAGE} style={styles.newLaunchImage} />
+                <ResilientImage primarySource={{ uri: MAKHANA_IMAGE_URL }} secondarySource={FALLBACK_IMAGE} style={styles.newLaunchImage} />
                 <View style={styles.newLaunchPricePill}>
-                  <Text style={styles.newLaunchPriceText}>Rs {DRY_FRUIT_ITEM.prices.Regular}</Text>
+                  <Text style={styles.newLaunchPriceText}>Rs {MAKHANA_ITEM.prices.Regular}</Text>
                 </View>
               </View>
               <View style={styles.newLaunchBody}>
-                <Text style={styles.newLaunchTitle}>Our New Product — Dry Fruit</Text>
-                <Text style={styles.newLaunchSubtitle}>{DRY_FRUIT_ITEM.name} — premium assorted dry fruits, packed fresh.</Text>
+                <Text style={styles.newLaunchTitle}>Our New Product — Makhana</Text>
+                <Text style={styles.newLaunchSubtitle}>{MAKHANA_ITEM.name} — premium roasted fox nuts, packed fresh.</Text>
                 <TouchableOpacity
                   style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
                   onPress={() => {
-                    if (isOrderingOpen) addToCart(DRY_FRUIT_ITEM);
+                    if (isOrderingOpen) addToCart(MAKHANA_ITEM);
                   }}
                   activeOpacity={0.88}
                   disabled={!isOrderingOpen}>
                   <Ionicons name="cart" size={14} color={Palette.crimson} />
-                  <Text style={styles.orderBtnText}>Order Rs {DRY_FRUIT_ITEM.prices.Regular}</Text>
+                  <Text style={styles.orderBtnText}>Order Rs {MAKHANA_ITEM.prices.Regular}</Text>
                 </TouchableOpacity>
               </View>
             </View>

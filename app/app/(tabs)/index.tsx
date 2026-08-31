@@ -28,7 +28,7 @@ import { AdBanner } from "@/components/admob/ad-banner";
 import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
 import { MenuItemCard } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
-import { getMenuImageByFileName } from "@/utils/get-menu-item-image";
+import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 import type { MenuCategory, MenuItem } from "@/types/menu";
 
 const heroSlides = [
@@ -465,36 +465,38 @@ export default function MenuScreen() {
               <Text style={styles.bestSellersTitle}>Best Seller Items of the Restaurant</Text>
               <Text style={styles.bestSellersSubtitle}>Tap Order on any dish below to add it to your cart.</Text>
             </View>
-            <View style={styles.bestSellersColumns}>
-              {SELLER_GROUPS.map((group) => (
-                <View key={group.id} style={styles.sellerCard}>
-                  <View style={styles.sellerCardHeader}>
-                    <Text style={styles.sellerCardTitle}>{group.title}</Text>
-                    <View style={[styles.sellerBadge, { borderColor: group.badgeColor }]}>
-                      <Text style={[styles.sellerBadgeText, { color: group.badgeColor }]}>{group.badge}</Text>
-                    </View>
-                  </View>
-                  {group.items.map((seller) => {
-                    const menuItem = findMenuItemByName(seller.itemName);
-                    const price = menuItem ? Number(Object.values(menuItem.prices || {})[0] || 0) : 0;
-                    return (
-                      <View key={seller.itemName} style={styles.sellerRow}>
-                        <Text style={styles.sellerName} numberOfLines={1}>{seller.label}</Text>
-                        <Text style={styles.sellerPrice}>Rs {price}</Text>
+            <View style={styles.sellerCardGrid}>
+              {SELLER_GROUPS.flatMap((group) =>
+                group.items.map((seller) => {
+                  const menuItem = findMenuItemByName(seller.itemName);
+                  const price = menuItem ? Number(Object.values(menuItem.prices || {})[0] || 0) : 0;
+                  const image = getMenuItemImage(seller.itemName, "Main Course", menuItem?.image);
+                  const isVeg = group.badge === "VEG";
+                  return (
+                    <View key={seller.itemName} style={styles.sellerImageCard}>
+                      <View style={styles.sellerImageWrap}>
+                        <ResilientImage primarySource={image} secondarySource={FALLBACK_IMAGE} style={styles.sellerImage} />
+                        <View style={[styles.sellerImageBadge, { backgroundColor: isVeg ? Palette.orange : Palette.crimson }]}>
+                          <Text style={styles.sellerImageBadgeText}>{group.badge}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.sellerImageBody}>
+                        <Text style={styles.sellerImageName} numberOfLines={1}>{seller.label}</Text>
+                        <Text style={styles.sellerImagePrice}>Rs {price}</Text>
                         <TouchableOpacity
-                          style={[styles.sellerOrderBtn, (!isOrderingOpen || !menuItem) && styles.disabledBtn]}
+                          style={[styles.sellerImageOrderBtn, (!isOrderingOpen || !menuItem) && styles.disabledBtn]}
                           onPress={() => {
                             if (menuItem) addToCart(menuItem);
                           }}
                           activeOpacity={0.85}
                           disabled={!isOrderingOpen || !menuItem}>
-                          <Text style={styles.sellerOrderText}>Order</Text>
+                          <Text style={styles.sellerImageOrderText}>Order</Text>
                         </TouchableOpacity>
                       </View>
-                    );
-                  })}
-                </View>
-              ))}
+                    </View>
+                  );
+                }),
+              )}
             </View>
           </View>
         </View>
@@ -988,27 +990,17 @@ const styles = StyleSheet.create({
   bestSellersEyebrow: { color: "rgba(255,241,220,0.9)", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
   bestSellersTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", lineHeight: 21 },
   bestSellersSubtitle: { color: "rgba(255,241,220,0.9)", fontSize: 11.5 },
-  bestSellersColumns: { gap: 10 },
-  sellerCard: { backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, padding: 10, gap: 6 },
-  sellerCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
-  sellerCardTitle: { color: Palette.text, fontSize: 13, fontWeight: "800" },
-  sellerBadge: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
-  sellerBadgeText: { fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
-  sellerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: Palette.cardSoft,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Palette.border,
-    paddingVertical: 7,
-    paddingHorizontal: 9,
-  },
-  sellerName: { flex: 1, color: Palette.text, fontSize: 12.5, fontWeight: "600" },
-  sellerPrice: { color: Palette.orange, fontWeight: "800", fontSize: 12.5 },
-  sellerOrderBtn: { backgroundColor: Palette.crimson, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  sellerOrderText: { color: "#FFFFFF", fontWeight: "800", fontSize: 11.5 },
+  sellerCardGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10, paddingHorizontal: 2 },
+  sellerImageCard: { width: "48.6%", backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, padding: 8, gap: 6 },
+  sellerImageWrap: { position: "relative", aspectRatio: 1, borderRadius: 10, overflow: "hidden", backgroundColor: Palette.cardSoft },
+  sellerImage: { width: "100%", height: "100%" },
+  sellerImageBadge: { position: "absolute", top: 6, left: 6, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  sellerImageBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
+  sellerImageBody: { gap: 2 },
+  sellerImageName: { color: Palette.text, fontSize: 13, fontWeight: "700" },
+  sellerImagePrice: { color: Palette.orange, fontWeight: "800", fontSize: 13 },
+  sellerImageOrderBtn: { backgroundColor: Palette.crimson, borderRadius: 9, alignItems: "center", paddingVertical: 7, marginTop: 2 },
+  sellerImageOrderText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
   categoriesSection: { paddingTop: 2, paddingBottom: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Palette.border },

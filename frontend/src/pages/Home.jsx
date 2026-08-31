@@ -352,79 +352,68 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
           </button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {SELLER_GROUPS.map((group) => (
-            <section
-              key={group.id}
-              onClick={onOpenMenu}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") onOpenMenu();
-              }}
-              className="cursor-pointer rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h4 className="font-heading text-xl text-[var(--cbk-text)]">{group.title}</h4>
-                <span className={`rounded-full px-3 py-1 text-[10px] font-bold tracking-wide ${group.accent} bg-[var(--cbk-bg)] border`}>
-                  {group.badge}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {group.items.map((seller) => {
-                  const dish = sellerWithLiveData(seller);
-                  const fromPrice = priceFrom(dish.prices);
-                  return (
-                    <div key={seller.itemName} className="flex items-center gap-3 rounded-2xl border border-[var(--cbk-text)]/10 bg-[var(--cbk-bg)] p-2.5">
-                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
-                        <img
-                          src={dish.image}
-                          alt={seller.itemName}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.src = "/menu1.jpeg";
-                          }}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <p className="truncate text-sm font-semibold">{seller.label}</p>
-                          <button
-                            type="button"
-                            aria-label="Favorite"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleFavorite(seller.itemName);
-                            }}
-                            className="shrink-0 rounded-full p-1 text-[var(--cbk-crimson)]"
-                          >
-                            <Heart size={15} fill={isFavorite(seller.itemName) ? "currentColor" : "none"} />
-                          </button>
-                        </div>
-                        <p className="text-xs text-[var(--cbk-text)]/60">
-                          {Object.keys(dish.prices).length > 1 ? "from " : ""}
-                          <span className="text-sm font-bold text-[var(--cbk-orange)]">{formatINR(fromPrice)}</span>
-                        </p>
-                        <button
-                          type="button"
-                          disabled={!isOrderingOpen || dish.available === false}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleQuickAdd(dish);
-                          }}
-                          className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                        >
-                          <ShoppingCart size={13} />
-                          {dish.available === false ? "Unavailable" : "Order"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {SELLER_GROUPS.flatMap((group) =>
+            group.items.map((seller) => {
+              const dish = sellerWithLiveData(seller);
+              const fromPrice = priceFrom(dish.prices);
+              return (
+                <div key={seller.itemName} className="rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <div className="relative aspect-square overflow-hidden rounded-2xl">
+                    <img
+                      src={dish.image}
+                      alt={seller.label}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.src = "/menu1.jpeg";
+                      }}
+                    />
+                    <span
+                      className={`absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-wide text-white ${
+                        group.badge === "VEG" ? "bg-[var(--cbk-orange)]" : "bg-[var(--cbk-crimson)]"
+                      }`}
+                    >
+                      {group.badge}
+                    </span>
+                  </div>
+                  <div className="mt-2.5 flex items-start justify-between gap-1">
+                    <p className="truncate text-sm font-semibold">{seller.label}</p>
+                    <button
+                      type="button"
+                      aria-label="Favorite"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleFavorite(seller.itemName);
+                      }}
+                      className="shrink-0 rounded-full p-1 text-[var(--cbk-crimson)]"
+                    >
+                      <Heart size={15} fill={isFavorite(seller.itemName) ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <p className="mt-0.5 text-xs text-[var(--cbk-text)]/60">
+                    {Object.keys(dish.prices).length > 1 ? "from " : ""}
+                    <span className="text-sm font-bold text-[var(--cbk-orange)]">{formatINR(fromPrice)}</span>
+                  </p>
+                  <button
+                    type="button"
+                    disabled={!isOrderingOpen || dish.available === false}
+                    onClick={() => {
+                      if (!isOrderingOpen) {
+                        toast.error("Ordering is closed right now.");
+                        return;
+                      }
+                      handleQuickAdd(dish);
+                    }}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    <ShoppingCart size={13} />
+                    {dish.available === false ? "Unavailable" : "Order"}
+                  </button>
+                </div>
+              );
+            }),
+          )}
         </div>
       </main>
 

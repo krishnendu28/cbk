@@ -19,6 +19,13 @@ export type MonthlyPlanCatalog = {
   perfectFor: string[];
   plans: Record<MonthlyPlanType, MonthlyPlan[]>;
   plansFlat: MonthlyPlan[];
+  menu?: Record<MonthlyPlanType, MonthlyMenuRow[]>;
+};
+
+export type MonthlyMenuRow = {
+  day: string;
+  lunch: string;
+  dinner: string;
 };
 
 export type MonthlyRedemptionLogEntry = {

@@ -3,6 +3,9 @@ import { format } from "date-fns";
 import {
   Activity,
   CalendarCheck,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   DollarSign,
   Download,
   Plus,
@@ -61,6 +64,43 @@ const planTypeLabels: Record<MonthlyPlanType, string> = {
   NonVeg: "Non-Veg + Veg",
   OnlyNonVeg: "Only NonVeg",
 };
+
+const CALENDAR_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+const LOCAL_MENU: Record<MonthlyPlanType, { day: string; lunch: string; dinner: string }[]> = {
+  Veg: [
+    { day: "Monday", lunch: "Veg Thali", dinner: "Dal Tadka Meal" },
+    { day: "Tuesday", lunch: "Paneer Thali", dinner: "Aalu Paratha" },
+    { day: "Wednesday", lunch: "Mushroom Thali", dinner: "Veg Noodles + Paneer Chilli" },
+    { day: "Thursday", lunch: "Veg Thali", dinner: "Chana Masala Meal" },
+    { day: "Friday", lunch: "Veg Noodles + Mushroom Chilli", dinner: "Mushroom Masala Meal" },
+    { day: "Saturday", lunch: "Kadhi Chawal", dinner: "Aalu Dum Combo" },
+    { day: "Sunday", lunch: "Veg Fried Rice + Paneer Chilli", dinner: "Mushroom Masala (Roti)" },
+  ],
+  NonVeg: [
+    { day: "Monday", lunch: "Veg Thali", dinner: "Dal Tadka Combo" },
+    { day: "Tuesday", lunch: "Veg Thali", dinner: "Aalu Paratha" },
+    { day: "Wednesday", lunch: "Fish Thali", dinner: "Veg Fried Rice + Chilli Chicken/Noodles" },
+    { day: "Thursday", lunch: "Paneer Thali", dinner: "Chana Masala Combo" },
+    { day: "Friday", lunch: "Egg Thali", dinner: "Afghani Chicken Meal" },
+    { day: "Saturday", lunch: "Kadhi Chawal", dinner: "Aalu Dum Combo" },
+    { day: "Sunday", lunch: "Chicken Biryani", dinner: "Omelette Curry Meal" },
+  ],
+  OnlyNonVeg: [
+    { day: "Monday", lunch: "Egg Thali", dinner: "Chicken + Roti" },
+    { day: "Tuesday", lunch: "Fish Thali", dinner: "Chicken Tadka + Roti" },
+    { day: "Wednesday", lunch: "Egg Thali", dinner: "Chinese: Chili Chicken (3pcs) + Veg Noodles" },
+    { day: "Thursday", lunch: "Fish Thali", dinner: "Chinese: Veg Fried Rice + Chili Chicken (3pcs)" },
+    { day: "Friday", lunch: "Chicken Biryani", dinner: "Chicken + Roti" },
+    { day: "Saturday", lunch: "Fish Thali", dinner: "Chicken Bharta + Roti" },
+    { day: "Sunday", lunch: "Chicken Thali", dinner: "Chinese: Egg Chicken / Schezwan Noodles" },
+  ],
+};
+
+function menuForDay(menu: Record<MonthlyPlanType, { day: string; lunch: string; dinner: string }[]>, plan: MonthlyPlanType, date: Date) {
+  const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()];
+  return (menu[plan] ?? []).find((row) => row.day === weekday) ?? null;
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -168,6 +208,12 @@ export default function MonthlyMeals() {
   const [editTarget, setEditTarget] = useState<EditState | null>(null);
   const [editing, setEditing] = useState(false);
 
+  const [calMonth, setCalMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [calPlan, setCalPlan] = useState<MonthlyPlanType>("Veg");
+
   const refreshTimerRef = useRef<number | null>(null);
 
   const applySnapshot = useCallback((snapshot: { subscriptions: MonthlySubscription[]; stats: MonthlyStats }) => {
@@ -238,6 +284,51 @@ export default function MonthlyMeals() {
     (row: MonthlySubscription) => catalog?.plansFlat.find((plan) => plan.id === row.planId) ?? undefined,
     [catalog],
   );
+
+  const menuData = useMemo(() => catalog?.menu ?? LOCAL_MENU, [catalog]);
+
+  const calRedemptionsByDay = useMemo(() => {
+    const map: Record<string, { lunch: number; dinner: number }> = {};
+    for (const sub of subscriptions) {
+      for (const entry of sub.redemptionLog ?? []) {
+        const d = new Date(entry.redeemedAt);
+        if (Number.isNaN(d.getTime())) continue;
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        const bucket = map[key] ?? { lunch: 0, dinner: 0 };
+        if (entry.meal === "Dinner") bucket.dinner += 1;
+        else bucket.lunch += 1;
+        map[key] = bucket;
+      }
+    }
+    return map;
+  }, [subscriptions]);
+
+  const calPeriods = useMemo(
+    () =>
+      subscriptions
+        .filter((row) => row.status === "Active")
+        .map((row) => ({
+          name: row.name,
+          planType: row.planType,
+          start: new Date(row.startDate),
+          end: new Date(row.endDate),
+        })),
+    [subscriptions],
+  );
+
+  const year = calMonth.getFullYear();
+  const month = calMonth.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const calCells: (Date | null)[] = Array.from({ length: firstWeekday }, () => null);
+  for (let day = 1; day <= daysInMonth; day++) calCells.push(new Date(year, month, day));
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const periodsOnDay = (date: Date) =>
+    calPeriods.filter((p) => date >= p.start && date <= p.end);
 
   async function handleCreate() {
     if (!form.name.trim() || !form.phone.trim() || !form.address.trim() || !form.meals) {
@@ -411,6 +502,86 @@ export default function MonthlyMeals() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-sm border-border">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2"><CalendarDays className="w-5 h-5 text-emerald-600" /> Monthly Calendar</h2>
+              <p className="text-sm text-muted-foreground">Weekly menu mapped to dates · redemptions · active subscription periods</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={calPlan} onValueChange={(value) => setCalPlan(value as MonthlyPlanType)}>
+                <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Veg">Only Veg</SelectItem>
+                  <SelectItem value="NonVeg">Non-Veg + Veg</SelectItem>
+                  <SelectItem value="OnlyNonVeg">Only NonVeg</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" onClick={() => setCalMonth(new Date(year, month - 1, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+              <span className="text-sm font-semibold min-w-[130px] text-center">
+                {format(new Date(year, month, 1), "MMMM yyyy")}
+              </span>
+              <Button variant="outline" size="icon" onClick={() => setCalMonth(new Date(year, month + 1, 1))}><ChevronRight className="w-4 h-4" /></Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1.5">
+            {CALENDAR_WEEKDAYS.map((d, i) => (
+              <div key={`${d}-${i}`} className="text-center text-[11px] font-semibold text-muted-foreground">{d}</div>
+            ))}
+            {calCells.map((cell, i) => {
+              if (!cell) {
+                return <div key={`blank-${i}`} className="min-h-[78px]" />;
+              }
+              const menu = menuForDay(menuData, calPlan, cell);
+              const red = calRedemptionsByDay[`${cell.getFullYear()}-${cell.getMonth()}-${cell.getDate()}`];
+              const periods = periodsOnDay(cell);
+              const key = `${cell.getFullYear()}-${cell.getMonth()}-${cell.getDate()}`;
+              const isToday = isSameDay(cell, today);
+              return (
+                <div
+                  key={key}
+                  className={`rounded-lg border p-1.5 min-h-[78px] ${isToday ? "border-emerald-500" : "border-border"} ${periods.length ? "bg-amber-50" : "bg-card"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${isToday ? "text-emerald-600" : ""}`}>{cell.getDate()}</span>
+                    {red ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-600">
+                        {red.lunch > 0 && <span title="Lunch redeemed" className="w-2 h-2 rounded-full bg-orange-500" />}
+                        {red.dinner > 0 && <span title="Dinner redeemed" className="w-2 h-2 rounded-full bg-rose-500" />}
+                        <span>{red.lunch + red.dinner}</span>
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-1 text-[10px] leading-tight text-muted-foreground">
+                    {menu ? (
+                      <>
+                        <div><span className="font-semibold text-orange-600">L:</span> {menu.lunch}</div>
+                        <div><span className="font-semibold text-rose-600">D:</span> {menu.dinner}</div>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground/50">—</span>
+                    )}
+                  </div>
+                  {periods.length > 0 && (
+                    <div className="mt-1 truncate text-[9px] font-medium text-amber-700" title={periods.map((p) => `${p.name} (${planTypeLabels[p.planType]})`).join(", ")}>
+                      {periods.map((p) => p.name).join(", ")}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-500" /> Lunch redeemed</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Dinner redeemed</span>
+            <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full border border-orange-300 bg-amber-50" /> Active subscription period</span>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap items-center gap-3">
         <Input

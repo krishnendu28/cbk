@@ -59,6 +59,153 @@ const PLAN_CARDS: { key: PlanType; title: string; subtitle: string; color: strin
   { key: "OnlyNonVeg", title: "ONLY NON-VEG MENU", subtitle: "Premium non-veg every meal", color: "#C21F2E" },
 ];
 
+const CALENDAR_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function menuForDay(menuType: PlanType, date: Date) {
+  const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+  return MONTHLY_MENU[menuType].find((row) => row.day === weekday) ?? null;
+}
+
+function CalendarSection({
+  menuType,
+  subscription,
+}: {
+  menuType: PlanType;
+  subscription: MonthlySubscription | null;
+}) {
+  const [monthCursor, setMonthCursor] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const today = new Date();
+
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const periodStart = subscription ? new Date(subscription.startDate) : null;
+  const periodEnd = subscription ? new Date(subscription.endDate) : null;
+
+  const redemptionsByDay = useMemo(() => {
+    const map: Record<string, { lunch: number; dinner: number }> = {};
+    for (const entry of subscription?.redemptionLog ?? []) {
+      const d = new Date(entry.redeemedAt);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const bucket = map[key] ?? { lunch: 0, dinner: 0 };
+      if (entry.meal === "Dinner") bucket.dinner += 1;
+      else bucket.lunch += 1;
+      map[key] = bucket;
+    }
+    return map;
+  }, [subscription]);
+
+  const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+  const cells: (Date | null)[] = Array.from({ length: firstWeekday }, () => null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(new Date(year, month, day));
+
+  const selectedDay = (cells.find((c) => c && isSameDay(c, today)) as Date) ?? (cells.find((c) => c) as Date) ?? null;
+  const selectedMenu = selectedDay ? menuForDay(menuType, selectedDay) : null;
+  const selectedKey = selectedDay ? `${selectedDay.getFullYear()}-${selectedDay.getMonth()}-${selectedDay.getDate()}` : "";
+  const selectedRedemptions = redemptionsByDay[selectedKey];
+
+  const monthLabel = monthCursor.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+
+  return (
+    <View style={styles.calCard}>
+      <View style={styles.calHeader}>
+        <TouchableOpacity
+          style={styles.calNavBtn}
+          onPress={() => setMonthCursor(new Date(year, month - 1, 1))}
+          activeOpacity={0.85}>
+          <Ionicons name="chevron-back" size={18} color={Palette.text} />
+        </TouchableOpacity>
+        <Text style={styles.calMonthLabel}>{monthLabel}</Text>
+        <TouchableOpacity
+          style={styles.calNavBtn}
+          onPress={() => setMonthCursor(new Date(year, month + 1, 1))}
+          activeOpacity={0.85}>
+          <Ionicons name="chevron-forward" size={18} color={Palette.text} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.calGridHeader}>
+        {CALENDAR_WEEKDAYS.map((d, i) => (
+          <Text key={`${d}-${i}`} style={styles.calGridHeadCell}>{d}</Text>
+        ))}
+      </View>
+
+      <View style={styles.calGrid}>
+        {cells.map((cell, i) => {
+          if (!cell) {
+            return <View key={`blank-${i}`} style={styles.calCell} />;
+          }
+          const inPeriod = periodStart && periodEnd && cell >= periodStart && cell <= periodEnd;
+          const isToday = isSameDay(cell, today);
+          const red = redemptionsByDay[`${cell.getFullYear()}-${cell.getMonth()}-${cell.getDate()}`];
+          return (
+            <View
+              key={cell.toISOString()}
+              style={[
+                styles.calCell,
+                isToday && styles.calCellToday,
+                inPeriod && styles.calCellPeriod,
+              ]}>
+              <Text style={[styles.calDayNum, isToday && styles.calDayNumToday, inPeriod && styles.calDayNumPeriod]}>
+                {cell.getDate()}
+              </Text>
+              {red ? (
+                <View style={styles.calRedDots}>
+                  {red.lunch > 0 ? <View style={[styles.calRedDot, styles.calRedDotLunch]} /> : null}
+                  {red.dinner > 0 ? <View style={[styles.calRedDot, styles.calRedDotDinner]} /> : null}
+                </View>
+              ) : inPeriod ? (
+                <View style={styles.calRedDotPlaceholder} />
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+
+      <View style={styles.calLegend}>
+        <View style={styles.calLegendItem}>
+          <View style={[styles.calLegendSwatch, styles.calCellPeriod]} />
+          <Text style={styles.calLegendText}>Subscription period</Text>
+        </View>
+        <View style={styles.calLegendItem}>
+          <View style={[styles.calLegendSwatch, styles.calRedDotLunch]} />
+          <Text style={styles.calLegendText}>Meal taken</Text>
+        </View>
+      </View>
+
+      {selectedDay && selectedMenu ? (
+        <View style={styles.calDayDetail}>
+          <Text style={styles.calDayDetailTitle}>
+            {selectedDay.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" })}
+          </Text>
+          <View style={styles.calDayMealRow}>
+            <Text style={styles.calDayMealTag}> Lunch </Text>
+            <Text style={styles.calDayMealText}>{selectedMenu.lunch}</Text>
+          </View>
+          <View style={styles.calDayMealRow}>
+            <Text style={styles.calDayMealTag}> Dinner </Text>
+            <Text style={styles.calDayMealText}>{selectedMenu.dinner}</Text>
+          </View>
+          {selectedRedemptions ? (
+            <Text style={styles.calDayMeta}>
+              {selectedRedemptions.lunch > 0 ? `${selectedRedemptions.lunch} lunch` : ""}
+              {selectedRedemptions.lunch > 0 && selectedRedemptions.dinner > 0 ? " · " : ""}
+              {selectedRedemptions.dinner > 0 ? `${selectedRedemptions.dinner} dinner` : ""} taken
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function MonthlyScreen() {
   const { session, isHydrated } = useSession();
   const insets = useSafeAreaInsets();
@@ -352,6 +499,12 @@ export default function MonthlyScreen() {
         )}
 
         <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Monthly Calendar</Text>
+          <Text style={styles.sectionSubtitle}>Your meal schedule mapped by date</Text>
+        </View>
+        <CalendarSection menuType={menuType} subscription={activeSubscription} />
+
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Pricing Plans</Text>
         </View>
         <View style={styles.plansRow}>
@@ -576,4 +729,33 @@ const styles = StyleSheet.create({
   footerQuote: { color: "#FFE3D6", fontSize: 12.5, fontStyle: "italic", marginTop: 2 },
   footerTagline: { color: "#FFD9C7", fontSize: 11.5 },
   inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center", marginTop: 14 },
+
+  calCard: { backgroundColor: Palette.card, borderRadius: 16, borderWidth: 1, borderColor: Palette.border, padding: 12, gap: 10, marginTop: 10 },
+  calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  calNavBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: Palette.cardSoft, borderWidth: 1, borderColor: Palette.borderStrong },
+  calMonthLabel: { color: Palette.text, fontSize: 15, fontWeight: "800" },
+  calGridHeader: { flexDirection: "row" },
+  calGridHeadCell: { flex: 1, textAlign: "center", color: Palette.textMuted, fontSize: 10, fontWeight: "700", paddingVertical: 4 },
+  calGrid: { flexDirection: "row", flexWrap: "wrap" },
+  calCell: { width: "14.28%", aspectRatio: 1, borderRadius: 8, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "transparent", gap: 2 },
+  calCellToday: { borderColor: Palette.crimson, backgroundColor: "rgba(194,31,46,0.06)" },
+  calCellPeriod: { backgroundColor: "rgba(234,88,12,0.12)", borderColor: Palette.orange },
+  calDayNum: { color: Palette.text, fontSize: 13, fontWeight: "600" },
+  calDayNumToday: { color: Palette.crimson, fontWeight: "800" },
+  calDayNumPeriod: { color: Palette.orange, fontWeight: "800" },
+  calRedDots: { flexDirection: "row", gap: 3 },
+  calRedDot: { width: 6, height: 6, borderRadius: 3 },
+  calRedDotLunch: { backgroundColor: Palette.orange },
+  calRedDotDinner: { backgroundColor: Palette.crimson },
+  calRedDotPlaceholder: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(234,88,12,0.35)" },
+  calLegend: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingTop: 2 },
+  calLegendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  calLegendSwatch: { width: 14, height: 14, borderRadius: 4, borderWidth: 1, borderColor: Palette.orange },
+  calLegendText: { color: Palette.textMuted, fontSize: 11 },
+  calDayDetail: { backgroundColor: Palette.cardSoft, borderRadius: 12, borderWidth: 1, borderColor: Palette.border, padding: 10, gap: 7 },
+  calDayDetailTitle: { color: Palette.text, fontSize: 13, fontWeight: "800" },
+  calDayMealRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  calDayMealTag: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", backgroundColor: Palette.orange, borderRadius: 6, overflow: "hidden", paddingHorizontal: 7, paddingVertical: 2 },
+  calDayMealText: { color: Palette.text, fontSize: 12.5, flex: 1, lineHeight: 18 },
+  calDayMeta: { color: Palette.textMuted, fontSize: 11.5 },
 });

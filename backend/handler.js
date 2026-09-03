@@ -2,6 +2,7 @@ import serverless from "serverless-http";
 import mongoose from "mongoose";
 import app from "./src/app.js";
 import { ensureMenuLoaded, flushMenuPersistence } from "./src/services/menuService.js";
+import { ensureInventoryLoaded, flushInventoryPersistence } from "./src/services/inventoryService.js";
 import { setMongoEnabled } from "./src/services/orderService.js";
 import { setPushSubscriptionsMongoEnabled } from "./src/services/pushSubscriptionService.js";
 import { logger } from "./src/utils/logger.js";
@@ -49,6 +50,7 @@ async function ensureDatabase() {
 async function initialize() {
   await ensureDatabase();
   await ensureMenuLoaded();
+  await ensureInventoryLoaded();
 }
 
 const handler = serverless(app, {
@@ -65,6 +67,7 @@ const handler = serverless(app, {
   response: async (res) => {
     try {
       await flushMenuPersistence();
+      await flushInventoryPersistence();
     } catch (error) {
       logger.warn("lambda.flush_failed", { reason: error?.message || String(error) });
     }

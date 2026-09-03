@@ -686,6 +686,7 @@ export async function deleteBridgeMenuItem(itemId: number) {
 
 const MENU_POLL_INTERVAL_MS = 30000;
 const ORDERS_POLL_INTERVAL_MS = 8000;
+const INVENTORY_POLL_INTERVAL_MS = 8000;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -803,6 +804,64 @@ export function saveStoredInventory(items: BridgeInventoryItem[]) {
   window.dispatchEvent(new CustomEvent(inventoryChangedEvent));
 }
 
+export async function fetchBackendInventory(): Promise<BridgeInventoryItem[]> {
+  const response = await fetch(`${USER_BACKEND_URL}/api/inventory`);
+  if (!response.ok) throw new Error("Failed to fetch backend inventory");
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
+function sameInventorySet(a: BridgeInventoryItem[], b: BridgeInventoryItem[]) {
+  if (a.length !== b.length) return false;
+  const aJson = JSON.stringify(a);
+  const bJson = JSON.stringify(b);
+  return aJson === bJson;
+}
+
+// Pull the latest inventory from the backend into localStorage when the backend is
+// reachable (real-time across devices/tabs). Returns the current localStorage items.
+export async function syncInventoryFromBackend(): Promise<BridgeInventoryItem[]> {
+  if (isDemoSessionActive()) {
+    return getStoredInventory();
+  }
+  try {
+    const backendItems = await fetchBackendInventory();
+    const current = getStoredInventory();
+    if (backendItems.length === 0) return current;
+    if (!sameInventorySet(current, backendItems)) {
+      localStorage.setItem(inventoryStorageKey, JSON.stringify(backendItems));
+      window.dispatchEvent(new CustomEvent(inventoryChangedEvent));
+      return backendItems;
+    }
+    return current;
+  } catch {
+    return getStoredInventory();
+  }
+}
+
+async function pushInventoryToBackend(
+  method: "POST" | "PATCH" | "DELETE",
+  path: string,
+  body?: unknown,
+): Promise<void> {
+  if (isDemoSessionActive()) return;
+  try {
+    const response = await fetch(`${USER_BACKEND_URL}/api/inventory${path}`, {
+      method,
+      headers: buildAdminHeaders({
+        "Content-Type": "application/json",
+      }),
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) {
+      // fall back to localStorage-only (backend offline / not deployed)
+      return;
+    }
+  } catch {
+    // backend offline - keep localStorage as the working set
+  }
+}
+
 export function subscribeInventoryChanges(onChange: (items: BridgeInventoryItem[]) => void) {
   const handleStorage = (event: StorageEvent) => {
     if (event.key && event.key !== inventoryStorageKey) return;
@@ -816,9 +875,17 @@ export function subscribeInventoryChanges(onChange: (items: BridgeInventoryItem[
   window.addEventListener("storage", handleStorage);
   window.addEventListener(inventoryChangedEvent, handleCustomEvent);
 
+  const poll = async () => {
+    const items = await syncInventoryFromBackend();
+    onChange(items);
+  };
+  poll();
+  const timer = window.setInterval(poll, INVENTORY_POLL_INTERVAL_MS);
+
   return () => {
     window.removeEventListener("storage", handleStorage);
     window.removeEventListener(inventoryChangedEvent, handleCustomEvent);
+    window.clearInterval(timer);
   };
 }
 
@@ -831,6 +898,7 @@ export function createInventoryItem(input: Omit<BridgeInventoryItem, "id">): Bri
   };
   const updated = [nextItem, ...items];
   saveStoredInventory(updated);
+  void pushInventoryToBackend("POST", "", nextItem);
   return nextItem;
 }
 
@@ -851,6 +919,9 @@ export function updateInventoryItem(itemId: number, patch: Partial<Omit<BridgeIn
   });
 
   saveStoredInventory(updated);
+  if (updatedItem) {
+    void pushInventoryToBackend("PATCH", `/${itemId}`, updatedItem);
+  }
   return updatedItem;
 }
 
@@ -859,8 +930,10 @@ export function deleteInventoryItem(itemId: number): boolean {
   const updated = items.filter((item) => item.id !== itemId);
   if (updated.length === items.length) return false;
   saveStoredInventory(updated);
+  void pushInventoryToBackend("DELETE", `/${itemId}`);
   return true;
 }
+
 
 export function getStoredStaff(): BridgeStaff[] {
   const raw = localStorage.getItem(staffStorageKey);

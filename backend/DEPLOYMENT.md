@@ -47,8 +47,14 @@ Pass them when deploying (they are read from your shell environment into `server
 
 - For protected endpoints, send `Authorization: Bearer <admin_key>` or `x-admin-key: <admin_key>`.
 - Role restrictions:
-  - owner/manager: menu create/update, order status update
+  - owner/manager: menu create/update, order status update, inventory create/update/delete
   - owner only: menu delete, order delete
+
+## 5b) Realtime inventory
+
+- Endpoints: `GET /api/inventory` (public read), `POST /api/inventory`, `PATCH /api/inventory/:id`, `DELETE /api/inventory/:id` (all writes require owner/manager).
+- The inventory is cached in-memory and persisted to Mongo (`InventoryItem` collection) when connected; otherwise it falls back to an in-process seed set. The admin panel polls `GET /api/inventory` every 8s so stock is shared live across all admin/kitchen devices.
+- When an order is placed, `orderService` best-effort decrements matched inventory items (name/keyword mapping in `inventoryService.js`). It never fails an order — extend the `INGREDIENT_USAGE_HINTS` map as ingredients are tagged on menu items.
 
 ## 6) MongoDB
 

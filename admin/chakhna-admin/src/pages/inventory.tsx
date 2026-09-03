@@ -10,7 +10,6 @@ import {
   createInventoryItem,
   deleteInventoryItem,
   getStoredInventory,
-  saveStoredInventory,
   subscribeInventoryChanges,
   updateInventoryItem,
 } from "@/lib/bridge";
@@ -32,11 +31,13 @@ export default function Inventory() {
   }, []);
 
   function adjustStock(itemId: number, delta: number) {
+    const target = items.find((item) => item.id === itemId);
+    if (!target) return;
+    updateInventoryItem(itemId, { stock: Math.max(0, target.stock + delta) });
     const updated = items.map((item) =>
       item.id === itemId ? { ...item, stock: Math.max(0, item.stock + delta) } : item,
     );
     setItems(updated);
-    saveStoredInventory(updated);
   }
 
   function beginEdit(item: BridgeInventoryItem) {

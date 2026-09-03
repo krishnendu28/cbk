@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { Order } from "../models/Order.js";
 import { findMenuItemById, getAllMenuCategories } from "./menuService.js";
+import { decrementInventoryForOrder } from "./inventoryService.js";
 import { getOutletSettings } from "./settingsService.js";
 import { logger } from "../utils/logger.js";
 
@@ -153,6 +154,13 @@ export async function createOrder({
   const outletSettings = await getOutletSettings(DEFAULT_OUTLET_ID);
   const computedSubtotal = normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
   const orderSubtotal = Number(subtotal) >= 0 ? Number(subtotal) : computedSubtotal;
+
+  // Realtime inventory: best-effort decrement, never blocks order placement.
+  try {
+    decrementInventoryForOrder(normalizedItems);
+  } catch (error) {
+    logger.warn("inventory.decrement_failed", { reason: error?.message || String(error) });
+  }
 
   const finalDeliveryCharge = deliveryCharge !== undefined && deliveryCharge !== null
     ? Number(deliveryCharge || 0)

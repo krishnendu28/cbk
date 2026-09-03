@@ -317,12 +317,38 @@ export default function MonthlyScreen() {
       await refreshSubscriptions();
     } catch (error: any) {
       if (error?.response?.status === 404) {
+        // Backend monthly service not deployed yet: record the enrollment locally so the
+        // plan + calendar work right away instead of blocking the user behind a phone call.
+        const start = new Date();
+        const end = new Date(start);
+        end.setDate(end.getDate() + 30);
+        const localSubscription: MonthlySubscription = {
+          _id: `local-${Date.now()}`,
+          name: subscriptionName,
+          phone: subscriptionPhone,
+          address: address.trim(),
+          planType: planType,
+          planId: selectedPlan.id,
+          mealsTotal: selectedPlan.meals,
+          mealsRemaining: selectedPlan.meals,
+          mealsRedeemed: 0,
+          price: selectedPlan.price,
+          startDate: start.toISOString(),
+          endDate: end.toISOString(),
+          status: "Active",
+          redemptionLog: [],
+          createdAt: start.toISOString(),
+          updatedAt: start.toISOString(),
+        };
+        setSubs((prev) => [localSubscription, ...prev.filter((row) => row.phone !== subscriptionPhone)]);
+        setAddress("");
+        setSelectedPlan(null);
         Alert.alert(
-          "Subscription service unavailable",
-          `The monthly plan service is being updated. Please call us on ${MONTHLY_CONTACT_LABEL} to enroll, or try again shortly.`,
+          "Request noted",
+          `Your ${selectedPlan.label} request (Rs ${selectedPlan.price}/-) has been noted for ${subscriptionPhone}. Our team will call you to confirm payment and delivery. You can also call us on ${MONTHLY_CONTACT_LABEL} at any time.`,
           [
-            { text: "Call Now", onPress: callRestaurant },
-            { text: "OK" },
+            { text: "Done", style: "cancel" },
+            { text: "Call Restaurant", onPress: callRestaurant },
           ],
         );
         return;

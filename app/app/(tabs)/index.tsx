@@ -26,7 +26,7 @@ import { useCart } from "@/context/cart-context";
 import { Palette } from "@/constants/theme";
 import { AdBanner } from "@/components/admob/ad-banner";
 import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
-import { MenuItemCard } from "@/components/menu-item-card";
+import { MenuItemCard, MenuItemDetailSheet } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 import type { MenuCategory, MenuItem } from "@/types/menu";
@@ -54,7 +54,7 @@ const MAKHANA_IMAGE_URL =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dried_lotus_seeds_snack.jpg/960px-Dried_lotus_seeds_snack.jpg";
 const SPECIALS_CATEGORY: MenuCategory = {
   id: "specials",
-  title: "Specials",
+  title: "Favorites",
   items: [{ id: MAKHANA_ITEM_ID, name: "Makhana Roasted (200gm)", prices: { Regular: 199 } }],
 };
 const MAKHANA_ITEM: MenuItem = SPECIALS_CATEGORY.items[0];
@@ -157,6 +157,7 @@ export default function MenuScreen() {
   const [profileVisible, setProfileVisible] = useState(false);
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState("");
+  const [bestSellerSheetItem, setBestSellerSheetItem] = useState<MenuItem | null>(null);
 
   const findMenuItemById = useCallback((menuItemId: number) => {
     for (const category of menuCategories) {
@@ -473,7 +474,11 @@ export default function MenuScreen() {
                   const image = getMenuItemImage(seller.itemName, "Main Course", menuItem?.image);
                   const isVeg = group.badge === "VEG";
                   return (
-                    <View key={seller.itemName} style={styles.sellerImageCard}>
+                    <TouchableOpacity
+                      key={seller.itemName}
+                      style={styles.sellerImageCard}
+                      activeOpacity={0.9}
+                      onPress={() => menuItem && setBestSellerSheetItem(menuItem)}>
                       <View style={styles.sellerImageWrap}>
                         <ResilientImage primarySource={image} secondarySource={FALLBACK_IMAGE} style={styles.sellerImage} />
                         <View style={[styles.sellerImageBadge, { backgroundColor: isVeg ? Palette.orange : Palette.crimson }]}>
@@ -493,11 +498,20 @@ export default function MenuScreen() {
                           <Text style={styles.sellerImageOrderText}>Order</Text>
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 }),
               )}
             </View>
+            {bestSellerSheetItem ? (
+              <MenuItemDetailSheet
+                item={bestSellerSheetItem}
+                categoryTitle="Best Sellers"
+                openCartOnAdd
+                visible
+                onClose={() => setBestSellerSheetItem(null)}
+              />
+            ) : null}
           </View>
         </View>
       )}

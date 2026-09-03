@@ -75,7 +75,7 @@ export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { it
   );
 }
 
-function MenuItemDetailSheet({
+export function MenuItemDetailSheet({
   item,
   categoryTitle,
   openCartOnAdd,

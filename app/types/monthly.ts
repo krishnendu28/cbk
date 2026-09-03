@@ -1,4 +1,4 @@
-export type MonthlyStatus = "Active" | "Completed" | "Cancelled";
+export type MonthlyStatus = "Pending" | "Active" | "Completed" | "Cancelled" | "Rejected";
 
 export type MonthlyRedemptionLogEntry = {
   redeemedAt: string;
@@ -21,6 +21,10 @@ export type MonthlySubscription = {
   startDate: string;
   endDate: string;
   status: MonthlyStatus;
+  statusApproval?: "Pending" | "Active" | "Rejected";
+  dailyLimit?: number;
+  days?: number;
+  instructions?: string;
   redemptionLog: MonthlyRedemptionLogEntry[];
   notes?: string;
   createdAt: string;

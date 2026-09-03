@@ -48,9 +48,11 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 const statusStyles: Record<MonthlyStatus, string> = {
+  Pending: "bg-amber-100 text-amber-800 border-amber-200",
   Active: "bg-emerald-100 text-emerald-800 border-emerald-200",
   Completed: "bg-sky-100 text-sky-800 border-sky-200",
   Cancelled: "bg-rose-100 text-rose-800 border-rose-200",
+  Rejected: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
 const planTypeStyles: Record<MonthlyPlanType, string> = {
@@ -82,7 +84,7 @@ const LOCAL_MENU: Record<MonthlyPlanType, { day: string; lunch: string; dinner: 
     { day: "Tuesday", lunch: "Veg Thali", dinner: "Aalu Paratha" },
     { day: "Wednesday", lunch: "Fish Thali", dinner: "Veg Fried Rice + Chilli Chicken/Noodles" },
     { day: "Thursday", lunch: "Paneer Thali", dinner: "Chana Masala Combo" },
-    { day: "Friday", lunch: "Egg Thali", dinner: "Afghani Chicken Meal" },
+    { day: "Friday", lunch: "Egg Thali", dinner: "Handi Chicken Meal" },
     { day: "Saturday", lunch: "Kadhi Chawal", dinner: "Aalu Dum Combo" },
     { day: "Sunday", lunch: "Chicken Biryani", dinner: "Omelette Curry Meal" },
   ],
@@ -110,8 +112,9 @@ function formatDate(value?: string) {
 }
 
 function planLabel(plan: MonthlyPlan | undefined, subscription: MonthlySubscription) {
-  if (plan) return `${plan.meals} Meals · ${plan.delivery}`;
-  return `${subscription.mealsTotal} Meals`;
+  const days = subscription.days || (plan ? 30 : 30);
+  if (plan) return `${plan.meals} Meals · ${days} days · ${plan.delivery}`;
+  return `${subscription.mealsTotal} Meals · ${days} days`;
 }
 
 function toCsv(subs: MonthlySubscription[]) {
@@ -458,6 +461,15 @@ export default function MonthlyMeals() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><CalendarCheck className="w-5 h-5 text-amber-600" /></div>
+            <div>
+              <p className="text-xs text-muted-foreground">Pending Approval</p>
+              <p className="text-2xl font-bold">{subscriptions.filter((r) => r.status === "Pending").length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center"><CalendarCheck className="w-5 h-5 text-sky-600" /></div>
             <div>
               <p className="text-xs text-muted-foreground">Meals Remaining</p>
@@ -594,9 +606,11 @@ export default function MonthlyMeals() {
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All statuses</SelectItem>
+            <SelectItem value="Pending">Pending Approval</SelectItem>
             <SelectItem value="Active">Active</SelectItem>
             <SelectItem value="Completed">Completed</SelectItem>
             <SelectItem value="Cancelled">Cancelled</SelectItem>
+            <SelectItem value="Rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
         <Select value={planFilter} onValueChange={(value) => setPlanFilter(value as "All" | MonthlyPlanType)}>
@@ -640,7 +654,7 @@ export default function MonthlyMeals() {
             {filtered.map((row) => {
               const plan = planFor(row);
               return (
-                <TableRow key={row._id} className={row.status === "Active" && Number(row.mealsRemaining) <= Math.max(2, Math.floor(Number(row.mealsTotal) / 4)) ? "bg-amber-50/60" : undefined}>
+                <TableRow key={row._id} className={row.status === "Pending" ? "bg-amber-50/80 border-l-2 border-l-amber-400" : row.status === "Active" && Number(row.mealsRemaining) <= Math.max(2, Math.floor(Number(row.mealsTotal) / 4)) ? "bg-amber-50/60" : undefined}>
                   <TableCell>
                     <div className="font-semibold">{row.name}</div>
                     <div className="text-xs text-muted-foreground">{row.phone}</div>
@@ -675,6 +689,39 @@ export default function MonthlyMeals() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      {row.status === "Pending" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={async () => {
+                              try {
+                                await updateMonthlySubscription(row._id, { status: "Active" });
+                                toast({ title: "Approved", description: `${row.name}'s subscription is now Active.` });
+                              } catch (error) {
+                                toast({ title: "Failed to approve", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
+                              try {
+                                await updateMonthlySubscription(row._id, { status: "Rejected" });
+                                toast({ title: "Rejected", description: `${row.name}'s subscription was rejected.` });
+                              } catch (error) {
+                                toast({ title: "Failed to reject", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -830,9 +877,11 @@ export default function MonthlyMeals() {
                 <Select value={editTarget.status} onValueChange={(value) => setEditTarget({ ...editTarget, status: value as MonthlyStatus })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="Active">Active</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
                     <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

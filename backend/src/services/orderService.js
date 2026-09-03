@@ -214,7 +214,7 @@ export async function createOrder({
     createdAt: new Date(),
   };
 
-  return withMongoFallback(
+  const order = await withMongoFallback(
     "createOrder",
     () => Order.create(payload),
     () => {
@@ -223,6 +223,45 @@ export async function createOrder({
       return order;
     },
   );
+
+  // Monthly plans: auto-null away one meal whenever an active subscriber places
+  // an order, so the admin sees the plan being used (redemption log + calendar).
+  // Best-effort and never blocks order placement.
+  try {
+    await autoRedeemMonthlyMealForOrder(order);
+  } catch (error) {
+    logger.warn("monthly.auto_redeem_failed", { reason: error?.message || String(error), orderCode: order?.orderCode });
+  }
+
+  return order;
+}
+
+function mealTypeForTime(date = new Date()) {
+  const hour = date.getHours();
+  return hour < 15 ? "Lunch" : "Dinner";
+}
+
+async function autoRedeemMonthlyMealForOrder(order) {
+  if (!order || !order.phone) return;
+
+  const { listSubscriptions, redeemMeals } = await import("./monthlyService.js");
+  const subscriptions = await listSubscriptions({ phone: String(order.phone).trim(), status: "Active" });
+  const subscription = Array.isArray(subscriptions)
+    ? subscriptions.find((row) => Number(row.mealsRemaining) > 0)
+    : null;
+  if (!subscription) return;
+
+  await redeemMeals(subscription._id, {
+    count: 1,
+    meal: mealTypeForTime(),
+    note: `Auto-redeemed on order ${order.orderCode}`,
+    redeemedBy: "order",
+  });
+  logger.info("monthly.auto_redeem_success", {
+    subscriptionId: subscription._id,
+    orderCode: order.orderCode,
+    remaining: subscription.mealsRemaining - 1,
+  });
 }
 
 export async function listOrders() {

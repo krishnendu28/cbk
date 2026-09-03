@@ -26,6 +26,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="favourites"
+        options={{
+          title: 'Favourites',
+          tabBarIcon: ({ color, size }) => <Ionicons size={size} name="heart" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="monthly"
         options={{
           title: 'Monthly',

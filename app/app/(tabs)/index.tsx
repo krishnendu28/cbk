@@ -33,19 +33,22 @@ import type { MenuCategory, MenuItem } from "@/types/menu";
 
 const heroSlides = [
   {
-    image: getMenuImageByFileName("Chicken butter masala combo.jpg"),
-    title: "Curated Indian Flavors",
-    subtitle: "Chef-crafted signatures with premium delivery finish.",
+    image: getMenuImageByFileName("Handi Mutton.jpg"),
+    title: "Handi Mutton · Champaran Style",
+    subtitle: "Slow-cooked champaran-style mutton in a copper handi, sealed and steamed for rich, rustic flavour.",
+    categoryId: "ahuna-champaran",
   },
   {
     image: getMenuImageByFileName("chicken-handi-biryani.jpg"),
-    title: "Biryani And Tandoor Nights",
-    subtitle: "Bold aromas and smoky textures delivered hot.",
+    title: "Handi Chicken · Champaran Style",
+    subtitle: "Tender chicken simmered dum-style in the handi with bold bihari spices, served piping hot.",
+    categoryId: "ahuna-champaran",
   },
   {
-    image: getMenuImageByFileName("Tandoori-Chicken.jpg"),
-    title: "Smoky Tandoor Specials",
-    subtitle: "Charred perfection with authentic spice layers.",
+    image: getMenuImageByFileName("Chicken butter masala combo.jpg"),
+    title: "Curated Indian Flavors",
+    subtitle: "Chef-crafted signatures with premium delivery finish.",
+    categoryId: "main-course",
   },
 ];
 
@@ -53,9 +56,14 @@ const MAKHANA_ITEM_ID = 900001;
 const MAKHANA_IMAGE_URL =
   "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dried_lotus_seeds_snack.jpg/960px-Dried_lotus_seeds_snack.jpg";
 const SPECIALS_CATEGORY: MenuCategory = {
-  id: "specials",
-  title: "Favorites",
-  items: [{ id: MAKHANA_ITEM_ID, name: "Makhana Roasted (200gm)", prices: { Regular: 199 } }],
+  id: "dry-fruits",
+  title: "Dry Fruits",
+  items: [
+    { id: MAKHANA_ITEM_ID, name: "Makhana Roasted (250gm/500gm)", prices: { "250gm": 250, "500gm": 350 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 1, name: "Kaju Roasted (250gm/500gm)", prices: { "250gm": 1100, "500gm": 1400 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 2, name: "Almond Badam (250gm/500gm)", prices: { "250gm": 1100, "500gm": 1300 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 3, name: "Kismis Raisins (250gm/500gm)", prices: { "250gm": 520, "500gm": 700 }, image: undefined },
+  ],
 };
 const MAKHANA_ITEM: MenuItem = SPECIALS_CATEGORY.items[0];
 
@@ -111,7 +119,6 @@ const CATEGORY_CARD_META: Record<string, CategoryCardMeta> = {
   "roti-paratha": { id: "roti-paratha", imageFile: "Lachha-Paratha.jpg", bgColor: "#EDE3F2" },
   "chinese-chilli": { id: "chinese-chilli", imageFile: "Chilli-Chicken.jpg", bgColor: "#F9DFDF" },
   "ahuna-champaran": { id: "ahuna-champaran", imageFile: "Handi Mutton.jpg", bgColor: "#DDF0EB" },
-  specials: { id: "specials", imageFile: "Kashmiri-Pulao.jpg", bgColor: "#FCEEDC" },
 };
 
 const RESTAURANT_PHONE_LABEL = "+91 8420252042";
@@ -317,7 +324,15 @@ export default function MenuScreen() {
       </View>
 
       <View style={styles.heroWrap}>
-        <View style={styles.heroImageWrap}>
+        <Pressable
+          onPress={() => {
+            const slide = heroSlides[heroIndex];
+            if (slide.categoryId) {
+              setActiveCategory(slide.categoryId);
+              router.push(`/category/${slide.categoryId}`);
+            }
+          }}
+          style={({ pressed }) => [styles.heroImageWrap, pressed && { opacity: 0.92 }]}>
           <ResilientImage primarySource={heroSlides[heroIndex].image} style={styles.heroImage} animateOnChange />
           <View style={styles.heroLivePill}>
             <View style={styles.heroLiveDot} />
@@ -328,7 +343,7 @@ export default function MenuScreen() {
               <View key={`hero-dot-${idx}`} style={[styles.heroDot, idx === heroIndex && styles.heroDotActive]} />
             ))}
           </View>
-        </View>
+        </Pressable>
         <View style={styles.heroContent}>
           <Text style={styles.heroEyebrow}>{heroSlides[heroIndex].title}</Text>
           <Text style={styles.heroTitle}>Crafted flavors with a luxury finish</Text>
@@ -414,7 +429,7 @@ export default function MenuScreen() {
               <View style={styles.newLaunchImageWrap}>
                 <ResilientImage primarySource={{ uri: MAKHANA_IMAGE_URL }} secondarySource={FALLBACK_IMAGE} style={styles.newLaunchImage} />
                 <View style={styles.newLaunchPricePill}>
-                  <Text style={styles.newLaunchPriceText}>Rs {MAKHANA_ITEM.prices.Regular}</Text>
+                  <Text style={styles.newLaunchPriceText}>Rs {Object.values(MAKHANA_ITEM.prices || {})[0] || 0}</Text>
                 </View>
               </View>
               <View style={styles.newLaunchBody}>
@@ -428,7 +443,7 @@ export default function MenuScreen() {
                   activeOpacity={0.88}
                   disabled={!isOrderingOpen}>
                   <Ionicons name="cart" size={14} color={Palette.crimson} />
-                  <Text style={styles.orderBtnText}>Order Rs {MAKHANA_ITEM.prices.Regular}</Text>
+                  <Text style={styles.orderBtnText}>Order Rs {Object.values(MAKHANA_ITEM.prices || {})[0] || 0}</Text>
                 </TouchableOpacity>
               </View>
             </View>

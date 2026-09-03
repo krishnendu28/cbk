@@ -16,14 +16,24 @@ function todayAtMidnight() {
   return now;
 }
 
+const PERIOD_BY_MEALS = { 15: 35, 30: 60, 60: 90 };
+const DEFAULT_DAILY_LIMIT = 2;
+const MAX_DAILY_LIMIT = 5;
+
+function computeDays(meals) {
+  const mapped = PERIOD_BY_MEALS[Number(meals)];
+  if (mapped) return mapped;
+  return Math.max(1, Math.ceil(Number(meals) / 2));
+}
+
 function computePeriod(meals) {
   const start = todayAtMidnight();
   start.setDate(start.getDate() + 1);
   const end = new Date(start);
-  const days = Math.max(1, Math.ceil(Number(meals) / 2));
+  const days = computeDays(meals);
   end.setDate(end.getDate() + days - 1);
   end.setHours(23, 59, 59, 999);
-  return { startDate: start, endDate: end };
+  return { startDate: start, endDate: end, days };
 }
 
 function toSerializable(subscription) {
@@ -45,6 +55,10 @@ function toSerializable(subscription) {
     startDate: doc.startDate instanceof Date ? doc.startDate.toISOString() : new Date(doc.startDate).toISOString(),
     endDate: doc.endDate instanceof Date ? doc.endDate.toISOString() : new Date(doc.endDate).toISOString(),
     status: doc.status,
+    statusApproval: doc.statusApproval || "Pending",
+    dailyLimit: Number(doc.dailyLimit) || DEFAULT_DAILY_LIMIT,
+    days: Number(doc.days) || 30,
+    instructions: doc.instructions || "",
     redemptionLog: Array.isArray(doc.redemptionLog)
       ? doc.redemptionLog.map((entry) => ({
           redeemedAt: entry.redeemedAt instanceof Date ? entry.redeemedAt.toISOString() : new Date(entry.redeemedAt).toISOString(),
@@ -59,8 +73,39 @@ function toSerializable(subscription) {
   };
 }
 
+function toDailyLimit(value) {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed) || parsed <= 0) return DEFAULT_DAILY_LIMIT;
+  return Math.min(MAX_DAILY_LIMIT, Math.max(1, Math.floor(parsed)));
+}
+
+function approvalGate(status, statusApproval) {
+  if (status === "Pending" || (statusApproval || "Pending") === "Pending") {
+    return { error: "PENDING_APPROVAL" };
+  }
+  if (status === "Rejected" || (statusApproval || "") === "Rejected") {
+    return { error: "REJECTED", detail: "Subscription was not approved." };
+  }
+  return null;
+}
+
+function startOfTodayMS() {
+  const start = todayAtMidnight();
+  return start.getTime();
+}
+
+function countRedeemedToday(redemptionLog) {
+  if (!Array.isArray(redemptionLog)) return 0;
+  const startOfDay = startOfTodayMS();
+  return redemptionLog.filter((entry) => {
+    const ts = entry.redeemedAt instanceof Date ? entry.redeemedAt.getTime() : new Date(entry.redeemedAt).getTime();
+    return !Number.isNaN(ts) && ts >= startOfDay;
+  }).length;
+}
+
 function computeNextStatus(mealsRemaining, status) {
-  if (status === "Cancelled" || status === "Completed") return status;
+  if (status === "Cancelled" || status === "Rejected" || status === "Pending") return status;
+  if (status === "Completed") return status;
   return Number(mealsRemaining) <= 0 ? "Completed" : "Active";
 }
 
@@ -76,7 +121,8 @@ export async function createSubscription(input) {
   }
 
   const planPrice = price !== undefined ? Number(price) : plan?.price || 0;
-  const { startDate, endDate } = computePeriod(mealCount);
+  const { startDate, endDate, days } = computePeriod(mealCount);
+  const dailyLimit = toDailyLimit(input.dailyLimit);
 
   const payload = {
     name,
@@ -89,7 +135,11 @@ export async function createSubscription(input) {
     price: planPrice,
     startDate,
     endDate,
-    status: "Active",
+    days,
+    dailyLimit,
+    instructions: input.instructions || "",
+    status: "Pending",
+    statusApproval: "Pending",
     redemptionLog: [],
     notes: "",
     createdAt: new Date(),
@@ -169,6 +219,17 @@ export async function redeemMeals(id, { count = 1, meal = "Lunch", note = "", re
       const doc = await MonthlySubscription.findById(id);
       if (!doc) return { error: "NOT_FOUND" };
 
+      const gate = approvalGate(doc.status, doc.statusApproval);
+      if (gate) return gate;
+
+      const usedToday = countRedeemedToday(doc.redemptionLog);
+      const dailyLimit = toDailyLimit(doc.dailyLimit);
+
+      if (usedToday >= dailyLimit) {
+        emitMonthlyChanged("subscription:limitExceeded", toSerializable(doc));
+        return { error: "DAILY_LIMIT", detail: { usedToday, dailyLimit, days: computeDays(doc.mealsTotal) } };
+      }
+
       if (doc.status === "Cancelled" || doc.status === "Completed") {
         return { error: "CLOSED", detail: doc.status };
       }
@@ -211,8 +272,17 @@ function redeemMemory(id, toRedeem, mealType, note, redeemedBy) {
   if (entry.status === "Cancelled" || entry.status === "Completed") {
     return { error: "CLOSED", detail: entry.status };
   }
+  const gate = approvalGate(entry.status, entry.statusApproval);
+  if (gate) return gate;
   if (Number(entry.mealsRemaining) <= 0) {
     return { error: "NO_MEALS" };
+  }
+
+  const usedToday = countRedeemedToday(entry.redemptionLog);
+  const dailyLimit = toDailyLimit(entry.dailyLimit);
+  if (usedToday >= dailyLimit) {
+    emitMonthlyChanged("subscription:limitExceeded", toSerializable(entry));
+    return { error: "DAILY_LIMIT", detail: { usedToday, dailyLimit, days: computeDays(entry.mealsTotal) } };
   }
 
   const redeeming = Math.min(toRedeem, Number(entry.mealsRemaining));
@@ -239,24 +309,41 @@ export async function updateSubscription(id, patch) {
       const doc = await MonthlySubscription.findById(id);
       if (!doc) return null;
 
-      if (patch.mealsTotal !== undefined && patch.mealsTotal !== null && Number(patch.mealsTotal) >= 1) {
-        const nextTotal = Number(patch.mealsTotal);
-        const remainingAdjustment = nextTotal - Number(doc.mealsTotal);
-        doc.mealsTotal = nextTotal;
-        doc.mealsRemaining = Math.max(0, Number(doc.mealsRemaining) + remainingAdjustment);
-      }
+function applyPatchToSubscription(doc, patch) {
+  if (patch.mealsTotal !== undefined && patch.mealsTotal !== null && Number(patch.mealsTotal) >= 1) {
+    const nextTotal = Number(patch.mealsTotal);
+    const remainingAdjustment = nextTotal - Number(doc.mealsTotal);
+    doc.mealsTotal = nextTotal;
+    doc.mealsRemaining = Math.max(0, Number(doc.mealsRemaining) + remainingAdjustment);
+  }
 
-      if (patch.status) doc.status = patch.status;
-      if (patch.notes !== undefined) doc.notes = String(patch.notes || "");
-      if (patch.name) doc.name = String(patch.name).trim();
-      if (patch.phone) doc.phone = String(patch.phone).trim();
-      if (patch.address) doc.address = String(patch.address).trim();
-      if (patch.price !== undefined && Number(patch.price) >= 0) doc.price = Number(patch.price);
+  if (patch.status) {
+    doc.status = patch.status;
+    if (patch.status === "Active") doc.statusApproval = "Approved";
+    if (patch.status === "Rejected") doc.statusApproval = "Rejected";
+  }
+  if (patch.statusApproval) doc.statusApproval = patch.statusApproval;
+  if (patch.dailyLimit !== undefined && patch.dailyLimit !== null) doc.dailyLimit = toDailyLimit(patch.dailyLimit);
+  if (patch.days !== undefined && patch.days !== null && Number(patch.days) >= 1) doc.days = Number(patch.days);
+  if (patch.instructions !== undefined && patch.instructions !== null) doc.instructions = String(patch.instructions || "");
+  if (patch.notes !== undefined) doc.notes = String(patch.notes || "");
+  if (patch.name) doc.name = String(patch.name).trim();
+  if (patch.phone) doc.phone = String(patch.phone).trim();
+  if (patch.address) doc.address = String(patch.address).trim();
+  if (patch.price !== undefined && Number(patch.price) >= 0) doc.price = Number(patch.price);
 
-      doc.status = computeNextStatus(doc.mealsRemaining, doc.status);
+  doc.status = computeNextStatus(doc.mealsRemaining, doc.status);
+  return doc;
+}
+
+export async function updateSubscription(id, patch) {
+  if (isMongoConnected()) {
+    try {
+      const doc = await MonthlySubscription.findById(id);
+      if (!doc) return null;
+      applyPatchToSubscription(doc, patch);
       doc.updatedAt = new Date();
       await doc.save();
-
       const serialized = toSerializable(doc);
       emitMonthlyChanged("subscription:updated", serialized);
       return serialized;
@@ -272,26 +359,9 @@ export async function updateSubscription(id, patch) {
 function updateMemory(id, patch) {
   const index = memorySubscriptions.findIndex((entry) => entry._id === id);
   if (index < 0) return null;
-
   const entry = memorySubscriptions[index];
-
-  if (patch.mealsTotal !== undefined && patch.mealsTotal !== null && Number(patch.mealsTotal) >= 1) {
-    const nextTotal = Number(patch.mealsTotal);
-    const remainingAdjustment = nextTotal - Number(entry.mealsTotal);
-    entry.mealsTotal = nextTotal;
-    entry.mealsRemaining = Math.max(0, Number(entry.mealsRemaining) + remainingAdjustment);
-  }
-
-  if (patch.status) entry.status = patch.status;
-  if (patch.notes !== undefined) entry.notes = String(patch.notes || "");
-  if (patch.name) entry.name = String(patch.name).trim();
-  if (patch.phone) entry.phone = String(patch.phone).trim();
-  if (patch.address) entry.address = String(patch.address).trim();
-  if (patch.price !== undefined && Number(patch.price) >= 0) entry.price = Number(patch.price);
-
-  entry.status = computeNextStatus(entry.mealsRemaining, entry.status);
+  applyPatchToSubscription(entry, patch);
   entry.updatedAt = new Date().toISOString();
-
   const serialized = toSerializable(entry);
   emitMonthlyChanged("subscription:updated", serialized);
   return serialized;

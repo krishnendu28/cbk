@@ -1,7 +1,7 @@
 import { USER_BACKEND_URL } from "@/lib/bridge";
 
 export type MonthlyPlanType = "Veg" | "NonVeg" | "OnlyNonVeg";
-export type MonthlyStatus = "Active" | "Completed" | "Cancelled";
+export type MonthlyStatus = "Pending" | "Active" | "Completed" | "Cancelled" | "Rejected";
 
 export type MonthlyPlan = {
   id: string;
@@ -49,6 +49,10 @@ export type MonthlySubscription = {
   startDate: string;
   endDate: string;
   status: MonthlyStatus;
+  statusApproval?: "Pending" | "Approved" | "Rejected";
+  dailyLimit?: number;
+  days?: number;
+  instructions?: string;
   redemptionLog: MonthlyRedemptionLogEntry[];
   notes?: string;
   createdAt: string;

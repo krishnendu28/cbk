@@ -20,9 +20,6 @@ import { Palette } from "@/constants/theme";
 import { AdBanner } from "@/components/admob/ad-banner";
 import {
   MONTHLY_BADGES,
-  MONTHLY_CHINESE_SPECIAL,
-  MONTHLY_CONTACT_DIAL,
-  MONTHLY_CONTACT_LABEL,
   MONTHLY_FEATURES,
   MONTHLY_FOOTER_QUOTE,
   MONTHLY_HIGHLIGHTS,
@@ -33,7 +30,9 @@ import {
   MONTHLY_PLANS,
   MONTHLY_PLAN_LABELS,
   MONTHLY_TAGLINE,
+  MONTHLY_THALI_BREAKDOWN,
   MONTHLY_TITLE,
+  MONTHLY_WHATSAPP_DIAL,
 } from "@/constants/monthly";
 import type { MonthlyPlan, MonthlyPlanType } from "@/constants/monthly";
 import type { MonthlySubscription } from "@/types/monthly";
@@ -216,6 +215,7 @@ export default function MonthlyScreen() {
   const [subsLoading, setSubsLoading] = useState(false);
 
   const [address, setAddress] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [planType, setPlanType] = useState<PlanType>("Veg");
   const [selectedPlan, setSelectedPlan] = useState<MonthlyPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -267,16 +267,32 @@ export default function MonthlyScreen() {
     return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   }
 
-  async function callRestaurant() {
+  async function confirmOnWhatsApp({ plan, subscriptionName, subscriptionPhone }: { plan: MonthlyPlan | null; subscriptionName: string; subscriptionPhone: string }) {
+    const planLine = plan
+      ? `${plan.label} (Rs ${plan.price}/-, ${plan.meals} meals / ${plan.days} days)`
+      : "Monthly Meal Plan";
+    const message = [
+      "Hello Chakhna By Kilo,",
+      `I would like to enroll in the Monthly Meal Plan.`,
+      `Plan: ${planLine}`,
+      `Name: ${subscriptionName}`,
+      `Phone: ${subscriptionPhone}`,
+      address.trim() ? `Address: ${address.trim()}` : "",
+      instructions.trim() ? `Instructions: ${instructions.trim()}` : "",
+    ]
+      .filter((line) => line)
+      .join("\n");
+
+    const url = `https://wa.me/${MONTHLY_WHATSAPP_DIAL}?text=${encodeURIComponent(message)}`;
     try {
-      const supported = await Linking.canOpenURL(`tel:${MONTHLY_CONTACT_DIAL}`);
+      const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        Alert.alert("Call unavailable", `Please call ${MONTHLY_CONTACT_LABEL}`);
+        Alert.alert("WhatsApp unavailable", "Please call us to confirm your plan.");
         return;
       }
-      await Linking.openURL(`tel:${MONTHLY_CONTACT_DIAL}`);
+      await Linking.openURL(url);
     } catch {
-      Alert.alert("Call unavailable", `Please call ${MONTHLY_CONTACT_LABEL}`);
+      Alert.alert("WhatsApp unavailable", "Please call us to confirm your plan.");
     }
   }
 
@@ -285,7 +301,6 @@ export default function MonthlyScreen() {
 
     const subscriptionName = session.name.trim();
     const subscriptionPhone = session.phone.trim();
-
     if (!subscriptionName || !subscriptionPhone) {
       Alert.alert("Sign in required", "Please sign in from the Menu tab before subscribing.");
       return;
@@ -307,12 +322,15 @@ export default function MonthlyScreen() {
         address: address.trim(),
         planType: selectedPlan.planType,
         meals: selectedPlan.meals,
+        instructions: instructions.trim(),
       });
       Alert.alert(
         "Subscription received",
         `You have been enrolled for the ${selectedPlan.label} plan (Rs ${selectedPlan.price}/-). Our team will call you at ${subscriptionPhone} to confirm payment and delivery.`,
+        [{ text: "Done", style: "cancel" }],
       );
       setAddress("");
+      setInstructions("");
       setSelectedPlan(null);
       await refreshSubscriptions();
     } catch (error: any) {
@@ -321,18 +339,20 @@ export default function MonthlyScreen() {
         // plan + calendar work right away instead of blocking the user behind a phone call.
         const start = new Date();
         const end = new Date(start);
-        end.setDate(end.getDate() + 30);
+        end.setDate(end.getDate() + (selectedPlan.days || 30));
         const localSubscription: MonthlySubscription = {
           _id: `local-${Date.now()}`,
           name: subscriptionName,
           phone: subscriptionPhone,
           address: address.trim(),
+          instructions: instructions.trim(),
           planType: planType,
           planId: selectedPlan.id,
           mealsTotal: selectedPlan.meals,
           mealsRemaining: selectedPlan.meals,
           mealsRedeemed: 0,
           price: selectedPlan.price,
+          days: selectedPlan.days,
           startDate: start.toISOString(),
           endDate: end.toISOString(),
           status: "Active",
@@ -342,14 +362,12 @@ export default function MonthlyScreen() {
         };
         setSubs((prev) => [localSubscription, ...prev.filter((row) => row.phone !== subscriptionPhone)]);
         setAddress("");
+        setInstructions("");
         setSelectedPlan(null);
         Alert.alert(
           "Request noted",
-          `Your ${selectedPlan.label} request (Rs ${selectedPlan.price}/-) has been noted for ${subscriptionPhone}. Our team will call you to confirm payment and delivery. You can also call us on ${MONTHLY_CONTACT_LABEL} at any time.`,
-          [
-            { text: "Done", style: "cancel" },
-            { text: "Call Restaurant", onPress: callRestaurant },
-          ],
+          `Your ${selectedPlan.label} request (Rs ${selectedPlan.price}/-) has been noted for ${subscriptionPhone}. Our team will call you to confirm payment and delivery.`,
+          [{ text: "Done", style: "cancel" }],
         );
         return;
       }
@@ -368,7 +386,10 @@ export default function MonthlyScreen() {
         <Text style={styles.planCardSubtitle}>{subtitle}</Text>
         {MONTHLY_PLANS[planTypeKey].map((plan) => (
           <View key={plan.id} style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{plan.label}</Text>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={styles.priceLabel}>{plan.label}</Text>
+              <Text style={styles.planOptionMeta}>{plan.days} days</Text>
+            </View>
             <Text style={styles.priceValue}>₹{plan.price}/-</Text>
           </View>
         ))}
@@ -434,10 +455,6 @@ export default function MonthlyScreen() {
                 <Text style={styles.statusDetailLine}>Period: {formatDate(activeSubscription.startDate)} → {formatDate(activeSubscription.endDate)}</Text>
                 <Text style={styles.statusDetailLine}>Delivery address: {activeSubscription.address}</Text>
               </View>
-              <TouchableOpacity style={styles.callBtn} onPress={callRestaurant} activeOpacity={0.86}>
-                <Ionicons name="call-outline" size={16} color={Palette.crimson} />
-                <Text style={styles.callBtnText}>Need more meals? Call {MONTHLY_CONTACT_LABEL}</Text>
-              </TouchableOpacity>
             </View>
           </View>
         ) : (
@@ -473,6 +490,16 @@ export default function MonthlyScreen() {
               multiline
             />
 
+            <Text style={styles.fieldLabel}>Instructions (optional)</Text>
+            <TextInput
+              value={instructions}
+              onChangeText={setInstructions}
+              placeholder="e.g. less spicy, no onions, vegetarian only"
+              placeholderTextColor="#888"
+              style={styles.input}
+              multiline
+            />
+
             <Text style={styles.fieldLabel}>Menu plan</Text>
             <View style={styles.segmentRow}>
               {PLAN_OPTIONS.map((option) => (
@@ -501,7 +528,10 @@ export default function MonthlyScreen() {
                 >
                   <View style={styles.planOptionLeft}>
                     <Ionicons name={isSelected ? "radio-button-on" : "radio-button-off"} size={18} color={isSelected ? Palette.orange : "#C7B5A0"} />
-                    <Text style={styles.planOptionLabel}>{plan.label}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.planOptionLabel}>{plan.label}</Text>
+                      <Text style={styles.planOptionMeta}>{plan.days} days</Text>
+                    </View>
                   </View>
                   <Text style={styles.planOptionPrice}>₹{plan.price}/-</Text>
                 </TouchableOpacity>
@@ -520,7 +550,16 @@ export default function MonthlyScreen() {
                 <Text style={styles.subscribeBtnText}>Subscribe for Monthly Meals</Text>
               )}
             </TouchableOpacity>
-            <Text style={styles.enrollNote}>No advance payment needed here. Our team confirms your plan on call.</Text>
+            <TouchableOpacity
+              style={[styles.whatsappBtn, !selectedPlan && styles.subscribeBtnDisabled]}
+              onPress={() => confirmOnWhatsApp({ plan: selectedPlan, subscriptionName: session?.name || "", subscriptionPhone: session?.phone || "" })}
+              disabled={!selectedPlan}
+              activeOpacity={0.88}
+            >
+              <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" />
+              <Text style={styles.whatsappBtnText}>Confirm on WhatsApp</Text>
+            </TouchableOpacity>
+            <Text style={styles.enrollNote}>Choose a plan, subscribe, and our team confirms payment & delivery. Confirm on WhatsApp for faster processing.</Text>
           </View>
         )}
 
@@ -571,16 +610,20 @@ export default function MonthlyScreen() {
             </View>
           ))}
         </View>
-        {menuType !== "Veg" && (
-          <View style={styles.chineseCard}>
-            <Text style={styles.chineseTitle}>🥡 Chinese Special — 3-day rotation</Text>
-            {MONTHLY_CHINESE_SPECIAL.map((item) => (
-              <Text key={item} style={styles.chineseRow}>
-                • {item}
-              </Text>
-            ))}
-          </View>
-        )}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{"What's Inside Your Thali"}</Text>
+          <Text style={styles.sectionSubtitle}>Every thali comes with fresh sides & condiments</Text>
+        </View>
+        <View style={styles.featuresCard}>
+          {MONTHLY_THALI_BREAKDOWN.map((line) => (
+            <View key={line} style={styles.featureRow}>
+              <Ionicons name="checkmark-done-circle" size={15} color={Palette.orange} />
+              <Text style={styles.featureText}>{line}</Text>
+            </View>
+          ))}
+        </View>
+
         <Text style={styles.menuNote}>{MONTHLY_NOTE}</Text>
 
         <View style={styles.sectionHeader}>
@@ -621,9 +664,6 @@ export default function MonthlyScreen() {
 
         <View style={styles.footerCard}>
           <Text style={styles.footerLocation}>{MONTHLY_LOCATION}</Text>
-          <TouchableOpacity onPress={callRestaurant} activeOpacity={0.86}>
-            <Text style={styles.footerPhone}>Contact Us: {MONTHLY_CONTACT_LABEL}</Text>
-          </TouchableOpacity>
           <Text style={styles.footerQuote}>{`"${MONTHLY_FOOTER_QUOTE}"`}</Text>
           <Text style={styles.footerTagline}>By Kilo ♥ By Choice ♥ By Taste</Text>
         </View>
@@ -686,10 +726,13 @@ const styles = StyleSheet.create({
   planOptionSelected: { borderColor: Palette.crimson, backgroundColor: Palette.cardSoft },
   planOptionLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
   planOptionLabel: { color: Palette.text, fontSize: 13, fontWeight: "600" },
+  planOptionMeta: { color: Palette.textMuted, fontSize: 11, marginTop: 1 },
   planOptionPrice: { color: Palette.orange, fontSize: 14, fontWeight: "800" },
   subscribeBtn: { backgroundColor: Palette.crimson, borderRadius: 12, paddingVertical: 13, alignItems: "center" },
   subscribeBtnDisabled: { opacity: 0.55 },
   subscribeBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  whatsappBtn: { backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 13, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 8 },
+  whatsappBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
   enrollNote: { color: Palette.textMuted, fontSize: 11, textAlign: "center", lineHeight: 15 },
 
   statusCard: { backgroundColor: Palette.cardSoft, borderRadius: 16, borderWidth: 1, borderColor: Palette.orange, padding: 14, gap: 10, marginTop: 12 },
@@ -708,8 +751,6 @@ const styles = StyleSheet.create({
   statusDetailLine: { color: Palette.text, fontSize: 12.5 },
   checkingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 },
   checkingText: { color: Palette.textMuted, fontSize: 12 },
-  callBtn: { backgroundColor: Palette.surface, borderRadius: 10, paddingVertical: 11, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: Palette.borderStrong },
-  callBtnText: { color: Palette.crimson, textAlign: "center", fontWeight: "700", fontSize: 13 },
 
   sectionHeader: { paddingTop: 22, paddingBottom: 10, gap: 3, alignItems: "center" },
   sectionTitle: { color: Palette.text, fontSize: 16, fontWeight: "800", letterSpacing: 0.4 },
@@ -737,10 +778,6 @@ const styles = StyleSheet.create({
   menuMealText: { color: Palette.text },
   menuNote: { color: Palette.textMuted, fontSize: 11, textAlign: "center", marginTop: 8, fontStyle: "italic" },
 
-  chineseCard: { backgroundColor: Palette.cardSoft, borderRadius: 12, borderWidth: 1, borderColor: Palette.borderStrong, padding: 12, gap: 5, marginTop: 10 },
-  chineseTitle: { color: Palette.orange, fontSize: 12.5, fontWeight: "800" },
-  chineseRow: { color: Palette.text, fontSize: 12, lineHeight: 17 },
-
   featuresCard: { backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, padding: 12, gap: 9 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 9 },
   featureText: { color: Palette.text, fontSize: 13 },
@@ -751,7 +788,6 @@ const styles = StyleSheet.create({
 
   footerCard: { backgroundColor: Palette.crimson, borderRadius: 14, padding: 16, alignItems: "center", gap: 6, marginTop: 8 },
   footerLocation: { color: "#FFFFFF", fontSize: 13.5, fontWeight: "700", textAlign: "center" },
-  footerPhone: { color: "#F3B13B", fontSize: 15, fontWeight: "800" },
   footerQuote: { color: "#FFE3D6", fontSize: 12.5, fontStyle: "italic", marginTop: 2 },
   footerTagline: { color: "#FFD9C7", fontSize: 11.5 },
   inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center", marginTop: 14 },

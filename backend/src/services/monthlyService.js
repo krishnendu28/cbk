@@ -308,6 +308,20 @@ export async function updateSubscription(id, patch) {
     try {
       const doc = await MonthlySubscription.findById(id);
       if (!doc) return null;
+      applyPatchToSubscription(doc, patch);
+      doc.updatedAt = new Date();
+      await doc.save();
+      const serialized = toSerializable(doc);
+      emitMonthlyChanged("subscription:updated", serialized);
+      return serialized;
+    } catch (error) {
+      logger.warn("monthly.mongo_update_fallback_memory", { reason: error?.message || String(error) });
+      return updateMemory(id, patch);
+    }
+  }
+
+  return updateMemory(id, patch);
+}
 
 function applyPatchToSubscription(doc, patch) {
   if (patch.mealsTotal !== undefined && patch.mealsTotal !== null && Number(patch.mealsTotal) >= 1) {
@@ -334,26 +348,6 @@ function applyPatchToSubscription(doc, patch) {
 
   doc.status = computeNextStatus(doc.mealsRemaining, doc.status);
   return doc;
-}
-
-export async function updateSubscription(id, patch) {
-  if (isMongoConnected()) {
-    try {
-      const doc = await MonthlySubscription.findById(id);
-      if (!doc) return null;
-      applyPatchToSubscription(doc, patch);
-      doc.updatedAt = new Date();
-      await doc.save();
-      const serialized = toSerializable(doc);
-      emitMonthlyChanged("subscription:updated", serialized);
-      return serialized;
-    } catch (error) {
-      logger.warn("monthly.mongo_update_fallback_memory", { reason: error?.message || String(error) });
-      return updateMemory(id, patch);
-    }
-  }
-
-  return updateMemory(id, patch);
 }
 
 function updateMemory(id, patch) {

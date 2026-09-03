@@ -245,6 +245,32 @@ const rawMenuCategories = [
       { name: "Palak Paneer Masala Combo", prices: { Regular: 150 } },
     ],
   },
+  {
+    id: "dry-fruits",
+    title: "Dry Fruits",
+    items: [
+      {
+        name: "Makhana Roasted 250gm",
+        prices: { Premium: 350, Standard: 250 },
+        image: "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?w=400&q=80&auto=format&fit=crop",
+      },
+      {
+        name: "Kaju 1kg",
+        prices: { "Medium Size": 1100, "Bigger Size": 1400 },
+        image: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&q=80&auto=format&fit=crop",
+      },
+      {
+        name: "Almond 1kg",
+        prices: { Standard: 1100, Premium: 1300 },
+        image: "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&q=80&auto=format&fit=crop",
+      },
+      {
+        name: "Kismis 1kg",
+        prices: { Standard: 520, Premium: 700 },
+        image: "https://images.unsplash.com/photo-1500673922987-e212871fec22?w=400&q=80&auto=format&fit=crop",
+      },
+    ],
+  },
 ];
 
 function getFoodImageUrl(name, categoryTitle) {

@@ -15,10 +15,10 @@ const SPECIALS_CATEGORY: MenuCategory = {
   id: "dry-fruits",
   title: "Dry Fruits",
   items: [
-    { id: MAKHANA_ITEM_ID, name: "Makhana Roasted (250gm/500gm)", prices: { "250gm": 250, "500gm": 350 }, image: undefined },
-    { id: MAKHANA_ITEM_ID + 1, name: "Kaju Roasted (250gm/500gm)", prices: { "250gm": 1100, "500gm": 1400 }, image: undefined },
-    { id: MAKHANA_ITEM_ID + 2, name: "Almond Badam (250gm/500gm)", prices: { "250gm": 1100, "500gm": 1300 }, image: undefined },
-    { id: MAKHANA_ITEM_ID + 3, name: "Kismis Raisins (250gm/500gm)", prices: { "250gm": 520, "500gm": 700 }, image: undefined },
+    { id: MAKHANA_ITEM_ID, name: "Makhana Roasted 250gm", prices: { Premium: 350, Standard: 250 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 1, name: "Kaju 1kg", prices: { "Medium Size": 1100, "Bigger Size": 1400 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 2, name: "Almond 1kg", prices: { Standard: 1100, Premium: 1300 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 3, name: "Kismis 1kg", prices: { Standard: 520, Premium: 700 }, image: undefined },
   ],
 };
 

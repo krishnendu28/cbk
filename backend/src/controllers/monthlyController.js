@@ -78,6 +78,17 @@ export async function redeemMonthlyMealHandler(req, res) {
     if (result?.error === "NO_MEALS") {
       return res.status(400).json({ message: "No meals remaining on this subscription." });
     }
+    if (result?.error === "PENDING_APPROVAL") {
+      return res.status(400).json({ message: "Subscription is pending approval. Please wait for admin confirmation." });
+    }
+    if (result?.error === "REJECTED") {
+      return res.status(400).json({ message: "This subscription was not approved." });
+    }
+    if (result?.error === "DAILY_LIMIT") {
+      return res.status(400).json({
+        message: `Daily meal limit reached (${result?.detail?.usedToday} of ${result?.detail?.dailyLimit} meals). Come back later.`,
+      });
+    }
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ message: "Failed to redeem meal." });

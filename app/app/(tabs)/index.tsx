@@ -39,7 +39,7 @@ const heroSlides = [
     categoryId: "ahuna-champaran",
   },
   {
-    image: getMenuImageByFileName("chicken-handi-biryani.jpg"),
+    image: getMenuImageByFileName("Handi-Chicken.png"),
     title: "Handi Chicken · Champaran Style",
     subtitle: "Tender chicken simmered dum-style in the handi with bold bihari spices, served piping hot.",
     categoryId: "ahuna-champaran",
@@ -53,19 +53,61 @@ const heroSlides = [
 ];
 
 const MAKHANA_ITEM_ID = 900001;
-const MAKHANA_IMAGE_URL =
-  "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dried_lotus_seeds_snack.jpg/960px-Dried_lotus_seeds_snack.jpg";
 const SPECIALS_CATEGORY: MenuCategory = {
   id: "dry-fruits",
   title: "Dry Fruits",
   items: [
-    { id: MAKHANA_ITEM_ID, name: "Makhana Roasted (250gm/500gm)", prices: { "250gm": 250, "500gm": 350 }, image: undefined },
-    { id: MAKHANA_ITEM_ID + 1, name: "Kaju Roasted (250gm/500gm)", prices: { "250gm": 1100, "500gm": 1400 }, image: undefined },
-    { id: MAKHANA_ITEM_ID + 2, name: "Almond Badam (250gm/500gm)", prices: { "250gm": 1100, "500gm": 1300 }, image: undefined },
-    { id: MAKHANA_ITEM_ID + 3, name: "Kismis Raisins (250gm/500gm)", prices: { "250gm": 520, "500gm": 700 }, image: undefined },
+    { id: MAKHANA_ITEM_ID, name: "Makhana Roasted 250gm", prices: { Premium: 350, Standard: 250 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 1, name: "Kaju 1kg", prices: { "Medium Size": 1100, "Bigger Size": 1400 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 2, name: "Almond 1kg", prices: { Standard: 1100, Premium: 1300 }, image: undefined },
+    { id: MAKHANA_ITEM_ID + 3, name: "Kismis 1kg", prices: { Standard: 520, Premium: 700 }, image: undefined },
   ],
 };
-const MAKHANA_ITEM: MenuItem = SPECIALS_CATEGORY.items[0];
+
+type NewLaunchProduct = {
+  id: number;
+  name: string;
+  imageUrl: string;
+  priceLabel: string;
+  priceFrom: number;
+  description: string;
+};
+
+const NEW_LAUNCH_PRODUCTS: NewLaunchProduct[] = [
+  {
+    id: MAKHANA_ITEM_ID,
+    name: "Makhana Roasted 250gm",
+    imageUrl: "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?w=400&q=80&auto=format&fit=crop",
+    priceLabel: "Premium ₹350 · Standard ₹250",
+    priceFrom: 250,
+    description: "Premium roasted fox nuts (makhana), lightly spiced & packed fresh.",
+  },
+  {
+    id: MAKHANA_ITEM_ID + 1,
+    name: "Kaju 1kg",
+    imageUrl: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&q=80&auto=format&fit=crop",
+    priceLabel: "Medium ₹1100 · Bigger ₹1400",
+    priceFrom: 1100,
+    description: "Whole cashew nuts — rich, buttery and crunch-fresh.",
+  },
+  {
+    id: MAKHANA_ITEM_ID + 2,
+    name: "Almond 1kg",
+    imageUrl: "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&q=80&auto=format&fit=crop",
+    priceLabel: "Standard ₹1100 · Premium ₹1300",
+    priceFrom: 1100,
+    description: "Premium whole almonds (badam), naturally delicious & healthy.",
+  },
+  {
+    id: MAKHANA_ITEM_ID + 3,
+    name: "Kismis 1kg",
+    imageUrl: "https://images.unsplash.com/photo-1500673922987-e212871fec22?w=400&q=80&auto=format&fit=crop",
+    priceLabel: "Standard ₹520 · Premium ₹700",
+    priceFrom: 520,
+    description: "Sweet golden raisins (kismis), soft, juicy & sun-dried.",
+  },
+];
+const NEW_LAUNCH_ITEMS: MenuItem[] = SPECIALS_CATEGORY.items;
 
 const SELLER_GROUPS: {
   id: string;
@@ -421,32 +463,47 @@ export default function MenuScreen() {
             </View>
           ) : null}
 
-          <View style={styles.newLaunchCard}>
-            <View style={styles.newLaunchBadge}>
-              <Text style={styles.newLaunchBadgeText}>NEW LAUNCH</Text>
-            </View>
-            <View style={styles.newLaunchRow}>
-              <View style={styles.newLaunchImageWrap}>
-                <ResilientImage primarySource={{ uri: MAKHANA_IMAGE_URL }} secondarySource={FALLBACK_IMAGE} style={styles.newLaunchImage} />
-                <View style={styles.newLaunchPricePill}>
-                  <Text style={styles.newLaunchPriceText}>Rs {Object.values(MAKHANA_ITEM.prices || {})[0] || 0}</Text>
-                </View>
+          <View style={styles.newLaunchSection}>
+            <View style={styles.newLaunchHeaderRow}>
+              <View style={styles.newLaunchBadge}>
+                <Text style={styles.newLaunchBadgeText}>NEW LAUNCH</Text>
               </View>
-              <View style={styles.newLaunchBody}>
-                <Text style={styles.newLaunchTitle}>Our New Product — Makhana</Text>
-                <Text style={styles.newLaunchSubtitle}>{MAKHANA_ITEM.name} — premium roasted fox nuts, packed fresh.</Text>
-                <TouchableOpacity
-                  style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
-                  onPress={() => {
-                    if (isOrderingOpen) addToCart(MAKHANA_ITEM);
-                  }}
-                  activeOpacity={0.88}
-                  disabled={!isOrderingOpen}>
-                  <Ionicons name="cart" size={14} color={Palette.crimson} />
-                  <Text style={styles.orderBtnText}>Order Rs {Object.values(MAKHANA_ITEM.prices || {})[0] || 0}</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.newLaunchSectionTitle}>Try Our New Dry Fruits</Text>
             </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: horizontalSafePadding, gap: 12, paddingBottom: 4 }}
+              decelerationRate="fast">
+              {NEW_LAUNCH_PRODUCTS.map((product) => {
+                const item = NEW_LAUNCH_ITEMS.find((entry) => entry.id === product.id);
+                return (
+                  <View key={product.id} style={[styles.nlCard, { width: 220 }]}>
+                    <View style={styles.nlImageWrap}>
+                      <ResilientImage primarySource={{ uri: product.imageUrl }} secondarySource={FALLBACK_IMAGE} style={styles.nlImage} />
+                      <View style={styles.nlPricePill}>
+                        <Text style={styles.nlPriceText}>from Rs {product.priceFrom}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.nlBody}>
+                      <Text style={styles.nlTitle}>{product.name}</Text>
+                      <Text style={styles.nlPriceLabel}>{product.priceLabel}</Text>
+                      <Text style={styles.nlDesc} numberOfLines={2}>{product.description}</Text>
+                      <TouchableOpacity
+                        style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
+                        onPress={() => {
+                          if (isOrderingOpen && item) addToCart(item);
+                        }}
+                        activeOpacity={0.88}
+                        disabled={!isOrderingOpen || !item}>
+                        <Ionicons name="cart" size={14} color={Palette.crimson} />
+                        <Text style={styles.orderBtnText}>Order Rs {product.priceFrom}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
 
           <View style={styles.sectionHeaderRow}>
@@ -985,22 +1042,44 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   newLaunchBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800", letterSpacing: 1.4 },
-  newLaunchRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 6 },
-  newLaunchImageWrap: { position: "relative" },
-  newLaunchImage: { width: 110, height: 110, borderRadius: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.55)" },
-  newLaunchPricePill: {
+  newLaunchSection: { marginTop: 10, marginBottom: 2 },
+  newLaunchHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+    marginHorizontal: 6,
+    marginBottom: 10,
+  },
+  newLaunchSectionTitle: { color: Palette.text, fontSize: 15, fontWeight: "800" },
+  nlCard: {
+    backgroundColor: Palette.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  nlImageWrap: { position: "relative" },
+  nlImage: { width: "100%", height: 140 },
+  nlPricePill: {
     position: "absolute",
-    left: 6,
-    bottom: 6,
+    left: 8,
+    bottom: 8,
     backgroundColor: "rgba(255,247,237,0.95)",
     borderRadius: 999,
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 3,
   },
-  newLaunchPriceText: { color: Palette.crimson, fontSize: 11, fontWeight: "800" },
-  newLaunchBody: { flex: 1, gap: 5, minWidth: 0 },
-  newLaunchTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", lineHeight: 21 },
-  newLaunchSubtitle: { color: "rgba(255,241,220,0.92)", fontSize: 11.5, lineHeight: 16 },
+  nlPriceText: { color: Palette.crimson, fontSize: 11, fontWeight: "800" },
+  nlBody: { padding: 10, gap: 4 },
+  nlTitle: { color: Palette.text, fontSize: 13.5, fontWeight: "800" },
+  nlPriceLabel: { color: Palette.crimson, fontSize: 11.5, fontWeight: "700" },
+  nlDesc: { color: Palette.textMuted, fontSize: 11, lineHeight: 15 },
   orderBtn: {
     flexDirection: "row",
     alignItems: "center",

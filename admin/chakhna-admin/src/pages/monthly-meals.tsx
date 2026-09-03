@@ -91,11 +91,11 @@ const LOCAL_MENU: Record<MonthlyPlanType, { day: string; lunch: string; dinner: 
   OnlyNonVeg: [
     { day: "Monday", lunch: "Egg Thali", dinner: "Chicken + Roti" },
     { day: "Tuesday", lunch: "Fish Thali", dinner: "Chicken Tadka + Roti" },
-    { day: "Wednesday", lunch: "Egg Thali", dinner: "Chinese: Chili Chicken (3pcs) + Veg Noodles" },
-    { day: "Thursday", lunch: "Fish Thali", dinner: "Chinese: Veg Fried Rice + Chili Chicken (3pcs)" },
+    { day: "Wednesday", lunch: "Egg Thali", dinner: "Chili Chicken (3pcs) + Veg Noodles" },
+    { day: "Thursday", lunch: "Fish Thali", dinner: "Veg Fried Rice + Chili Chicken (3pcs)" },
     { day: "Friday", lunch: "Chicken Biryani", dinner: "Chicken + Roti" },
     { day: "Saturday", lunch: "Fish Thali", dinner: "Chicken Bharta + Roti" },
-    { day: "Sunday", lunch: "Chicken Thali", dinner: "Chinese: Egg Chicken / Schezwan Noodles" },
+    { day: "Sunday", lunch: "Chicken Thali", dinner: "Egg Chicken / Schezwan Noodles" },
   ],
 };
 

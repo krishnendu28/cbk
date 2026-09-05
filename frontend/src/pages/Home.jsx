@@ -173,7 +173,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                 >
                   <div className="border-b border-[var(--cbk-text)]/10 px-4 py-3">
                     <p className="text-sm font-semibold">{userSession?.name || "Guest User"}</p>
-                    <p className="text-xs text-[var(--cbk-text)]/60">{userSession?.phone || "Not logged in"}</p>
+                    <p className="text-xs text-[var(--cbk-text)]/60">{userSession?.phone || userSession?.email || "Not logged in"}</p>
                   </div>
                   <button type="button" onClick={handleContact} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-[var(--cbk-bg)]">
                     <Phone size={15} className="text-[var(--cbk-orange)]" />

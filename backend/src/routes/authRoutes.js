@@ -1,5 +1,8 @@
+import crypto from "crypto";
 import { Router } from "express";
 import { requireAdmin } from "../middlewares/auth.js";
+import { requestOtp, verifyOtp } from "../services/otpService.js";
+import { sendOtpEmail } from "../services/emailService.js";
 
 const router = Router();
 
@@ -76,6 +79,52 @@ router.post("/auth/login", (req, res) => {
   return res.json({
     user: buildUser(role),
     token,
+  });
+});
+
+router.post("/auth/otp/send", async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || "").trim();
+    const result = requestOtp({ email });
+
+    if (!result.ok) {
+      return res.status(result.status).json({ message: result.error });
+    }
+
+    const mailResult = await sendOtpEmail({ to: email.toLowerCase(), otp: result.otp });
+
+    return res.status(200).json({
+      message: `OTP sent to ${result.maskedEmail}.`,
+      maskedEmail: result.maskedEmail,
+      devOtp: mailResult.devMode ? mailResult.otp : undefined,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/auth/otp/verify", (req, res) => {
+  const email = String(req.body?.email || "");
+  const otp = String(req.body?.otp || "");
+  const name = String(req.body?.name || "").trim();
+
+  const result = verifyOtp({ email, otp });
+  if (!result.ok) {
+    return res.status(result.status).json({ message: result.error });
+  }
+
+  const user = {
+    id: 1,
+    email: result.email,
+    name: name || result.email.split("@")[0] || "Chakhna User",
+    role: "user",
+    outletId: 1,
+    createdAt: new Date().toISOString(),
+  };
+
+  return res.json({
+    user,
+    token: crypto.randomUUID(),
   });
 });
 

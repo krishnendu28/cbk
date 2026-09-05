@@ -19,6 +19,12 @@ provider:
     ADMIN_API_KEYS: ${env:ADMIN_API_KEYS, ''}
     ENFORCE_ADMIN_AUTH: ${env:ENFORCE_ADMIN_AUTH, 'false'}
     EXPO_ACCESS_TOKEN: ${env:EXPO_ACCESS_TOKEN, ''}
+    SMTP_HOST: ${env:SMTP_HOST, ''}
+    SMTP_PORT: ${env:SMTP_PORT, '587'}
+    SMTP_SECURE: ${env:SMTP_SECURE, 'false'}
+    SMTP_USER: ${env:SMTP_USER, ''}
+    SMTP_PASS: ${env:SMTP_PASS, ''}
+    SMTP_FROM: ${env:SMTP_FROM, ''}
 
 functions:
   api:

@@ -167,13 +167,122 @@ const menuImageFiles = {
   "Palak Paneer Masala Combo": "palak_panner masal combo.jpg",
 };
 
-const makePublicMenuPath = (fileName) => `/menu/${encodeURIComponent(fileName)}`;
+// Exact-name overrides for every seeded item the fuzzy/normalized matcher misses.
+// Values are either a local file name (public/menu/<name>) or a full remote URL.
+const liveNameOverrides = {
+  // --- Beverages & Extras (no local photo -> remote stock) ---
+  "Cold Drink (600 ml)": "https://images.pexels.com/photos/19771998/pexels-photo-19771998.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Mineral Water (1 Ltr)": "https://images.pexels.com/photos/11860563/pexels-photo-11860563.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Sweet Lassi": "https://images.pexels.com/photos/12318617/pexels-photo-12318617.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Masala Chauz": "https://images.pexels.com/photos/17424800/pexels-photo-17424800.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Fresh Lime Soda": "https://images.pexels.com/photos/26765434/pexels-photo-26765434.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Extra Rayta": "https://images.pexels.com/photos/9645253/pexels-photo-9645253.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Onion (2 pcs)": "https://images.pexels.com/photos/5876002/pexels-photo-5876002.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Onion Salad": "https://images.pexels.com/photos/35552946/pexels-photo-35552946.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Extra Salad": "https://images.pexels.com/photos/7954589/pexels-photo-7954589.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Papad (2 pcs)": "https://images.pexels.com/photos/9609842/pexels-photo-9609842.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  // --- starters with no dedicated local photo ---
+  "Chilli Fish": "https://images.pexels.com/photos/31336129/pexels-photo-31336129.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Garlic chicken": "https://images.pexels.com/photos/29685076/pexels-photo-29685076.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  // --- Dry Fruits ---
+  "Makhana Roasted 250gm": "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?w=400&q=80&auto=format&fit=crop",
+  "Kaju 1kg": "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&q=80&auto=format&fit=crop",
+  "Almond 1kg": "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&q=80&auto=format&fit=crop",
+  "Kismis 1kg": "https://images.unsplash.com/photo-1500673922987-e212871fec22?w=400&q=80&auto=format&fit=crop",
+  // --- Non Veg Chakhna ---
+  "Fish Finger (8 pcs)": "Fish-Fingers.jpg",
+  "Chicken Pakoda (8 pcs)": "chicken Pakoda.png",
+  "Chicken Lollipop (Drums of Heaven 8 pcs)": "https://images.pexels.com/photos/60616/fried-chicken-chicken-fried-crunchy-60616.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  "Chicken 65(8) (8 pcs)": "chicken 65_69.jpg",
+  "Chilli Chicken Dry (8 pcs)": "Chilli-Chicken.jpg",
+  "Egg Bhurji": "Egg-Bhurji.jpg",
+  "Chicken Finger (8 pcs)": "chicken finger.jpg",
+  "Litti Murga (2 pcs Litti + 1 pc Chicken)": "litti murga.jpg",
+  "Mutton Litti (2 pcs Litti + 1 pc Mutton)": "Mutton_Litti.jpg",
+  // --- Non Veg Main Course ---
+  "Double Egg Curry / Omelet Curry": "Double-egg-Curry.webp",
+  "Egg Tadka 500 ML": "Egg-Tadka.jpg",
+  "Chicken Bhurta 250 GM": "Chicken-Bharta.jpg",
+  "Chingari Malai Curry (5 pcs)": "chicken malai curry.jpg",
+  // --- Regular Thali ---
+  "Regular Veg Thali": "Veg-Thali.jpg",
+  // --- Roti/Paratha ---
+  "Laccha Paratha": "Lachha-Paratha.jpg",
+  "Alu Paratha (2 pcs)": "aloo-Paratha.avif",
+  "Paneer Paratha (2 pcs)": "panner-paratha.jpg",
+  "Butter Naan (2 slices)": "Butter-Naan.jpeg",
+  // --- Veg Chakhna ---
+  "Paneer Pakoda (8 pcs)": "paneer-pakoda.jpg",
+  "Chilli Paneer Dry (8 pcs)": "chilli-paneer.jpg",
+  "Chilli Mushroom Dry (8 pcs)": "chilli-mushroom.jpg",
+  "Chilli Veg Ball Dry (8 pcs)": "veg-Ball.webp",
+  "Mushroom Fry (8 pcs)": "mushroom-fry.jpg",
+  "Paneer Bhurji": "Panner-Bhujiya.jpg",
+  "Litti Chokha (2 pcs)": "Litti-chokha.webp",
+  // --- Veg Main Course ---
+  "Kashmiri Alu Dum (6 pcs)": "Kashmiri-Dum-Aloo.jpg",
+  "Dal Tadka 500 ml": "Dal-Tadka.jpg",
+  "Chana Masala 500 ml": "chana-masala.jpg",
+  "Paneer Do Pyaza (6 pcs)": "paneer-do-pyaza.jpg",
+  "Kadhai Paneer (8 pcs)": "kadai-paneer.jpg",
+  "Paneer Kashmiri (8 pcs)": "Paneer-Masala.jpg",
+  "Matar Paneer (8 pcs)": "Matar panner Masala combo.avif",
+  "Paneer Butter Masala (8 pcs)": "paneer-butter-masala.jpg",
+  "Palak Paneer (8 pcs)": "palak-Panner.jpeg",
+  "Kadhai Mushroom (Spicy)": "kadai-mushroom-recipe.jpg",
+  "Paneer Malai Kofta (4 pcs)": "Panner-Malai-Kofta.jpg",
+  "Veg Manchurian": "Veg_manchuriyan.jpg",
+  "Baby corn chilli": "Baby-corn-chili.jpg",
+  "Garlic paneer": "Garlic-Panner.jpg",
+  // --- Combos (previous category fallback swallowed these) ---
+  "Dal Tadka Combo (Roti)": "Dal-Tadka-combo.jpg",
+  "Egg Tadka Combo (Roti)": "Egg-Tadka-Combo.jpeg",
+  "Ala Dum Combo (Roti)": "Aloo Dum Combo.jpg",
+  "Handi Paneer Masala Combo (Roti)": "handi paneer masala combo.png",
+  "Muter Paneer Masala Combo": "Matar panner Masala combo.avif",
+  "Noodles Combo (Chilli Mushroom)": "Mushroom-Noodle.webp",
+  "Handi Chicken Combo (Roti/Naan/Rice)": "Thali-Chicken-COMBO.avif",
+  "Chili Chicken Combo": "CHILI-chicken-combo.jpg",
+  "Noodles Combo (Chili Chicken)": "Schezwan-Noodles-chicken.jpeg",
+  // --- Biryani ---
+  "Egg Biryani": "Egg_Handi_B.jpg",
+  "Special Handi Chicken Biryani": "Family_pack_Birayni.avif",
+  "Chicken Biryani": "chicken-handi-biryani.jpg",
+  "Chicken Biryani + Hand Chicken Combo": "https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  // --- Tandoor ---
+  "Chicken Tangri Kebab (2 pcs)": "Tangdi-kebab.webp",
+  "Chicken Tikka Kebab (8 pcs)": "Chicken tikka Kebab.jpg",
+  "Chicken Reshmi Kebab (8 pcs)": "Reshmi Kabab.jpeg",
+  "Paneer Tikka (8 pcs)": "paneer-tikka.jpg",
+  "Chicken Malai Kebab (8 pcs)": "Chicken-Malai.jpg",
+  "Half Chicken Tandoori (500 gm)": "Tandoori-Chicken.jpg",
+  "Full Chicken Tandoori (1 kg)": "https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop",
+  // --- Ahuna / Champaran ---
+  "Handi Mutton (15-16 pcs)": "Handi Mutton.jpg",
+  "Handi Mutton 250 GM": "Handi_Mutton.jpg",
+  "Handi Chicken (15-16 pcs)": "Handi-Chicken.png",
+  "Handi Chicken 250 GM (4 pcs)": "Handi-Chicken.png",
+  // --- Rice ---
+  "Plain Rice": "plain rice Basmati .jpg",
+  "Basanti Pulao": "Kashmiri-Pulao.jpg",
+  "Mixed Fried Rice": "Mixed-Fried-Rice.webp",
+  "Egg Fried Rice": "Egg Fried RICE.jpg",
+  "Egg Chicken Fried Rice": "Chicken-Fried Rice.jpeg",
+  // --- Noodles ---
+  "Mixed Noodles (Veg, Egg, Chicken)": "Mixed Noddles.webp",
+  "Schezwan Mixed Noodles (Prawn+Egg+Chicken, 250 ml)": "Schezwan-Mixed -Noodles.jpeg",
+};
+
+const IMAGE_ORIGIN = "https://cbk-gamma.vercel.app";
+
+const makePublicMenuPath = (fileName) => `${IMAGE_ORIGIN}/menu/${encodeURIComponent(fileName)}`;
 
 const normalizeName = (value = "") =>
   String(value)
     .toLowerCase()
     .replace(/[()/_+.-]+/g, " ")
     .replace(/\b(pcs?|pc|gm|kg|ml|regular|half|full)\b/g, " ")
+    .replace(/\d+(pcs?|pc|gm|kg|ml)\b/gi, " ")
     .replace(/\d+/g, " ")
     .replace(/\b(corma|korma)\b/g, "korma")
     .replace(/\b(kadhai|kadai)\b/g, "kadai")
@@ -206,6 +315,9 @@ function getCategoryFallback(category = "") {
 }
 
 export function getFoodImage(itemName = "", category = "") {
+  const override = liveNameOverrides[itemName];
+  if (override) return /^https?:\/\//i.test(override) ? override : makePublicMenuPath(override);
+
   if (menuImages[itemName]) return menuImages[itemName];
 
   const normalizedName = normalizeName(itemName);

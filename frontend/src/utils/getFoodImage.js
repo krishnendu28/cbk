@@ -160,6 +160,9 @@ const menuImageFiles = {
   "Handi Paneer Masala Combo": "handi paneer masala combo.png",
   "Butter Paneer Masala Combo": "panner-butter-combo.webp",
   "Matar Paneer Masala Combo": "Matar panner Masala combo.avif",
+  "Muter Paneer Masala Combo": "Matar panner Masala combo.avif",
+  "Handi Chicken Combo (Roti/Naan/Rice)": "Thali-Chicken-COMBO.avif",
+  "Special Handi Chicken Biryani": "Family_pack_Birayni.avif",
   "Chicken Butter Masala Combo": "Chicken butter masala combo.jpg",
   "Chilli Chicken Combo": "CHILI-chicken-combo.jpg",
   "Chicken Bharta Combo": "Chicken-Bharta-Combo.jpeg",
@@ -178,6 +181,7 @@ const normalizeName = (value = "") =>
     .toLowerCase()
     .replace(/[()/_+.-]+/g, " ")
     .replace(/\b(pcs?|pc|gm|kg|ml|regular|half|full)\b/g, " ")
+    .replace(/\d+(pcs?|pc|gm|kg|ml)\b/gi, " ")
     .replace(/\d+/g, " ")
     .replace(/\b(corma|korma)\b/g, "korma")
     .replace(/\b(kadhai|kadai)\b/g, "kadai")

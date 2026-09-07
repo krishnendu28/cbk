@@ -159,6 +159,9 @@ const menuImageFiles: Record<string, string> = {
   "Handi Paneer Masala Combo": "handi paneer masala combo.png",
   "Butter Paneer Masala Combo": "panner-butter-combo.webp",
   "Matar Paneer Masala Combo": "Matar-combo.avif",
+  "Muter Paneer Masala Combo": "Matar panner Masala combo.avif",
+  "Handi Chicken Combo (Roti/Naan/Rice)": "Thali-Chicken-COMBO.avif",
+  "Special Handi Chicken Biryani": "Family_pack_Birayni.avif",
   "Chicken Butter Masala Combo": "Chicken butter masala combo.jpg",
   "Chilli Chicken Combo": "CHILI-chicken-combo.jpg",
   "Chicken Bharta Combo": "Chicken-Bharta-Combo.jpeg",
@@ -180,6 +183,7 @@ const avifFallbackFiles: Record<string, string> = {
   "mutton-thali.avif": "Chicken-thali.jpeg",
   "aloo.avif": "Lachha-Paratha.jpg",
   "Matar-combo.avif": "panner-butter-combo.webp",
+  "aloo-Paratha.avif": "Lachha-Paratha.jpg",
   "Thali-Chicken-COMBO.avif": "Chicken-thali.jpeg",
 };
 
@@ -213,6 +217,7 @@ const normalizeName = (value = "") =>
     .toLowerCase()
     .replace(/[()/_+.-]+/g, " ")
     .replace(/\b(pcs?|pc|gm|kg|ml|regular|half|full)\b/g, " ")
+    .replace(/\d+(pcs?|pc|gm|kg|ml)\b/gi, " ")
     .replace(/\d+/g, " ")
     .replace(/\b(speciual)\b/g, "special")
     .replace(/\b(biriyani)\b/g, "biryani")

@@ -10,7 +10,7 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
   const variants = Object.keys(item.prices || {});
   const currentVariant = selectedVariant || variants[0];
   const currentPrice = item.prices?.[currentVariant];
-  const imageSrc = getFoodImage(item.name, categoryTitle);
+  const imageSrc = item.image || getFoodImage(item.name, categoryTitle);
 
   return (
     <Motion.article

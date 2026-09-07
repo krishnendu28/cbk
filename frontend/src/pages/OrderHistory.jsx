@@ -37,8 +37,14 @@ function OrderHistory({ userSession, onBack }) {
 
   useEffect(() => {
     async function loadOrders() {
+      if (!userPhoneNormalized) {
+        setLoading(false);
+        return;
+      }
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/orders`);
+        const response = await axios.get(`${API_BASE_URL}/api/orders`, {
+          params: { phone: userPhoneNormalized },
+        });
         const data = Array.isArray(response.data) ? response.data : [];
         const filtered = data
           .filter((order) => {

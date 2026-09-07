@@ -28,7 +28,7 @@ export async function createOrderHandler(req, res) {
 
 export async function listOrdersHandler(req, res) {
   try {
-    const orders = await listOrders();
+    const orders = await listOrders({ phone: req.query?.phone });
     return res.json(orders);
   } catch (error) {
     console.error(error);

@@ -40,9 +40,14 @@ export default function OrdersScreen() {
 
     async function pollOrders() {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/orders`);
+        const response = await axios.get(`${API_BASE_URL}/api/orders`, {
+          params: { phone: sessionPhone },
+        });
         const all = Array.isArray(response.data) ? response.data : [];
-        const filtered = all.filter((order: Order) => String(order.phone) === String(sessionPhone));
+        const normalizedSessionPhone = String(sessionPhone).replace(/\D/g, "").slice(-10);
+        const filtered = all.filter(
+          (order: Order) => String(order.phone).replace(/\D/g, "").slice(-10) === normalizedSessionPhone,
+        );
         if (!cancelled) setOrders(filtered);
       } catch {
         if (!cancelled) setOrders([]);

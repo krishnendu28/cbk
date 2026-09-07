@@ -50,7 +50,7 @@ function toSerializable(subscription) {
     planId: doc.planId || "",
     mealsTotal: Number(doc.mealsTotal),
     mealsRemaining: Number(doc.mealsRemaining),
-    mealsRedeemed: Math.max(0, Number(doc.mealsTotal) - Number(doc.mealsRemaining)),
+    mealsRedeemed: Array.isArray(doc.redemptionLog) ? doc.redemptionLog.length : Math.max(0, Number(doc.mealsTotal) - Number(doc.mealsRemaining)),
     price: Number(doc.price),
     startDate: doc.startDate instanceof Date ? doc.startDate.toISOString() : new Date(doc.startDate).toISOString(),
     endDate: doc.endDate instanceof Date ? doc.endDate.toISOString() : new Date(doc.endDate).toISOString(),
@@ -77,6 +77,23 @@ function toDailyLimit(value) {
   const parsed = Number(value);
   if (Number.isNaN(parsed) || parsed <= 0) return DEFAULT_DAILY_LIMIT;
   return Math.min(MAX_DAILY_LIMIT, Math.max(1, Math.floor(parsed)));
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function digitsOnly(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function lastTenDigits(value) {
+  return digitsOnly(value).slice(-10);
+}
+
+function isExpired(value) {
+  const ts = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return !Number.isNaN(ts) && ts < Date.now();
 }
 
 function approvalGate(status, statusApproval) {
@@ -110,7 +127,7 @@ function computeNextStatus(mealsRemaining, status) {
 }
 
 export async function createSubscription(input) {
-  const { name, phone, address, planType, planId, meals, price } = input;
+  const { name, phone, address, planType, planId, meals } = input;
 
   const plan = findMonthlyPlan(planType, meals);
   const mealCount = Number(meals) || (plan ? plan.meals : 0);
@@ -120,7 +137,7 @@ export async function createSubscription(input) {
     throw error;
   }
 
-  const planPrice = price !== undefined ? Number(price) : plan?.price || 0;
+  const planPrice = plan?.price || 0;
   const { startDate, endDate, days } = computePeriod(mealCount);
   const dailyLimit = toDailyLimit(input.dailyLimit);
 
@@ -173,8 +190,9 @@ function toMemorySubscription(payload) {
 }
 
 export async function listSubscriptions({ phone, status } = {}) {
+  const phoneSuffix = phone ? lastTenDigits(String(phone)) : "";
   const filter = {};
-  if (phone) filter.phone = String(phone).trim();
+  if (phoneSuffix) filter.phone = new RegExp(`${escapeRegExp(phoneSuffix)}$`);
   if (status) filter.status = status;
 
   let rows;
@@ -189,7 +207,7 @@ export async function listSubscriptions({ phone, status } = {}) {
   }
 
   let memoryRows = [...memorySubscriptions];
-  if (filter.phone) memoryRows = memoryRows.filter((entry) => String(entry.phone).trim() === filter.phone);
+  if (phoneSuffix) memoryRows = memoryRows.filter((entry) => lastTenDigits(entry.phone) === phoneSuffix);
   if (filter.status) memoryRows = memoryRows.filter((entry) => entry.status === filter.status);
   return memoryRows.map(toSerializable);
 }
@@ -221,6 +239,14 @@ export async function redeemMeals(id, { count = 1, meal = "Lunch", note = "", re
 
       const gate = approvalGate(doc.status, doc.statusApproval);
       if (gate) return gate;
+
+      if (isExpired(doc.endDate)) {
+        doc.status = "Completed";
+        doc.updatedAt = new Date();
+        await doc.save();
+        emitMonthlyChanged("subscription:expired", toSerializable(doc));
+        return { error: "EXPIRED_PLAN", detail: { endDate: doc.endDate } };
+      }
 
       const usedToday = countRedeemedToday(doc.redemptionLog);
       const dailyLimit = toDailyLimit(doc.dailyLimit);
@@ -274,6 +300,12 @@ function redeemMemory(id, toRedeem, mealType, note, redeemedBy) {
   }
   const gate = approvalGate(entry.status, entry.statusApproval);
   if (gate) return gate;
+  if (isExpired(entry.endDate)) {
+    entry.status = "Completed";
+    entry.updatedAt = new Date().toISOString();
+    emitMonthlyChanged("subscription:expired", toSerializable(entry));
+    return { error: "EXPIRED_PLAN", detail: { endDate: entry.endDate } };
+  }
   if (Number(entry.mealsRemaining) <= 0) {
     return { error: "NO_MEALS" };
   }
@@ -325,7 +357,8 @@ export async function updateSubscription(id, patch) {
 
 function applyPatchToSubscription(doc, patch) {
   if (patch.mealsTotal !== undefined && patch.mealsTotal !== null && Number(patch.mealsTotal) >= 1) {
-    const nextTotal = Number(patch.mealsTotal);
+    const redeemed = Array.isArray(doc.redemptionLog) ? doc.redemptionLog.length : 0;
+    const nextTotal = Math.max(Number(patch.mealsTotal), redeemed);
     const remainingAdjustment = nextTotal - Number(doc.mealsTotal);
     doc.mealsTotal = nextTotal;
     doc.mealsRemaining = Math.max(0, Number(doc.mealsRemaining) + remainingAdjustment);

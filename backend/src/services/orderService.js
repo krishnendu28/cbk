@@ -38,6 +38,34 @@ function findMenuItemByName(name) {
   return null;
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function digitsOnly(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function lastTenDigits(value) {
+  return digitsOnly(value).slice(-10);
+}
+
+function resolveMenuItemSource(item) {
+  const byId =
+    item.menuItemId !== undefined && item.menuItemId !== null ? findMenuItemById(Number(item.menuItemId)) : null;
+  return byId || findMenuItemByName(item.name);
+}
+
+function serverPriceFor(item, source) {
+  const prices = source?.item?.prices || {};
+  const variant = item.variant || "Regular";
+  const keys = Object.keys(prices);
+  if (prices[variant] !== undefined) return Math.max(0, Number(prices[variant]) || 0);
+  if (prices.Regular !== undefined) return Math.max(0, Number(prices.Regular) || 0);
+  if (keys.length > 0) return Math.max(0, Number(prices[keys[0]]) || 0);
+  return null;
+}
+
 function validateOrderItems(items) {
   const unavailableItems = [];
 
@@ -131,29 +159,43 @@ export async function createOrder({
   address,
   instructions,
   items,
-  subtotal,
   discountEnabled,
   discountRate,
   discountAmount,
-  total,
   deliveryCharge,
   deliveryEtaMinutes,
   promoCode,
 }) {
   validateOrderItems(items);
 
-  const normalizedItems = items.map((item) => ({
-    menuItemId: item.menuItemId !== undefined ? Number(item.menuItemId) : undefined,
-    name: item.name,
-    variant: item.variant || "Regular",
-    quantity: Number(item.quantity) || 1,
-    unitPrice: Number(item.unitPrice) || 0,
-    totalPrice: Number(item.totalPrice) || 0,
-  }));
+  const normalizedItems = items.map((item) => {
+    const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+    const source = resolveMenuItemSource(item);
+    const serverUnitPrice = source ? serverPriceFor(item, source) : null;
+
+    let unitPrice;
+    let totalPrice;
+    if (serverUnitPrice !== null) {
+      unitPrice = serverUnitPrice;
+      totalPrice = serverUnitPrice * quantity;
+    } else {
+      unitPrice = Math.max(0, Number(item.unitPrice) || 0);
+      totalPrice = Math.max(0, Number(item.totalPrice) || 0);
+    }
+
+    return {
+      menuItemId: item.menuItemId !== undefined ? Number(item.menuItemId) : undefined,
+      name: item.name,
+      variant: item.variant || "Regular",
+      quantity,
+      unitPrice,
+      totalPrice,
+    };
+  });
 
   const outletSettings = await getOutletSettings(DEFAULT_OUTLET_ID);
-  const computedSubtotal = normalizedItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
-  const orderSubtotal = Number(subtotal) >= 0 ? Number(subtotal) : computedSubtotal;
+  const computedSubtotal = normalizedItems.reduce((sum, item) => sum + Math.round(item.totalPrice), 0);
+  const orderSubtotal = Math.max(0, computedSubtotal);
 
   // Realtime inventory: best-effort decrement, never blocks order placement.
   try {
@@ -175,7 +217,7 @@ export async function createOrder({
   let finalDiscountEnabled = Boolean(discountEnabled);
   let finalDiscountRate = Number(discountRate) || 0;
   let finalDiscountAmount = Number(discountAmount) || 0;
-  let finalPromoCode = normalizedPromoCode;
+  let finalPromoCode = "";
 
   if (usePromo) {
     finalDiscountEnabled = true;
@@ -191,6 +233,7 @@ export async function createOrder({
     }
   }
 
+  finalDiscountAmount = Math.min(finalDiscountAmount, orderSubtotal);
   const finalTotal = Math.max(0, orderSubtotal - finalDiscountAmount + finalDeliveryCharge);
 
   const payload = {
@@ -241,8 +284,28 @@ function mealTypeForTime(date = new Date()) {
   return hour < 15 ? "Lunch" : "Dinner";
 }
 
+const MEAL_ELIGIBLE_KEYWORDS = [
+  "thali",
+  "combo",
+  "biryani",
+  "meal",
+  "tadka",
+  "curry",
+  "handi",
+  "roti",
+  "naan",
+  "paratha",
+];
+
+function orderQualifiesForMonthlyRedeem(order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  if (items.length === 0) return false;
+  const haystack = items.map((item) => String(item?.name || "").toLowerCase()).join(" ");
+  return MEAL_ELIGIBLE_KEYWORDS.some((keyword) => haystack.includes(keyword));
+}
+
 async function autoRedeemMonthlyMealForOrder(order) {
-  if (!order || !order.phone) return;
+  if (!order || !order.phone || !orderQualifiesForMonthlyRedeem(order)) return;
 
   const { listSubscriptions, redeemMeals } = await import("./monthlyService.js");
   const subscriptions = await listSubscriptions({ phone: String(order.phone).trim(), status: "Active" });
@@ -264,11 +327,23 @@ async function autoRedeemMonthlyMealForOrder(order) {
   });
 }
 
-export async function listOrders() {
+export async function listOrders({ phone } = {}) {
+  const suffix = lastTenDigits(phone);
+  const filter = {};
+  if (suffix) {
+    filter.phone = new RegExp(`${escapeRegExp(suffix)}$`);
+  }
+
   return withMongoFallback(
     "listOrders",
-    () => Order.find().sort({ createdAt: -1 }),
-    () => memoryOrders,
+    () => Order.find(filter).sort({ createdAt: -1 }),
+    () => {
+      let rows = memoryOrders;
+      if (suffix) {
+        rows = rows.filter((order) => lastTenDigits(order.phone) === suffix);
+      }
+      return rows;
+    },
   );
 }
 

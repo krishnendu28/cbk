@@ -35,16 +35,49 @@ function loadAdminKeys() {
   return [];
 }
 
+const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILURES = 5;
+const loginFailures = new Map();
+
+function clientIp(req) {
+  return String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "")
+    .split(",")[0]
+    .trim() || "unknown";
+}
+
 function getExpectedCredentials() {
-  const email = String(process.env.ADMIN_LOGIN_EMAIL || "owner@tabio.com").trim().toLowerCase();
-  const password = String(process.env.ADMIN_LOGIN_PASSWORD || "demo1234").trim();
+  const email = String(process.env.ADMIN_LOGIN_EMAIL || "").trim().toLowerCase();
+  const password = String(process.env.ADMIN_LOGIN_PASSWORD || "").trim();
+  if (!email || !password) return null;
   return { email, password };
 }
 
+function trackLoginFailure(key) {
+  const entry = loginFailures.get(key) || { count: 0, firstAt: Date.now() };
+  if (Date.now() - entry.firstAt > LOGIN_FAILURE_WINDOW_MS) {
+    loginFailures.set(key, { count: 1, firstAt: Date.now() });
+    return 1;
+  }
+  entry.count += 1;
+  loginFailures.set(key, entry);
+  return entry.count;
+}
+
+function loginIsLocked(key) {
+  const entry = loginFailures.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.firstAt > LOGIN_FAILURE_WINDOW_MS) {
+    loginFailures.delete(key);
+    return false;
+  }
+  return entry.count >= LOGIN_MAX_FAILURES;
+}
+
 function buildUser(role = "owner") {
+  const email = getExpectedCredentials()?.email || "owner";
   return {
-    id: 1,
-    email: "owner@tabio.com",
+    id: role === "owner" ? 1 : 2,
+    email,
     name: "Chakhna Owner",
     role,
     outletId: 1,
@@ -61,7 +94,17 @@ router.post("/auth/login", (req, res) => {
     return res.status(400).json({ message: "Email and password are required." });
   }
 
+  if (!expected) {
+    return res.status(503).json({ message: "Admin login is not configured." });
+  }
+
+  const failureKey = `${email}|${clientIp(req)}`;
+  if (loginIsLocked(failureKey)) {
+    return res.status(429).json({ message: "Too many failed login attempts. Please try again later." });
+  }
+
   if (email !== expected.email || password !== expected.password) {
+    trackLoginFailure(failureKey);
     return res.status(401).json({ message: "Invalid credentials." });
   }
 
@@ -76,6 +119,8 @@ router.post("/auth/login", (req, res) => {
   const token = matched?.key || "dev-owner-token";
   const role = matched?.role || "owner";
 
+  loginFailures.delete(failureKey);
+
   return res.json({
     user: buildUser(role),
     token,
@@ -85,7 +130,7 @@ router.post("/auth/login", (req, res) => {
 router.post("/auth/otp/send", async (req, res, next) => {
   try {
     const email = String(req.body?.email || "").trim();
-    const result = requestOtp({ email });
+    const result = await requestOtp({ email });
 
     if (!result.ok) {
       return res.status(result.status).json({ message: result.error });
@@ -103,29 +148,33 @@ router.post("/auth/otp/send", async (req, res, next) => {
   }
 });
 
-router.post("/auth/otp/verify", (req, res) => {
-  const email = String(req.body?.email || "");
-  const otp = String(req.body?.otp || "");
-  const name = String(req.body?.name || "").trim();
+router.post("/auth/otp/verify", async (req, res, next) => {
+  try {
+    const email = String(req.body?.email || "");
+    const otp = String(req.body?.otp || "");
+    const name = String(req.body?.name || "").trim();
 
-  const result = verifyOtp({ email, otp });
-  if (!result.ok) {
-    return res.status(result.status).json({ message: result.error });
+    const result = await verifyOtp({ email, otp });
+    if (!result.ok) {
+      return res.status(result.status).json({ message: result.error });
+    }
+
+    const user = {
+      id: crypto.randomUUID(),
+      email: result.email,
+      name: name || result.email.split("@")[0] || "Chakhna User",
+      role: "user",
+      outletId: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    return res.json({
+      user,
+      token: crypto.randomUUID(),
+    });
+  } catch (error) {
+    return next(error);
   }
-
-  const user = {
-    id: 1,
-    email: result.email,
-    name: name || result.email.split("@")[0] || "Chakhna User",
-    role: "user",
-    outletId: 1,
-    createdAt: new Date().toISOString(),
-  };
-
-  return res.json({
-    user,
-    token: crypto.randomUUID(),
-  });
 });
 
 router.get("/auth/me", requireAdmin(["owner", "manager"]), (req, res) => {

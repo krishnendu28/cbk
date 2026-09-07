@@ -89,6 +89,9 @@ export async function redeemMonthlyMealHandler(req, res) {
         message: `Daily meal limit reached (${result?.detail?.usedToday} of ${result?.detail?.dailyLimit} meals). Come back later.`,
       });
     }
+    if (result?.error === "EXPIRED_PLAN") {
+      return res.status(400).json({ message: "This subscription period has ended. Please contact the outlet to renew." });
+    }
     return res.json(result);
   } catch (error) {
     return res.status(500).json({ message: "Failed to redeem meal." });

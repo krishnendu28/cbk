@@ -1,4 +1,8 @@
 const menuImageFiles = {
+  "Makhana Roasted 250gm": "makhana-roasted.jpg",
+  "Kaju 1kg": "kaju.jpg",
+  "Almond 1kg": "almond.jpg",
+  "Kismis 1kg": "kismis.jpg",
   "Fish Fry (1pc Bhola Bhetki)": "Fish Fry.jpg",
   "Fish Finger 8pcs": "Fish-Fingers.jpg",
   "Chicken Pakoda 8pcs": "chicken Pakoda.png",
@@ -202,6 +206,7 @@ function getCategoryFallback(category = "") {
   if (normalizedCategory.includes("tandoor")) return makePublicMenuPath("Tandoori-Chicken.jpg");
   if (normalizedCategory.includes("roll")) return makePublicMenuPath("chicken Roll.jpg");
   if (normalizedCategory.includes("combo")) return makePublicMenuPath("Dal-Tadka-combo.jpg");
+  if (normalizedCategory.includes("dry fruit")) return makePublicMenuPath("kaju.jpg");
   return makePublicMenuPath("Veg-Thali.jpg");
 }
 

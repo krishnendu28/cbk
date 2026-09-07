@@ -177,7 +177,6 @@ const INGREDIENT_USAGE_HINTS = {
   "fried rice": ["Basmati Rice"],
   "paneer": ["Paneer"],
   "chicken": ["Chicken"],
-  "mutton": ["Chicken"],
   "mushroom": ["Mushroom"],
   "curry": ["Spice Mix"],
 };

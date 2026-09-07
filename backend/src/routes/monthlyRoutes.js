@@ -21,9 +21,22 @@ import {
 const router = Router();
 
 router.get("/plans", getMonthlyPlansHandler);
-router.get("/subscriptions", validateRequest({ querySchema: listMonthlySubscriptionsSchema }), listMonthlySubscriptionsHandler);
+router.get(
+  "/subscriptions",
+  (req, res, next) => {
+    if (req.query?.phone) return next();
+    return requireAdmin(["owner", "manager"])(req, res, next);
+  },
+  validateRequest({ querySchema: listMonthlySubscriptionsSchema }),
+  listMonthlySubscriptionsHandler,
+);
 router.post("/subscriptions", validateRequest({ bodySchema: createMonthlySubscriptionSchema }), createMonthlySubscriptionHandler);
-router.get("/subscriptions/:id", validateRequest({ paramsSchema: monthlyIdParamSchema }), getMonthlySubscriptionHandler);
+router.get(
+  "/subscriptions/:id",
+  requireAdmin(["owner", "manager"]),
+  validateRequest({ paramsSchema: monthlyIdParamSchema }),
+  getMonthlySubscriptionHandler,
+);
 router.post(
   "/subscriptions/:id/redeem",
   requireAdmin(["owner", "manager"]),

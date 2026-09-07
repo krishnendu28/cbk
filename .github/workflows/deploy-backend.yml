@@ -14,10 +14,29 @@ permissions:
   id-token: write
 
 jobs:
+  preflight:
+    name: Check deploy secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify secrets are configured
+        shell: bash
+        env:
+          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          MONGO: ${{ secrets.MONGO_URI }}
+        run: |
+          set -u
+          ok=1
+          [ -n "${AWS_KEY}" ] && { echo "AWS_ACCESS_KEY_ID: set"; } || { echo "AWS_ACCESS_KEY_ID: MISSING"; ok=0; }
+          [ -n "${AWS_SECRET}" ] && { echo "AWS_SECRET_ACCESS_KEY: set"; } || { echo "AWS_SECRET_ACCESS_KEY: MISSING"; ok=0; }
+          [ -n "${MONGO}" ] && { echo "MONGO_URI: set"; } || { echo "MONGO_URI: MISSING (deploy will still run but app needs it)"; }
+          [ "$ok" = "1" ] || { echo "::error::Missing required AWS secrets. Add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in repo Settings > Secrets and variables > Actions."; exit 1; }
+
   deploy:
     name: Deploy Serverless to prod
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: preflight
     defaults:
       run:
         working-directory: backend

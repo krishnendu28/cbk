@@ -223,6 +223,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           quantity: 1,
           unitPrice: selectedPrice,
           totalPrice: selectedPrice,
+          ...(item.image ? { image: item.image } : {}),
         },
       ];
     });

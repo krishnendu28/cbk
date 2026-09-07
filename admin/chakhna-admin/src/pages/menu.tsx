@@ -11,6 +11,7 @@ import {
   deleteBridgeMenuItem,
   fetchBridgeMenuGroups,
   getBridgeMenuGroups,
+  resetBridgeMenu,
   subscribeBridgeMenu,
   updateBridgeMenuItem,
 } from "@/lib/bridge";
@@ -26,6 +27,7 @@ export default function MenuManagement() {
   const [available, setAvailable] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
   const activeGroup = menuGroups.find((group) => group.id === activeGroupId) || menuGroups[0];
 
   async function reloadMenu() {
@@ -138,6 +140,29 @@ export default function MenuManagement() {
     }
   }
 
+  async function handleResetMenu() {
+    const ok = window.confirm(
+      "Reset the entire menu to the latest default menu? This replaces all current menu items (your manual edits will be lost).",
+    );
+    if (!ok) return;
+
+    try {
+      setIsResetting(true);
+      const result = await resetBridgeMenu();
+      await reloadMenu();
+      toast({ title: "Menu reset to defaults", description: `${result.categories} categories · ${result.items} items` });
+      resetForm();
+    } catch (error) {
+      toast({
+        title: "Failed to reset menu",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -145,6 +170,9 @@ export default function MenuManagement() {
           <h1 className="text-2xl font-display font-bold">Menu Management</h1>
           <p className="text-muted-foreground">Add, update, and delete menu items. User side uses the same menu source.</p>
         </div>
+        <Button type="button" variant="outline" onClick={handleResetMenu} disabled={isResetting}>
+          {isResetting ? "Resetting..." : "Reset to defaults"}
+        </Button>
       </div>
 
       <Card className="p-4 space-y-3 border-blue-200 bg-blue-50/40">

@@ -139,6 +139,21 @@ export function getAllMenuCategories() {
   return menuCache.categories;
 }
 
+export async function resetMenuToDefaults() {
+  const seeded = createSeededMenuState();
+  if (isMongoConnected()) {
+    try {
+      await MenuCategory.deleteMany({});
+      await MenuCategory.insertMany(seeded.categories);
+    } catch (error) {
+      logger.warn("menu.reset_persist_failed", { reason: error?.message || String(error) });
+    }
+  }
+  menuCache.categories = seeded.categories;
+  menuCache.nextMenuItemId = seeded.nextMenuItemId;
+  return menuCache.categories;
+}
+
 function persistCategories() {
   if (!isMongoConnected()) return Promise.resolve();
 

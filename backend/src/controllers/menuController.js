@@ -2,11 +2,23 @@ import {
   createMenuItem,
   deleteMenuItem,
   getAllMenuCategories,
+  resetMenuToDefaults,
   updateMenuItem,
 } from "../services/menuService.js";
 
 export function listMenu(_req, res) {
   return res.json(getAllMenuCategories());
+}
+
+export async function resetMenu(_req, res) {
+  try {
+    const categories = await resetMenuToDefaults();
+    const totalItems = categories.reduce((sum, category) => sum + (category.items?.length || 0), 0);
+    return res.json({ ok: true, categories: categories.length, items: totalItems });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to reset menu." });
+  }
 }
 
 export function addMenuItem(req, res) {

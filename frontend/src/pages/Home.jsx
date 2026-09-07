@@ -26,9 +26,9 @@ const SELLER_GROUPS = [
     badge: "VEG",
     accent: "text-[var(--cbk-orange)]",
     items: [
-      { label: "Paneer Masala", itemName: "Paneer Butter Masala 8pcs", prices: { Half: 100, Full: 170 } },
-      { label: "Mushroom Masala", itemName: "Mushroom Masala", prices: { Half: 110, Full: 180 } },
-      { label: "Paneer Pakoda", itemName: "Paneer Pakoda 8pcs", prices: { Half: 120, Full: 190 } },
+      { label: "Paneer Masala", itemName: "Paneer Butter Masala (8 pcs)", prices: { Half: 130, Full: 199 } },
+      { label: "Mushroom Masala", itemName: "Mushroom Masala", prices: { Half: 130, Full: 199 } },
+      { label: "Paneer Pakoda", itemName: "Paneer Pakoda (8 pcs)", prices: { Half: 130, Full: 199 } },
     ],
   },
   {
@@ -37,21 +37,54 @@ const SELLER_GROUPS = [
     badge: "NON-VEG",
     accent: "text-[var(--cbk-crimson)]",
     items: [
-      { label: "Handi Mutton", itemName: "Handi Mutton 250gm", prices: { Half: 220, Full: 350 } },
-      { label: "Handi Chicken", itemName: "Handi Chicken 250gm", prices: { Half: 120, Full: 185 } },
-      { label: "Chicken 65", itemName: "Chicken 65/69 8pc", prices: { Half: 130, Full: 210 } },
-      { label: "Chicken Lollipop", itemName: "Chicken Lollipop 8pcs", prices: { Half: 130, Full: 210 } },
+      { label: "Handi Mutton", itemName: "Handi Mutton (15-16 pcs)", prices: { "250gm": 360, "500gm": 699, "1kg": 1250 } },
+      { label: "Handi Chicken", itemName: "Handi Chicken (15-16 pcs)", prices: { "250gm": 199, "500gm": 385, "1kg": 675 } },
+      { label: "Chicken 65", itemName: "Chicken 65(8) (8 pcs)", prices: { Half: 150, Full: 220 } },
+      { label: "Chicken Lollipop", itemName: "Chicken Lollipop (Drums of Heaven 8 pcs)", prices: { Half: 150, Full: 220 } },
     ],
   },
 ];
 
-const MAKHANA_ITEM = {
-  label: "Makhana",
-  itemName: "Makhana Roasted (200gm)",
-  prices: { Regular: 199 },
-  image:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Dried_lotus_seeds_snack.jpg/960px-Dried_lotus_seeds_snack.jpg",
+const DRY_FRUIT_IMAGES = {
+  makhana:
+    "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=900&auto=format&fit=crop",
+  kaju: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?q=80&w=900&auto=format&fit=crop",
+  almond:
+    "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?q=80&w=900&auto=format&fit=crop",
+  kismis:
+    "https://images.unsplash.com/photo-1500673922987-e212871fec22?q=80&w=900&auto=format&fit=crop",
 };
+
+const NEW_LAUNCH_PRODUCTS = [
+  {
+    key: "makhana",
+    name: "Makhana Roasted 250gm",
+    prices: { Standard: 250, Premium: 350 },
+    image: DRY_FRUIT_IMAGES.makhana,
+    tagline: "Premium roasted fox nuts, lightly spiced & packed fresh.",
+  },
+  {
+    key: "kaju",
+    name: "Kaju 1kg",
+    prices: { "Medium Size": 1100, "Bigger Size": 1400 },
+    image: DRY_FRUIT_IMAGES.kaju,
+    tagline: "Whole cashew nuts — rich, buttery and crunch-fresh.",
+  },
+  {
+    key: "almond",
+    name: "Almond 1kg",
+    prices: { Standard: 1100, Premium: 1300 },
+    image: DRY_FRUIT_IMAGES.almond,
+    tagline: "Premium whole almonds (badam), naturally delicious & healthy.",
+  },
+  {
+    key: "kismis",
+    name: "Kismis 1kg",
+    prices: { Standard: 520, Premium: 700 },
+    image: DRY_FRUIT_IMAGES.kismis,
+    tagline: "Sweet golden raisins (kismis), soft, juicy & sun-dried.",
+  },
+];
 
 function formatINR(value) {
   return `Rs ${value}`;
@@ -99,7 +132,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
       ...seller,
       prices: live?.prices || seller.prices,
       available: live ? live.available !== false : true,
-      image: getFoodImage(seller.itemName, "Main Course"),
+      image: live?.image || getFoodImage(seller.itemName, "Main Course"),
     };
   };
 
@@ -290,49 +323,62 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
       </section>
 
       <main id="best-sellers" className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
-        <section className="relative mb-10 overflow-hidden rounded-3xl border-2 border-[var(--cbk-crimson)]/25 bg-gradient-to-br from-[var(--cbk-crimson)] via-white to-[var(--cbk-cream)] p-6 shadow-lg sm:p-8">
+        <section id="new-launch" className="relative mb-10 overflow-hidden rounded-3xl border-2 border-[var(--cbk-crimson)]/25 bg-gradient-to-br from-[var(--cbk-crimson)] via-white to-[var(--cbk-cream)] p-6 shadow-lg sm:p-8">
           <span className="absolute -top-2.5 left-6 rotate-[-2deg] rounded-full bg-[var(--cbk-crimson)] px-4 py-1.5 text-xs font-black tracking-widest text-white shadow">
             NEW LAUNCH
           </span>
-          <div className="grid items-center gap-5 sm:grid-cols-[auto_1fr_auto]">
-            <div className="relative h-40 w-40 shrink-0 overflow-hidden rounded-3xl border-4 border-white shadow-lg sm:h-48 sm:w-48">
-              <img
-                src={MAKHANA_ITEM.image}
-                alt="Makhana Roasted"
-                className="h-full w-full object-cover"
-                loading="lazy"
-                onError={(e) => {
-                  e.currentTarget.src = "/menu4.jpeg";
-                }}
-              />
-              <span className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-[var(--cbk-crimson)]/20 to-transparent" />
-            </div>
-            <div>
-              <h4 className="font-heading text-3xl leading-tight text-[var(--cbk-crimson)] sm:text-4xl">
-                Our New Product — Makhana
-              </h4>
-              <p className="mt-2 text-sm text-[var(--cbk-text)]/75 sm:text-base">
-                {MAKHANA_ITEM.itemName} — premium roasted fox nuts, packed fresh and delivered to your door.
-              </p>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-[var(--cbk-orange)]">
-                Just {formatINR(priceFrom(MAKHANA_ITEM.prices))} per pack
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={!isOrderingOpen}
-              onClick={() => {
-                if (!isOrderingOpen) {
-                  toast.error("Ordering is closed right now.");
-                  return;
-                }
-                addToCart({ ...MAKHANA_ITEM, name: MAKHANA_ITEM.itemName }, MAKHANA_ITEM.image);
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-7 py-4 text-sm font-bold text-white shadow-xl disabled:opacity-50"
-            >
-              <ShoppingCart size={16} />
-              Order {formatINR(priceFrom(MAKHANA_ITEM.prices))}
-            </button>
+          <div>
+            <h4 className="font-heading text-3xl leading-tight text-[var(--cbk-crimson)] sm:text-4xl">
+              New in — Makhana · Kaju · Almond · Kismis
+            </h4>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--cbk-text)]/75 sm:text-base">
+              Freshly sourced premium dry-fruits, packed and delivered to your door.
+            </p>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {NEW_LAUNCH_PRODUCTS.map((product) => (
+              <div
+                key={product.key}
+                className="rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="relative h-36 overflow-hidden rounded-xl">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = "/menu4.jpeg";
+                    }}
+                  />
+                  <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[var(--cbk-crimson)] shadow">
+                    {formatINR(priceFrom(product.prices))}+
+                  </span>
+                </div>
+                <h5 className="mt-3 font-bold text-[var(--cbk-text)]">{product.name}</h5>
+                <p className="mt-1 text-xs text-[var(--cbk-text)]/70">
+                  {Object.entries(product.prices)
+                    .map(([variant, value]) => `${variant} ₹${value}`)
+                    .join(" · ")}
+                </p>
+                <p className="mt-1 text-xs text-[var(--cbk-text)]/60">{product.tagline}</p>
+                <button
+                  type="button"
+                  disabled={!isOrderingOpen}
+                  onClick={() => {
+                    if (!isOrderingOpen) {
+                      toast.error("Ordering is closed right now.");
+                      return;
+                    }
+                    addToCart({ name: product.name, prices: product.prices, image: product.image });
+                  }}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-4 py-2.5 text-sm font-bold text-white shadow disabled:opacity-50"
+                >
+                  <ShoppingCart size={15} />
+                  Order {formatINR(priceFrom(product.prices))}
+                </button>
+              </div>
+            ))}
           </div>
         </section>
 

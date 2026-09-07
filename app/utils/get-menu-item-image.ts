@@ -266,13 +266,14 @@ function getCategoryFallback(category = ""): ImageSourcePropType {
 function getImageByBackendPath(backendImage = ""): ImageSourcePropType | null {
   if (!backendImage) return null;
 
+  const trimmed = String(backendImage).trim();
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return { uri: trimmed.split("?")[0].split("#")[0] };
+  }
+
   const fileName = decodeURIComponent(
-    String(backendImage)
-      .trim()
-      .split("?")[0]
-      .split("#")[0]
-      .split("/")
-      .pop() || "",
+    trimmed.split("?")[0].split("#")[0].split("/").pop() || "",
   );
   if (!fileName) return null;
 

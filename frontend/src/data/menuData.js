@@ -1,49 +1,61 @@
 import { getFoodImage } from "../utils/getFoodImage.js";
 
-const MAKHANA_IMAGE =
-  "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=900&auto=format&fit=crop";
-const KAJU_IMAGE =
-  "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?q=80&w=900&auto=format&fit=crop";
-const ALMOND_IMAGE =
-  "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?q=80&w=900&auto=format&fit=crop";
-const KISMIS_IMAGE =
-  "https://images.unsplash.com/photo-1500673922987-e212871fec22?q=80&w=900&auto=format&fit=crop";
+const MAKHANA_IMAGE = "https://cbk-gamma.vercel.app/menu/makhana.jpg";
+const KAJU_IMAGE = "https://cbk-gamma.vercel.app/menu/kaju.jpg";
+const ALMOND_IMAGE = "https://cbk-gamma.vercel.app/menu/almond.jpg";
+const KISMIS_IMAGE = "https://cbk-gamma.vercel.app/menu/kismis.jpg";
 
 const rawMenuCategories = [
+  {
+    id: "newly-launched",
+    title: "Newly Launched",
+    items: [
+      { name: "Makhana Roasted 250gm", prices: { Standard: 250, Premium: 350 }, image: MAKHANA_IMAGE },
+      { name: "Kaju 1kg", prices: { "Medium Size": 1100, "Bigger Size": 1400 }, image: KAJU_IMAGE },
+      { name: "Almond 1kg", prices: { Standard: 1100, Premium: 1300 }, image: ALMOND_IMAGE },
+      { name: "Kismis 1kg", prices: { Standard: 520, Premium: 700 }, image: KISMIS_IMAGE },
+    ],
+  },
   {
     id: "combos",
     title: "Combos",
     items: [
-      { name: "Dal Tadka Combo (Roti)", prices: { Regular: 120 } },
-      { name: "Yellow Dal Fry Combo", prices: { Regular: 130 } },
-      { name: "Egg Tadka Combo (Roti)", prices: { Regular: 135 } },
-      { name: "Ala Dum Combo (Roti)", prices: { Regular: 120 } },
-      { name: "Handi Paneer Masala Combo (Roti)", prices: { Regular: 170 } },
-      { name: "Butter Paneer Masala Combo", prices: { Regular: 180 } },
-      { name: "Muter Paneer Masala Combo", prices: { Regular: 180 } },
-      { name: "Noodles Combo (Chilli Paneer)", prices: { Regular: 180 } },
-      { name: "Noodles Combo (Chilli Mushroom)", prices: { Regular: 180 } },
-      { name: "Veg Manchurian Combo", prices: { Regular: 195 } },
-      { name: "Handi Mutton Combo", prices: { Regular: 310 } },
-      { name: "Prawn Masala Combo", prices: { Regular: 259 } },
-      { name: "Fish Combo", prices: { Regular: 150 } },
-      { name: "Handi Chicken Combo (Roti/Naan/Rice)", prices: { Regular: 199 } },
-      { name: "Chicken Butter Masala Combo", prices: { Regular: 215 } },
-      { name: "Chili Chicken Combo", prices: { Regular: 199 } },
-      { name: "Chicken Bharta Combo", prices: { Regular: 199 } },
-      { name: "Noodles Combo (Chili Chicken)", prices: { Regular: 199 } },
+      { name: "Dal Tarka Combo (Roti)", prices: { Regular: 99 }, description: "4 Pcs Roti + Dal Tarka + Salad" },
+      { name: "Yellow Dal Tarka Combo", prices: { Regular: 115 }, description: "4 Pcs Roti + Dal Fry + Salad" },
+      { name: "Aalu Dum Combo (Roti)", prices: { Regular: 99 }, description: "4 Pcs Roti + Aalu Dum (2 Pcs)" },
+      { name: "Handi Paneer Masala Combo (Roti)", prices: { Regular: 150 }, description: "4 Pcs Roti + Paneer (4 Pcs) + Salad" },
+      { name: "Kadhai Paneer Masala Combo (Roti)", prices: { Regular: 150 }, description: "4 Pcs Roti + Paneer (4 Pcs) + Salad" },
+      { name: "Paneer Butter Masala Combo (Roti)", prices: { Regular: 160 }, description: "4 Pcs Roti + Paneer (4 Pcs) + Salad" },
+      { name: "Mushroom Masala Combo (Roti)", prices: { Regular: 160 }, description: "4 Pcs Roti + Mushroom + Salad" },
+      { name: "Mushroom Butter Masala Combo (Roti)", prices: { Regular: 170 }, description: "4 Pcs Roti + Mushroom + Salad" },
+      { name: "Kadhai Mushroom Masala Combo (Roti)", prices: { Regular: 170 }, description: "4 Pcs Roti + Mushroom + Salad" },
+      { name: "Mix Veg Combo (Roti)", prices: { Regular: 150 }, description: "4 Pcs Roti + Mixed Veg + Salad" },
+      { name: "Chili Paneer + Noodles Combo", prices: { Regular: 140 }, description: "Chili Paneer (4 Pcs) + Noodles" },
+      { name: "Chili Mushroom + Noodles Combo", prices: { Regular: 150 }, description: "Chili Mushroom (5 Pcs) + Noodles" },
+      { name: "Chili Paneer + Fried Rice Combo", prices: { Regular: 165 }, description: "Chili Paneer (4 Pcs) + Fried Rice" },
+      { name: "Chili Mushroom + Fried Rice Combo", prices: { Regular: 165 }, description: "Chili Mushroom + Fried Rice" },
+      { name: "Veg Manchurian Fried Rice Combo", prices: { Regular: 180 }, description: "4 Pcs Manchurian + Fried Rice" },
+      { name: "Handi Champaran Mutton Combo", prices: { Regular: 285 }, description: "Champaran Mutton (3 Pcs) + 4 Pcs Roti / Rice / 1 Pc Lachha + Salad" },
+      { name: "Handi Champaran Chicken Combo", prices: { Regular: 175 }, description: "Champaran Chicken (3 Pcs) + 4 Pcs Roti / Rice / 1 Pc Lachha + Salad" },
+      { name: "Chicken Butter Masala Combo", prices: { Regular: 199 }, description: "Chicken (2 Pcs) + Rice / 4 Roti / Lachha" },
+      { name: "Chicken Bharta Combo", prices: { Regular: 185 }, description: "4 Roti / 2 Paratha / Rice / 1 Pc Lachha + Bharta + Salad" },
+      { name: "Fish Combo", prices: { Regular: 140 }, description: "4 Pcs Roti / Rice + 2 Pcs Fish + Salad" },
+      { name: "Chili Chicken + Veg Fried Rice Combo", prices: { Regular: 185 }, description: "Chili Chicken (4 Pcs) + Veg Fried Rice" },
+      { name: "Chili Chicken + Veg Noodles Combo", prices: { Regular: 175 }, description: "Chili Chicken (4 Pcs) + Veg Noodles" },
+      { name: "Kadhai Chicken Combo", prices: { Regular: 199 }, description: "4 Roti / 2 Paratha / 1 Lachha / Rice + Kadhai Chicken (2 Pcs) + Salad" },
     ],
   },
   {
     id: "biryani",
     title: "Biryani",
     items: [
-      { name: "Egg Biryani", prices: { Regular: 130 } },
-      { name: "Special Handi Chicken Biryani", prices: { Regular: 190 } },
-      { name: "Mutton Handi Biryani", prices: { Regular: 269 } },
-      { name: "Chicken Biryani", prices: { Regular: 140 } },
-      { name: "Chicken Biryani + Hand Chicken Combo", prices: { Regular: 249 } },
-      { name: "Special Family Pack Biryani", prices: { Regular: 649 } },
+      { name: "Special Handi Chicken Biryani", prices: { Regular: 190 }, description: "2 Pcs Chicken + Aalu + Egg + Raita + Salad" },
+      { name: "Handi Mutton Biryani", prices: { Regular: 250 }, description: "2 Pcs Mutton + Aalu + Egg + Raita + Salad" },
+      { name: "Chicken Biryani", prices: { Regular: 150 }, description: "1 Pc Chicken + Aalu + Egg + Raita + Salad" },
+      { name: "Handi Chicken & Biryani Combo", prices: { Regular: 250 }, description: "2 Pcs Handi Chicken + 1 Pc Biryani Chicken + Aalu + Egg + Raita + Salad" },
+      { name: "Egg Biryani", prices: { Regular: 120 }, description: "2 Pcs Egg + Aalu + Raita + Salad" },
+      { name: "Aalu Biryani", prices: { Regular: 90 }, description: "1 Pc Aalu + Raita + Salad" },
+      { name: "Special Family Pack Biryani", prices: { Regular: 649 }, description: "Family sized biryani pack, perfect for sharing" },
     ],
   },
   {

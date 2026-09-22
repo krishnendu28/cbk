@@ -15,7 +15,7 @@ import {
   subscribeBridgeMenu,
   USER_BACKEND_URL,
 } from "@/lib/bridge";
-import { DEMO_SESSION_KEY } from "@/lib/session";
+import { isDemoSessionActive } from "@/lib/session";
 
 type CartItem = {
   id: number;
@@ -48,7 +48,7 @@ export default function POS() {
   const activeGroup = menuGroups.find((group) => group.id === activeGroupId) || menuGroups[0];
 
   useEffect(() => {
-    if (localStorage.getItem(DEMO_SESSION_KEY) === "1") {
+    if (isDemoSessionActive()) {
       const demoMenuGroups = getBridgeMenuGroups();
       setMenuGroups(demoMenuGroups);
       setActiveGroupId(demoMenuGroups[0]?.id || "");
@@ -190,7 +190,7 @@ export default function POS() {
         total: Math.round(total),
       };
 
-      if (localStorage.getItem(DEMO_SESSION_KEY) === "1") {
+      if (isDemoSessionActive()) {
         const demoOrder = {
           _id: `demo-${Date.now()}`,
           customerName: payload.customerName,
@@ -493,7 +493,20 @@ export default function POS() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredItems.map((item) => (
               <Card key={item.id} className="overflow-hidden">
-                <img src={item.image} alt={item.name} className="w-full h-32 object-cover" />
+                <div className="w-full h-32 bg-muted">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    loading="lazy"
+                    className="w-full h-32 object-cover"
+                    onError={(event) => {
+                      const target = event.currentTarget;
+                      if (target.dataset.fallbackApplied) return;
+                      target.dataset.fallbackApplied = "1";
+                      target.src = `${import.meta.env.BASE_URL}menu-optimized/Veg-Thali.jpg`;
+                    }}
+                  />
+                </div>
                 <div className="p-3 space-y-2">
                   <h3 className="font-semibold">{item.name}</h3>
                   <div className="flex items-center justify-between">

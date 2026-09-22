@@ -8,7 +8,8 @@ import { useAuth } from "@/lib/contexts";
 import NotFound from "@/pages/not-found";
 import { canAccessRoute, getDefaultRouteForRole } from "@/lib/rbac";
 import { useLocation } from "wouter";
-import { lazy, Suspense, useEffect } from "react";
+import { Component, lazy, Suspense, useEffect } from "react";
+import type { ReactNode } from "react";
 
 // Page Imports
 const Login = lazy(() => import("@/pages/login"));
@@ -96,18 +97,58 @@ function Router() {
   );
 }
 
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("Admin error boundary caught:", error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center bg-background p-6">
+          <div className="max-w-lg w-full rounded-xl border bg-card p-6 shadow-lg">
+            <h1 className="text-lg font-bold mb-2">Something went wrong</h1>
+            <p className="text-sm text-destructive mb-4 break-words">{String(this.state.error?.message || this.state.error)}</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              If this keeps happening, clear this browser&apos;s data for the admin site and sign in again.
+            </p>
+            <button
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+              onClick={() => {
+                window.localStorage.clear();
+                window.location.reload();
+              }}
+            >
+              Clear local data &amp; reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading...</div>}>
-            <AuthProvider>
-              <OutletProvider>
-                <Router />
-              </OutletProvider>
-            </AuthProvider>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading...</div>}>
+              <AuthProvider>
+                <OutletProvider>
+                  <Router />
+                </OutletProvider>
+              </AuthProvider>
+            </Suspense>
+          </ErrorBoundary>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

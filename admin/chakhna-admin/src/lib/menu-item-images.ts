@@ -165,6 +165,29 @@ const menuImageFiles: Record<string, string> = {
   "Chilli Paneer Combo (Paratha)": "Chili Panner Combo(Paratha).webp",
   "Veg Manchurian Combo": "Veg manchurian Combo.jpg",
   "Palak Paneer Masala Combo": "palak_panner masal combo.jpg",
+  "Dal Tarka Combo (Roti)": "Dal-Tadka-combo.jpg",
+  "Yellow Dal Tarka Combo": "Yellow Dal Fry Combo.jpg",
+  "Aalu Dum Combo (Roti)": "Aloo Dum Combo.jpg",
+  "Kadhai Paneer Masala Combo (Roti)": "kadai-paneer.jpg",
+  "Paneer Butter Masala Combo (Roti)": "panner-butter-combo.webp",
+  "Mushroom Masala Combo (Roti)": "Matar-Mashroom-Masala.jpeg",
+  "Mushroom Butter Masala Combo (Roti)": "Mushroom Butter-M.jpg",
+  "Kadhai Mushroom Masala Combo (Roti)": "kadai-mushroom-recipe.jpg",
+  "Mix Veg Combo (Roti)": "mixed-veg.jpg",
+  "Chili Paneer + Noodles Combo": "Noodles combo(chili Panner).webp",
+  "Chili Mushroom + Noodles Combo": "Mushroom-Noodle.webp",
+  "Chili Paneer + Fried Rice Combo": "Fried rice combo(Chili Panner).webp",
+  "Chili Mushroom + Fried Rice Combo": "mushroom fried rice.jpeg",
+  "Veg Manchurian Fried Rice Combo": "Veg manchurian Combo.jpg",
+  "Handi Champaran Mutton Combo": "Handi-Mutton-Combo.jpeg",
+  "Handi Champaran Chicken Combo": "Handi-Chicken.webp",
+  "Chili Chicken + Veg Fried Rice Combo": "CHILI-chicken-combo.jpg",
+  "Chili Chicken + Veg Noodles Combo": "CHILI-chicken-combo.jpg",
+  "Kadhai Chicken Combo": "Kadai-Chicken.jpg",
+  "Handi Mutton Biryani": "mutton_Handi_B.jpg",
+  "Chicken Biryani": "chicken-handi-biryani.jpg",
+  "Handi Chicken & Biryani Combo": "chicken-handi-biryani.jpg",
+  "Aalu Biryani": "Kashmiri-Dum-Aloo.jpg",
 };
 
 const normalizedMenuImageFiles = Object.fromEntries(
@@ -231,10 +254,10 @@ export function getMenuItemImageUrl(itemName = "", category = "", backendImage =
   const normalizedMappedFile = normalizedMenuImageFiles[normalizedName];
   if (normalizedMappedFile) return toImageUrl(normalizedMappedFile);
 
+  if (backendImage && /^https?:\/\//i.test(backendImage)) return backendImage;
+
   const backendMappedImage = getImageByBackendPath(backendImage);
   if (backendMappedImage) return backendMappedImage;
-
-  if (backendImage && /^https?:\/\//i.test(backendImage)) return backendImage;
 
   return getCategoryFallbackImageUrl(category);
 }

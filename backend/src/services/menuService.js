@@ -36,6 +36,7 @@ function toPlain(category) {
     items: (category.items || []).map((item) => ({
       id: item.id,
       name: item.name,
+      description: item.description || "",
       prices: item.prices || {},
       image: item.image || "",
       available: item.available !== false,
@@ -186,7 +187,7 @@ function persistCategories() {
   return persistChain;
 }
 
-export function createMenuItem({ categoryId, categoryTitle, name, prices, image, available }) {
+export function createMenuItem({ categoryId, categoryTitle, name, description, prices, image, available }) {
   ensureLoadedSync();
   let targetCategory = findCategoryByIdOrTitle(categoryId, categoryTitle);
   if (!targetCategory) {
@@ -205,6 +206,7 @@ export function createMenuItem({ categoryId, categoryTitle, name, prices, image,
   const nextItem = {
     id: menuCache.nextMenuItemId++,
     name: String(name).trim(),
+    description: String(description || "").trim(),
     prices: normalizePrices(prices),
     image: String(image || getFoodImage(name, targetCategory.title) || ""),
     available: available !== false,
@@ -216,7 +218,7 @@ export function createMenuItem({ categoryId, categoryTitle, name, prices, image,
   return payload;
 }
 
-export function updateMenuItem(itemId, { name, prices, image, categoryId, categoryTitle, available }) {
+export function updateMenuItem(itemId, { name, description, prices, image, categoryId, categoryTitle, available }) {
   ensureLoadedSync();
   const found = findMenuItemById(Number(itemId));
   if (!found) return null;
@@ -224,6 +226,10 @@ export function updateMenuItem(itemId, { name, prices, image, categoryId, catego
   const updatedItem = {
     ...found.item,
     name: String(name || found.item.name).trim(),
+    description:
+      description !== undefined
+        ? String(description || "").trim()
+        : String(found.item.description || ""),
     prices: prices ? normalizePrices(prices) : found.item.prices,
     image:
       image !== undefined

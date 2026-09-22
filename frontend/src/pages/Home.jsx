@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion as Motion } from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
   Clock3,
@@ -46,13 +46,10 @@ const SELLER_GROUPS = [
 ];
 
 const DRY_FRUIT_IMAGES = {
-  makhana:
-    "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=900&auto=format&fit=crop",
-  kaju: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?q=80&w=900&auto=format&fit=crop",
-  almond:
-    "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?q=80&w=900&auto=format&fit=crop",
-  kismis:
-    "https://images.unsplash.com/photo-1500673922987-e212871fec22?q=80&w=900&auto=format&fit=crop",
+  makhana: "https://cbk-gamma.vercel.app/menu/makhana.jpg",
+  kaju: "https://cbk-gamma.vercel.app/menu/kaju.jpg",
+  almond: "https://cbk-gamma.vercel.app/menu/almond.jpg",
+  kismis: "https://cbk-gamma.vercel.app/menu/kismis.jpg",
 };
 
 const NEW_LAUNCH_PRODUCTS = [
@@ -95,6 +92,30 @@ function priceFrom(variants) {
   return values.length ? Math.min(...values) : 0;
 }
 
+const HERO_SLIDES = [
+  {
+    image: "/menu4.jpeg",
+    fallbackImage: "/menu1.jpeg",
+    eyebrow: "SIGNATURE CHAMPARAN STYLE",
+    title: "HANDI MUTTON AND HANDI CHICKEN",
+    subtitle: "Slow-cooked dum-style in a sealed copper handi — our signature USP, rich and rustic.",
+  },
+  {
+    image: "/menu1.jpeg",
+    fallbackImage: "/menu2.jpeg",
+    eyebrow: "MAIN USP · GHAR JAISA KHANA",
+    title: "MONTHLY MEAL AVAILABLE",
+    subtitle: "Healthy, homely, hassle-free subscription — daily lunch & dinner delivered on time.",
+  },
+  {
+    image: "/menu2.jpeg",
+    fallbackImage: "/menu3.jpeg",
+    eyebrow: "PREMIUM DELIVERY EXPERIENCE",
+    title: "Crafted flavors, delivered with finesse.",
+    subtitle: "Bold Kolkata favourites, chef-crafted and delivered hot. Order in a tap and track it live.",
+  },
+];
+
 function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
   const {
     menuCategories,
@@ -111,11 +132,19 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
   } = useCart();
 
   const [profileOpen, setProfileOpen] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   useEffect(() => {
     const close = () => setProfileOpen(false);
     window.addEventListener("click", close);
     return () => window.removeEventListener("click", close);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const findDish = (itemName) => {
@@ -246,15 +275,24 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+      <section className="mx-auto max-w-7xl px-4 pb-4 pt-6 sm:px-6 sm:pt-8">
         <div className="grid items-center gap-8 lg:grid-cols-2">
-          <Motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <p className="mb-3 text-sm font-semibold tracking-[0.18em] text-[var(--cbk-orange)]">PREMIUM DELIVERY EXPERIENCE</p>
+          <Motion.div key={heroIndex} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="relative">
+            <button
+              type="button"
+              onClick={() => setHeroIndex((prev) => (prev + 1) % HERO_SLIDES.length)}
+              className="absolute -top-2 right-0 z-10 inline-flex items-center gap-1.5 rounded-full border border-[var(--cbk-orange)]/30 bg-white/90 px-3 py-1 text-[10px] font-bold tracking-widest text-[var(--cbk-orange)] shadow-sm"
+            >
+              {heroIndex + 1} / {HERO_SLIDES.length} · SWIPE
+            </button>
+            <p className="mb-3 text-sm font-semibold tracking-[0.18em] text-[var(--cbk-orange)]">
+              {HERO_SLIDES[heroIndex].eyebrow}
+            </p>
             <h2 className="font-heading text-4xl leading-tight text-[var(--cbk-crimson)] sm:text-6xl">
-              Crafted flavors, delivered with finesse.
+              {HERO_SLIDES[heroIndex].title}
             </h2>
             <p className="mt-5 max-w-xl text-[var(--cbk-text)]/75 sm:text-base">
-              Bold Kolkata favourites, chef-crafted and delivered hot. Order in a tap and track it live.
+              {HERO_SLIDES[heroIndex].subtitle}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -269,20 +307,45 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
               </Motion.button>
               <button
                 type="button"
-                onClick={() => document.getElementById("best-sellers")?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() => document.getElementById("new-launch")?.scrollIntoView({ behavior: "smooth" })}
                 className="inline-flex items-center gap-2 rounded-full border border-[var(--cbk-orange)]/30 bg-white px-6 py-3 text-sm font-semibold text-[var(--cbk-text)]"
               >
                 <Sparkles size={16} className="text-[var(--cbk-orange)]" />
-                Today's Favourites
+                Newly Launched
               </button>
             </div>
 
-            {firstOrderEligible && (
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[var(--cbk-crimson)]/25 bg-white px-4 py-2 text-sm font-semibold text-[var(--cbk-crimson)]">
-                <TicketPercent size={15} />
-                Welcome! {settings.firstOrderDiscountRate}% OFF your first order
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-600/30 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+                Monthly Meal Available
               </div>
-            )}
+              {firstOrderEligible && (
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--cbk-crimson)]/25 bg-white px-4 py-2 text-sm font-semibold text-[var(--cbk-crimson)]">
+                  <TicketPercent size={15} />
+                  Welcome! {settings.firstOrderDiscountRate}% OFF your first order
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex gap-1.5">
+              {HERO_SLIDES.map((slide, index) => (
+                <button
+                  key={slide.title}
+                  type="button"
+                  aria-label={`Go to slide ${index + 1}`}
+                  onClick={() => setHeroIndex(index)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    index === heroIndex
+                      ? "w-8 bg-[var(--cbk-crimson)]"
+                      : "w-3 bg-[var(--cbk-orange)]/30 hover:bg-[var(--cbk-orange)]/50"
+                  }`}
+                />
+              ))}
+            </div>
           </Motion.div>
 
           <Motion.div
@@ -291,14 +354,21 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
             transition={{ duration: 0.7 }}
             className="relative overflow-hidden rounded-3xl border border-[var(--cbk-orange)]/20 shadow-xl"
           >
-            <img
-              src="/menu4.jpeg"
-              alt="Chakhna by Kilo signature spread"
-              className="h-64 w-full object-cover sm:h-80"
-              onError={(e) => {
-                e.currentTarget.src = "/menu1.jpeg";
-              }}
-            />
+            <AnimatePresence mode="wait">
+              <Motion.img
+                key={heroIndex}
+                src={HERO_SLIDES[heroIndex].image}
+                alt={HERO_SLIDES[heroIndex].title}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="h-64 w-full object-cover sm:h-80"
+                onError={(e) => {
+                  e.currentTarget.src = HERO_SLIDES[heroIndex].fallbackImage;
+                }}
+              />
+            </AnimatePresence>
             <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-[var(--cbk-crimson)] shadow">
               <Clock3 size={14} className="text-[var(--cbk-orange)]" />
               {timings || "Lunch 12:30 – 5:30 | Dinner 6:30 – 11:30"}
@@ -323,25 +393,34 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
       </section>
 
       <main id="best-sellers" className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
-        <section id="new-launch" className="relative mb-10 overflow-hidden rounded-3xl border-2 border-[var(--cbk-crimson)]/25 bg-gradient-to-br from-[var(--cbk-crimson)] via-white to-[var(--cbk-cream)] p-6 shadow-lg sm:p-8">
+        <section id="new-launch" className="relative mb-10 overflow-hidden rounded-3xl border-2 border-[var(--cbk-crimson)]/25 bg-gradient-to-br from-[var(--cbk-crimson)] via-white to-[var(--cbk-cream)] p-4 shadow-lg sm:p-5">
           <span className="absolute -top-2.5 left-6 rotate-[-2deg] rounded-full bg-[var(--cbk-crimson)] px-4 py-1.5 text-xs font-black tracking-widest text-white shadow">
             NEW LAUNCH
           </span>
-          <div>
-            <h4 className="font-heading text-3xl leading-tight text-[var(--cbk-crimson)] sm:text-4xl">
-              New in — Makhana · Kaju · Almond · Kismis
-            </h4>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--cbk-text)]/75 sm:text-base">
-              Freshly sourced premium dry-fruits, packed and delivered to your door.
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h4 className="font-heading text-xl leading-tight text-[var(--cbk-crimson)] sm:text-2xl">
+                New in — Makhana · Kaju · Almond · Kismis
+              </h4>
+              <p className="mt-1 max-w-2xl text-xs text-[var(--cbk-text)]/75 sm:text-sm">
+                Freshly sourced premium dry-fruits, packed and delivered to your door.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => document.getElementById("best-sellers")?.scrollIntoView({ behavior: "smooth" })}
+              className="rounded-full border border-[var(--cbk-orange)]/30 bg-white px-4 py-2 text-xs font-semibold text-[var(--cbk-text)]"
+            >
+              Today's Favourites ↓
+            </button>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
             {NEW_LAUNCH_PRODUCTS.map((product) => (
               <div
                 key={product.key}
-                className="rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="w-40 shrink-0 rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="relative h-36 overflow-hidden rounded-xl">
+                <div className="relative h-24 overflow-hidden rounded-xl">
                   <img
                     src={product.image}
                     alt={product.name}
@@ -351,17 +430,14 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                       e.currentTarget.src = "/menu4.jpeg";
                     }}
                   />
-                  <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[var(--cbk-crimson)] shadow">
+                  <span className="absolute bottom-1.5 left-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--cbk-crimson)] shadow">
                     {formatINR(priceFrom(product.prices))}+
                   </span>
                 </div>
-                <h5 className="mt-3 font-bold text-[var(--cbk-text)]">{product.name}</h5>
-                <p className="mt-1 text-xs text-[var(--cbk-text)]/70">
-                  {Object.entries(product.prices)
-                    .map(([variant, value]) => `${variant} ₹${value}`)
-                    .join(" · ")}
+                <h5 className="mt-2 truncate text-xs font-bold text-[var(--cbk-text)]">{product.name}</h5>
+                <p className="mt-0.5 truncate text-[10px] text-[var(--cbk-text)]/70">
+                  {Object.values(product.prices).map((value) => `₹${value}`).join(" · ")}
                 </p>
-                <p className="mt-1 text-xs text-[var(--cbk-text)]/60">{product.tagline}</p>
                 <button
                   type="button"
                   disabled={!isOrderingOpen}
@@ -372,10 +448,10 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                     }
                     addToCart({ name: product.name, prices: product.prices, image: product.image });
                   }}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-4 py-2.5 text-sm font-bold text-white shadow disabled:opacity-50"
+                  className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-[11px] font-bold text-white shadow disabled:opacity-50"
                 >
-                  <ShoppingCart size={15} />
-                  Order {formatINR(priceFrom(product.prices))}
+                  <ShoppingCart size={12} />
+                  Order
                 </button>
               </div>
             ))}

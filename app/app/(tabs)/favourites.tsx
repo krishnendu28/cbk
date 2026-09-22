@@ -12,10 +12,10 @@ import type { MenuCategory } from "@/types/menu";
 
 const MAKHANA_ITEM_ID = 900001;
 const DRY_FRUIT_IMAGES = {
-  makhana: "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?w=400&q=80&auto=format&fit=crop",
-  kaju: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=400&q=80&auto=format&fit=crop",
+  makhana: "https://cbk-gamma.vercel.app/menu/makhana.jpg",
+  kaju: "https://cbk-gamma.vercel.app/menu/kaju.jpg",
   almond: "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&q=80&auto=format&fit=crop",
-  kismis: "https://images.unsplash.com/photo-1500673922987-e212871fec22?w=400&q=80&auto=format&fit=crop",
+  kismis: "https://cbk-gamma.vercel.app/menu/kismis.jpg",
 } as const;
 const SPECIALS_CATEGORY: MenuCategory = {
   id: "dry-fruits",

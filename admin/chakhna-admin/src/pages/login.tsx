@@ -24,14 +24,18 @@ function activateDemoSession(setLocation: (path: string) => void) {
   setLocation("/pos");
 }
 
+const DEFAULT_EMAIL = DEMO_AUTH ? DEMO_CREDENTIALS.email : "owner@chakhna.com";
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const loginMutation = useLogin();
   
-  const [email, setEmail] = useState("owner@tabio.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState(DEFAULT_EMAIL);
+  const [password, setPassword] = useState("");
   const [demoError, setDemoError] = useState(false);
+
+  const loginError = loginMutation.error as Error | null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +103,7 @@ export default function Login() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="bg-white/90 focus:bg-white transition-colors py-6 text-lg text-slate-900 font-semibold"
-              placeholder={DEMO_CREDENTIALS.email}
+              placeholder={DEFAULT_EMAIL}
               required
             />
           </div>
@@ -118,7 +122,11 @@ export default function Login() {
           
           {(loginMutation.isError || demoError) && (
             <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
-              Invalid credentials. Try owner@tabio.com / demo1234
+              {demoError
+                ? "Invalid credentials."
+                : loginError?.message
+                  ? `${loginError.message}${/HTTP/.test(loginError.message) ? " — check your email/password." : ""}`
+                  : "Invalid credentials. Please check your email/password."}
             </div>
           )}
 
@@ -131,10 +139,18 @@ export default function Login() {
           </Button>
         </form>
 
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Demo Owner Credentials:</p>
-          <p className="font-mono mt-1 bg-muted inline-block px-3 py-1 rounded-md">owner@tabio.com / demo1234</p>
-        </div>
+        {!DEMO_AUTH && (
+          <div className="mt-8 text-center text-sm text-muted-foreground">
+            Use the admin credentials provided by Chakhna By Kilo operations.
+          </div>
+        )}
+
+        {DEMO_AUTH && (
+          <div className="mt-8 text-center text-sm text-muted-foreground">
+            <p>Demo Owner Credentials:</p>
+            <p className="font-mono mt-1 bg-muted inline-block px-3 py-1 rounded-md">owner@tabio.com / demo1234</p>
+          </div>
+        )}
       </Card>
     </div>
   );

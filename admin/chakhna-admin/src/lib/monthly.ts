@@ -1,4 +1,5 @@
 import { USER_BACKEND_URL } from "@/lib/bridge";
+import { isDemoSessionActive } from "@/lib/session";
 
 export type MonthlyPlanType = "Veg" | "NonVeg" | "OnlyNonVeg";
 export type MonthlyStatus = "Pending" | "Active" | "Completed" | "Cancelled" | "Rejected";
@@ -77,17 +78,9 @@ export type MonthlySubscriptionResponse = {
 };
 
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
-const DEMO_SESSION_KEY = "cbk_tabio_demo_owner";
 const DEMO_MONTHLY_KEY = "cbk_demo_monthly_subscriptions";
 
 const MONTHLY_POLL_INTERVAL_MS = 4000;
-
-function isDemoSessionActive() {
-  return (
-    typeof localStorage !== "undefined" &&
-    (import.meta.env.VITE_TABIO_DEMO_AUTH === "true" || localStorage.getItem(DEMO_SESSION_KEY) === "1")
-  );
-}
 
 function resolveAdminToken() {
   const fromEnv = String(import.meta.env.VITE_ADMIN_API_KEY || "").trim();

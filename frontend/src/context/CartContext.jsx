@@ -51,6 +51,7 @@ export function CartProvider({ children, userSession }) {
   const [cartItems, setCartItems] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [lastOrder, setLastOrder] = useState(null);
   const [isOrderingOpen, setIsOrderingOpen] = useState(true);
   const [variantSelections, setVariantSelections] = useState({});
   const [settings, setSettings] = useState(defaultSettings);
@@ -313,16 +314,18 @@ export function CartProvider({ children, userSession }) {
       };
 
       const response = await axios.post(`${API_BASE_URL}/api/orders`, payload);
+      const orderData = response.data || {};
 
       localStorage.setItem(`${FIRST_ORDER_KEY}:${phoneDigits.slice(-10)}`, "1");
       if (settings.promoActive && !appliedPromoCode && finalPromoCode) {
         localStorage.setItem(PROMO_CODE_KEY, finalPromoCode);
       }
-      if (response.data?.deliveryEtaMinutes) {
-        toast.success(`Order placed! Estimated delivery ~${response.data.deliveryEtaMinutes} min`);
-      } else {
-        toast.success("Your order is being prepared");
-      }
+
+      setLastOrder({
+        orderCode: orderData.orderCode || orderData._id || "-----",
+        deliveryEtaMinutes: Number(orderData.deliveryEtaMinutes) || Number(settings.etaMinutes) || 0,
+        total: Number(orderData.total) >= 0 ? Number(orderData.total) : grandTotal,
+      });
 
       setCartItems([]);
       setCustomer((prev) => ({ ...prev, addressLine: "", landmark: "", instructions: "" }));
@@ -550,6 +553,71 @@ export function CartProvider({ children, userSession }) {
               </div>
             </Motion.aside>
           </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {lastOrder && (
+          <Motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          >
+            <Motion.div
+              initial={{ scale: 0.8, y: 24, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 12, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 22 }}
+              className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,.4)]"
+            >
+              <div className="mx-auto flex h-24 w-24 items-center justify-center">
+                <Motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.15, type: "spring", stiffness: 320, damping: 16 }}
+                  className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_0_8px_rgba(16,185,129,.15),0_12px_30px_rgba(16,185,129,.45)]"
+                >
+                  <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <Motion.path
+                      d="M4 12.5l5 5L20 6.5"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ delay: 0.35, duration: 0.4, ease: "easeOut" }}
+                    />
+                  </svg>
+                </Motion.div>
+              </div>
+
+              <h3 className="mt-5 font-heading text-2xl text-[var(--cbk-crimson)]">Order Placed!</h3>
+              <p className="mt-1 text-sm text-[var(--cbk-text)]/70">
+                Thank you for ordering with Chakhna by Kilo.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">
+                  <span className="font-medium text-emerald-800">Order ID</span>
+                  <span className="font-mono font-bold text-emerald-700">{lastOrder.orderCode}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-[var(--cbk-orange)]/15 bg-white px-4 py-3 text-sm">
+                  <span className="font-medium text-[var(--cbk-text)]">Paid</span>
+                  <span className="font-bold text-[var(--cbk-orange)]">{formatINR(lastOrder.total)}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-[var(--cbk-orange)]/15 bg-white px-4 py-3 text-sm">
+                  <span className="font-medium text-[var(--cbk-text)]">Estimated delivery</span>
+                  <span className="font-bold text-[var(--cbk-text)]">~{lastOrder.deliveryEtaMinutes} min</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setLastOrder(null)}
+                className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-4 py-3 font-semibold text-white shadow-lg"
+              >
+                Done
+              </button>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </CartContext.Provider>

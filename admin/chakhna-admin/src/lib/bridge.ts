@@ -1,9 +1,10 @@
-import { DEMO_SESSION_KEY } from "@/lib/session";
+import { DEMO_SESSION_KEY, isDemoSessionActive } from "@/lib/session";
 import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 
 type RawMenuItem = {
   name: string;
   prices?: Record<string, number>;
+  description?: string;
   image?: string;
   available?: boolean;
 };
@@ -14,15 +15,10 @@ type RawMenuCategory = {
 };
 
 export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
-const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
 const DEMO_ORDERS_KEY = "cbk_demo_orders";
 const DEMO_MENU_KEY = "cbk_demo_menu_groups";
 const DEMO_MENU_CHANGED_EVENT = "cbk_demo_menu_changed";
-
-function isDemoSessionActive() {
-  return DEMO_AUTH && typeof localStorage !== "undefined" && localStorage.getItem(DEMO_SESSION_KEY) === "1";
-}
 
 function resolveAdminToken() {
   const fromEnv = String(import.meta.env.VITE_ADMIN_API_KEY || "").trim();
@@ -101,6 +97,7 @@ function readDemoMenuGroups(): BridgeMenuGroup[] {
           id: Number(item.id) || groupIndex * 1000 + itemIndex + 1,
           name: String(item.name || "Item"),
           price: Number(item.price) || 0,
+          description: String(item.description || ""),
           image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
           available: item.available !== false,
         })),
@@ -205,6 +202,7 @@ export type BridgeMenuItem = {
   id: number;
   name: string;
   price: number;
+  description?: string;
   image: string;
   available: boolean;
 };
@@ -246,40 +244,46 @@ export type BridgeStaff = {
 
 const rawMenuCategories: Array<{
   title: string;
-  items: Array<{ name: string; prices: Record<string, number>; image?: string; available?: boolean }>;
+  items: Array<{ name: string; prices: Record<string, number>; description?: string; image?: string; available?: boolean }>;
 }> = [
   {
     title: "Combos",
     items: [
-      { name: "Dal Tadka Combo (Roti)", prices: { Regular: 120 } },
-      { name: "Yellow Dal Fry Combo", prices: { Regular: 130 } },
-      { name: "Egg Tadka Combo (Roti)", prices: { Regular: 135 } },
-      { name: "Ala Dum Combo (Roti)", prices: { Regular: 120 } },
-      { name: "Handi Paneer Masala Combo (Roti)", prices: { Regular: 170 } },
-      { name: "Butter Paneer Masala Combo", prices: { Regular: 180 } },
-      { name: "Muter Paneer Masala Combo", prices: { Regular: 180 } },
-      { name: "Noodles Combo (Chilli Paneer)", prices: { Regular: 180 } },
-      { name: "Noodles Combo (Chilli Mushroom)", prices: { Regular: 180 } },
-      { name: "Veg Manchurian Combo", prices: { Regular: 195 } },
-      { name: "Handi Mutton Combo", prices: { Regular: 310 } },
-      { name: "Prawn Masala Combo", prices: { Regular: 259 } },
-      { name: "Fish Combo", prices: { Regular: 150 } },
-      { name: "Handi Chicken Combo (Roti/Naan/Rice)", prices: { Regular: 199 } },
-      { name: "Chicken Butter Masala Combo", prices: { Regular: 215 } },
-      { name: "Chili Chicken Combo", prices: { Regular: 199 } },
-      { name: "Chicken Bharta Combo", prices: { Regular: 199 } },
-      { name: "Noodles Combo (Chili Chicken)", prices: { Regular: 199 } },
+      { name: "Dal Tarka Combo (Roti)", prices: { Regular: 99 }, description: "4 Pcs Roti + Dal Tarka + Salad" },
+      { name: "Yellow Dal Tarka Combo", prices: { Regular: 115 }, description: "4 Pcs Roti + Dal Fry + Salad" },
+      { name: "Aalu Dum Combo (Roti)", prices: { Regular: 99 }, description: "4 Pcs Roti + Aalu Dum (2 Pcs)" },
+      { name: "Handi Paneer Masala Combo (Roti)", prices: { Regular: 150 }, description: "4 Pcs Roti + Paneer (4 Pcs) + Salad" },
+      { name: "Kadhai Paneer Masala Combo (Roti)", prices: { Regular: 150 }, description: "4 Pcs Roti + Paneer (4 Pcs) + Salad" },
+      { name: "Paneer Butter Masala Combo (Roti)", prices: { Regular: 160 }, description: "4 Pcs Roti + Paneer (4 Pcs) + Salad" },
+      { name: "Mushroom Masala Combo (Roti)", prices: { Regular: 160 }, description: "4 Pcs Roti + Mushroom + Salad" },
+      { name: "Mushroom Butter Masala Combo (Roti)", prices: { Regular: 170 }, description: "4 Pcs Roti + Mushroom + Salad" },
+      { name: "Kadhai Mushroom Masala Combo (Roti)", prices: { Regular: 170 }, description: "4 Pcs Roti + Mushroom + Salad" },
+      { name: "Mix Veg Combo (Roti)", prices: { Regular: 150 }, description: "4 Pcs Roti + Mixed Veg + Salad" },
+      { name: "Chili Paneer + Noodles Combo", prices: { Regular: 140 }, description: "Chili Paneer (4 Pcs) + Noodles" },
+      { name: "Chili Mushroom + Noodles Combo", prices: { Regular: 150 }, description: "Chili Mushroom (5 Pcs) + Noodles" },
+      { name: "Chili Paneer + Fried Rice Combo", prices: { Regular: 165 }, description: "Chili Paneer (4 Pcs) + Fried Rice" },
+      { name: "Chili Mushroom + Fried Rice Combo", prices: { Regular: 165 }, description: "Chili Mushroom + Fried Rice" },
+      { name: "Veg Manchurian Fried Rice Combo", prices: { Regular: 180 }, description: "4 Pcs Manchurian + Fried Rice" },
+      { name: "Handi Champaran Mutton Combo", prices: { Regular: 285 }, description: "Champaran Mutton (3 Pcs) + 4 Pcs Roti / Rice / 1 Pc Lachha + Salad" },
+      { name: "Handi Champaran Chicken Combo", prices: { Regular: 175 }, description: "Champaran Chicken (3 Pcs) + 4 Pcs Roti / Rice / 1 Pc Lachha + Salad" },
+      { name: "Chicken Butter Masala Combo", prices: { Regular: 199 }, description: "Chicken (2 Pcs) + Rice / 4 Roti / Lachha" },
+      { name: "Chicken Bharta Combo", prices: { Regular: 185 }, description: "4 Roti / 2 Paratha / Rice / 1 Pc Lachha + Bharta + Salad" },
+      { name: "Fish Combo", prices: { Regular: 140 }, description: "4 Pcs Roti / Rice + 2 Pcs Fish + Salad" },
+      { name: "Chili Chicken + Veg Fried Rice Combo", prices: { Regular: 185 }, description: "Chili Chicken (4 Pcs) + Veg Fried Rice" },
+      { name: "Chili Chicken + Veg Noodles Combo", prices: { Regular: 175 }, description: "Chili Chicken (4 Pcs) + Veg Noodles" },
+      { name: "Kadhai Chicken Combo", prices: { Regular: 199 }, description: "4 Roti / 2 Paratha / 1 Lachha / Rice + Kadhai Chicken (2 Pcs) + Salad" },
     ],
   },
   {
     title: "Biryani",
     items: [
-      { name: "Egg Biryani", prices: { Regular: 130 } },
-      { name: "Special Handi Chicken Biryani", prices: { Regular: 190 } },
-      { name: "Mutton Handi Biryani", prices: { Regular: 269 } },
-      { name: "Chicken Biryani", prices: { Regular: 140 } },
-      { name: "Chicken Biryani + Hand Chicken Combo", prices: { Regular: 249 } },
-      { name: "Special Family Pack Biryani", prices: { Regular: 649 } },
+      { name: "Special Handi Chicken Biryani", prices: { Regular: 190 }, description: "2 Pcs Chicken + Aalu + Egg + Raita + Salad" },
+      { name: "Handi Mutton Biryani", prices: { Regular: 250 }, description: "2 Pcs Mutton + Aalu + Egg + Raita + Salad" },
+      { name: "Chicken Biryani", prices: { Regular: 150 }, description: "1 Pc Chicken + Aalu + Egg + Raita + Salad" },
+      { name: "Handi Chicken & Biryani Combo", prices: { Regular: 250 }, description: "2 Pcs Handi Chicken + 1 Pc Biryani Chicken + Aalu + Egg + Raita + Salad" },
+      { name: "Egg Biryani", prices: { Regular: 120 }, description: "2 Pcs Egg + Aalu + Raita + Salad" },
+      { name: "Aalu Biryani", prices: { Regular: 90 }, description: "1 Pc Aalu + Raita + Salad" },
+      { name: "Special Family Pack Biryani", prices: { Regular: 649 }, description: "Family sized biryani pack, perfect for sharing" },
     ],
   },
   {
@@ -529,6 +533,7 @@ type BackendMenuCategory = {
   items: Array<{
     id: number;
     name: string;
+    description?: string;
     prices?: Record<string, number>;
     image?: string;
     available?: boolean;
@@ -544,6 +549,7 @@ export function localFallbackMenuGroups(): BridgeMenuGroup[] {
         id: categoryIndex * 1000 + itemIndex + 1,
         name: item.name,
         price: pickBasePrice(item.prices),
+        description: String(item.description || ""),
         image: getMenuItemImageUrl(item.name, category.title, getFoodImageUrl(item.name, `${category.title}-${itemIndex}`)),
         available: true,
       })),
@@ -560,6 +566,7 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
         id: Number(item.id) || categoryIndex * 1000 + itemIndex + 1,
         name: String(item.name || "Item"),
         price: pickBasePrice(item.prices || { Regular: 0 }),
+        description: String(item.description || ""),
         image: getMenuItemImageUrl(
           String(item.name || "Item"),
           String(category.title || "Menu"),
@@ -595,6 +602,7 @@ export async function createBridgeMenuItem(payload: {
   categoryTitle: string;
   name: string;
   price: number;
+  description?: string;
   image?: string;
   available?: boolean;
 }) {
@@ -616,6 +624,7 @@ export async function createBridgeMenuItem(payload: {
       id: nextItemId,
       name: payload.name.trim(),
       price: Number(payload.price) || 0,
+      description: String(payload.description || ""),
       image: String(payload.image || getFoodImageUrl(payload.name, `${targetGroup.title}-${nextItemId}`)),
       available: payload.available !== false,
     };
@@ -635,6 +644,7 @@ export async function createBridgeMenuItem(payload: {
       categoryId: payload.categoryId,
       categoryTitle: payload.categoryTitle,
       name: payload.name,
+      description: payload.description,
       prices: { Regular: payload.price },
       image: normalizeMenuImageForApi(payload.image),
       available: payload.available !== false,
@@ -646,7 +656,7 @@ export async function createBridgeMenuItem(payload: {
 
 export async function updateBridgeMenuItem(
   itemId: number,
-  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; image?: string; available?: boolean },
+  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; description?: string; image?: string; available?: boolean },
 ) {
   if (isDemoSessionActive()) {
     const groups = readDemoMenuGroups();
@@ -659,6 +669,8 @@ export async function updateBridgeMenuItem(
       ...sourceItem,
       name: payload.name !== undefined ? payload.name.trim() : sourceItem.name,
       price: payload.price !== undefined ? Number(payload.price) || 0 : sourceItem.price,
+      description:
+        payload.description !== undefined ? String(payload.description || "") : String(sourceItem.description || ""),
       image: payload.image !== undefined
         ? String(payload.image || getFoodImageUrl(payload.name || sourceItem.name, `${sourceGroup.title}-${itemId}`))
         : sourceItem.image,
@@ -690,6 +702,7 @@ export async function updateBridgeMenuItem(
       categoryId: payload.categoryId,
       categoryTitle: payload.categoryTitle,
       name: payload.name,
+      description: payload.description,
       prices: payload.price !== undefined ? { Regular: payload.price } : undefined,
       image: normalizeMenuImageForApi(payload.image),
       available: payload.available,
@@ -737,7 +750,7 @@ export async function resetBridgeMenu(): Promise<{ categories: number; items: nu
 }
 
 const MENU_POLL_INTERVAL_MS = 30000;
-const ORDERS_POLL_INTERVAL_MS = 8000;
+const ORDERS_POLL_INTERVAL_MS = 4000;
 const INVENTORY_POLL_INTERVAL_MS = 8000;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -1063,7 +1076,9 @@ export async function fetchBridgeOrders(): Promise<BridgeOrder[]> {
     return readDemoOrders();
   }
 
-  const response = await fetch(`${USER_BACKEND_URL}/api/orders`);
+  const response = await fetch(`${USER_BACKEND_URL}/api/orders`, {
+    headers: buildAdminHeaders(),
+  });
   if (!response.ok) throw new Error("Failed to fetch bridge orders");
   const data = await response.json();
   return Array.isArray(data) ? data : [];

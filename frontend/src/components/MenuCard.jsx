@@ -46,6 +46,10 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
           </button>
         </div>
 
+        {item.description ? (
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[var(--cbk-text)]/60">{item.description}</p>
+        ) : null}
+
         <p className="mt-0.5 text-sm font-bold text-[var(--cbk-orange)]">
           {formatINR(currentPrice)}
           {variants.length > 1 && <span className="ml-1 text-[10px] font-medium text-[var(--cbk-text)]/60">/ {currentVariant}</span>}

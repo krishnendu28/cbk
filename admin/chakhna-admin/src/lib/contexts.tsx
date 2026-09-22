@@ -2,9 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { getGetMeQueryKey, getGetOutletsQueryKey, useGetMe, useGetOutlets } from "@workspace/api-client-react";
 import type { Outlet, User } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
-import { DEMO_SESSION_KEY, TOKEN_KEY } from "@/lib/session";
-
-const DEMO_AUTH = import.meta.env.VITE_TABIO_DEMO_AUTH === "true";
+import { DEMO_SESSION_KEY, TOKEN_KEY, DEMO_AUTH_ENABLED } from "@/lib/session";
 
 const demoUser: User = {
   id: 1,
@@ -45,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const [demoAuthenticated, setDemoAuthenticated] = useState(() => localStorage.getItem(DEMO_SESSION_KEY) === "1");
   const [hasToken, setHasToken] = useState(() => Boolean(localStorage.getItem(TOKEN_KEY)));
-  const isDemoSessionActive = DEMO_AUTH || demoAuthenticated;
+  const demoActive = DEMO_AUTH_ENABLED || demoAuthenticated;
 
   useEffect(() => {
     const syncToken = () => setHasToken(Boolean(localStorage.getItem(TOKEN_KEY)));
@@ -60,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: userResponse, isLoading, isError, isFetching } = useGetMe({
     query: {
       queryKey: getGetMeQueryKey(),
-      enabled: !isDemoSessionActive && hasToken,
+      enabled: !demoActive && hasToken,
     },
   });
   const user = userResponse && typeof userResponse === "object" && "role" in (userResponse as any)
@@ -77,9 +75,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // In production builds, stale demo sessions (e.g. leftover from a demo/Vercel preview)
+  // must never put the admin into demo mode or split POS vs Kitchen/Orders state.
   useEffect(() => {
-    if (isDemoSessionActive) {
-      if (!demoAuthenticated && !DEMO_AUTH) {
+    if (!DEMO_AUTH_ENABLED && demoAuthenticated) {
+      localStorage.removeItem(DEMO_SESSION_KEY);
+      setDemoAuthenticated(false);
+      window.dispatchEvent(new Event("cbk-demo-auth-changed"));
+    }
+  }, [demoAuthenticated]);
+
+  useEffect(() => {
+    if (demoActive) {
+      if (!demoAuthenticated && !DEMO_AUTH_ENABLED) {
         const currentPath = window.location.pathname;
         if (!currentPath.endsWith("/login")) {
           setLocation("/login");
@@ -103,14 +111,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLocation("/login");
       }
     }
-  }, [demoAuthenticated, hasToken, isLoading, isFetching, isError, setLocation, user, isDemoSessionActive]);
+  }, [demoAuthenticated, hasToken, isLoading, isFetching, isError, setLocation, user, demoActive]);
 
   return (
     <AuthContext.Provider
       value={{
-        user: isDemoSessionActive ? demoUser : user,
-        isLoading: isDemoSessionActive ? false : hasToken && (isLoading || isFetching),
-        isAuthenticated: isDemoSessionActive ? true : !!user,
+        user: demoActive ? demoUser : user,
+        isLoading: demoActive ? false : hasToken && (isLoading || isFetching),
+        isAuthenticated: demoActive ? true : !!user,
       }}
     >
       {children}
@@ -137,10 +145,10 @@ const OutletContext = createContext<OutletContextType>({
 
 export function OutletProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
-  const isDemoSessionActive = DEMO_AUTH || localStorage.getItem(DEMO_SESSION_KEY) === "1";
+  const demoActive = DEMO_AUTH_ENABLED || localStorage.getItem(DEMO_SESSION_KEY) === "1";
   const { data: outletsResponse, isLoading: isOutletsLoading } = useGetOutlets({
     query: {
-      enabled: isAuthenticated && !isDemoSessionActive,
+      enabled: isAuthenticated && !demoActive,
       queryKey: getGetOutletsQueryKey(),
     },
   });
@@ -154,7 +162,7 @@ export function OutletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    if (isDemoSessionActive) {
+    if (demoActive) {
       setOutletId(1);
       localStorage.setItem("tabio_outlet_id", "1");
       return;
@@ -180,10 +188,10 @@ export function OutletProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("tabio_outlet_id", String(id));
   };
   
-  const activeOutlets = isDemoSessionActive ? demoOutlets : outlets;
+  const activeOutlets = demoActive ? demoOutlets : outlets;
 
   return (
-    <OutletContext.Provider value={{ outletId, setOutletId: handleSetOutletId, outlets: activeOutlets, isOutletsLoading: isDemoSessionActive ? false : isOutletsLoading }}>
+    <OutletContext.Provider value={{ outletId, setOutletId: handleSetOutletId, outlets: activeOutlets, isOutletsLoading: demoActive ? false : isOutletsLoading }}>
       {children}
     </OutletContext.Provider>
   );

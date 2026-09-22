@@ -61,6 +61,20 @@ jobs:
           set -o pipefail
           ./gradlew :app:assembleRelease --stacktrace 2>&1 | tee build.log
 
+      - name: Surface gradle failure in annotations
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f build.log ]; then
+            tail -c 9000 build.log | tail -60 | sed 's/%/%25/g' | tr -d '\r' | awk 'length>0' | while IFS= read -r line; do
+              echo "::error file=build.log::$line"
+            done
+          else
+            echo "::error file=build.log::NO build.log PRODUCED"
+          fi
+          exit 0
+        working-directory: app/android
+
       - name: Upload gradle build log + reports
         if: always()
         uses: actions/upload-artifact@v4

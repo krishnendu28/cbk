@@ -41,10 +41,25 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          accept-licenses: "true"
+      - name: Install Android NDK 27 + accept licenses
+        shell: bash
+        run: |
+          set -e
+          SDK=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          echo "::group::sdk setup ($SDK)"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          CMDLINE="$SDK/cmdline-tools/latest/bin"
+          [ -x "$CMDLINE/sdkmanager" ] || CMDLINE="$SDK/cmdline-tools/8.0/bin"
+          if [ ! -x "$CMDLINE/sdkmanager" ]; then
+            echo "::error::sdkmanager not found under $SDK"
+            find "$SDK" -maxdepth 4 -name sdkmanager 2>/dev/null | head -10
+            exit 1
+          fi
+          yes | "$CMDLINE/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$CMDLINE/sdkmanager" --install "ndk;27.1.12297006" "cmake;3.22.1"
+          echo "installed NDKs:"
+          ls "$SDK/ndk" 2>/dev/null || true
+          echo "::endgroup::"
 
       - name: Install dependencies
         run: npm ci
@@ -64,16 +79,16 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          if [ -f build.log ]; then
-            : > /tmp/err.txt
-            sed -n '/What went wrong/,/\* Try:/p' build.log >> /tmp/err.txt
-            grep -n -B40 "BUILD FAILED" build.log | tail -45 >> /tmp/err.txt
-            sed 's/%/%25/g' /tmp/err.txt | tr -d '\r' | awk 'length>0' | head -70 | while IFS= read -r line; do
-              echo "::error file=build.log::$line"
-            done
-          else
-            echo "::error file=build.log::NO build.log PRODUCED"
-          fi
+          (
+            if [ -f build.log ]; then
+              sed -n '/What went wrong/,/\* Try:/p' build.log
+              grep -n -B40 "BUILD FAILED" build.log | tail -45
+            else
+              echo "NO build.log produced"
+            fi
+          ) | sed 's/%/%25/g' | tr -d '\r' | awk 'length>0' | head -70 | while IFS= read -r line; do
+            echo "::error file=build.log::$line"
+          done
           exit 0
         working-directory: app/android
 

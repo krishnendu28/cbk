@@ -3,6 +3,11 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+    paths:
+      - app/**
+      - .github/workflows/apk-build.yml
     tags:
       - "v*"
 
@@ -18,7 +23,7 @@ jobs:
       EXPO_PUBLIC_API_BASE_URL: "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
     defaults:
       run:
-        working-directory: repo/app
+        working-directory: app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +33,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: repo/app/package-lock.json
+          cache-dependency-path: app/package-lock.json
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -49,19 +54,19 @@ jobs:
         run: npx expo prebuild --platform android --no-install
 
       - name: Build release APK
-        working-directory: repo/app/android
+        working-directory: app/android
         run: ./gradlew :app:assembleRelease --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: chakhna-android-apk
-          path: repo/app/android/app/build/outputs/apk/release/*.apk
+          path: app/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: repo/app/android/app/build/outputs/apk/release/*.apk
+          files: app/android/app/build/outputs/apk/release/*.apk
           generate_release_notes: true

@@ -5,9 +5,26 @@ import {
   resetMenuToDefaults,
   updateMenuItem,
 } from "../services/menuService.js";
+import { uploadMenuImage } from "../services/imageUploadService.js";
 
 export function listMenu(_req, res) {
   return res.json(getAllMenuCategories());
+}
+
+export async function uploadMenuImageController(req, res) {
+  try {
+    const result = await uploadMenuImage({
+      image: req.body?.image,
+      fileName: req.body?.fileName,
+    });
+    if (result.error) {
+      return res.status(400).json({ message: result.error });
+    }
+    return res.json({ url: result.url });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Failed to upload image." });
+  }
 }
 
 export async function resetMenu(_req, res) {

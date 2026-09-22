@@ -13,9 +13,11 @@ import {
   TicketPercent,
   UserRound,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 import { useCart } from "../context/cart-context";
 import { getFoodImage } from "../utils/getFoodImage";
+import { portionMapFor } from "../utils/portions";
 
 const CONTACT_PHONE = "+918420252042";
 
@@ -133,6 +135,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [activeSeller, setActiveSeller] = useState(null);
 
   useEffect(() => {
     const close = () => setProfileOpen(false);
@@ -159,18 +162,21 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
     const live = findDish(seller.itemName);
     return {
       ...seller,
+      name: seller.itemName,
       prices: live?.prices || seller.prices,
+      description: live?.description || "",
+      portions: live?.portions || {},
       available: live ? live.available !== false : true,
       image: live?.image || getFoodImage(seller.itemName, "Main Course"),
     };
   };
 
-  const handleQuickAdd = (seller) => {
+  const handleQuickAdd = (dish) => {
     if (!isOrderingOpen) {
       toast.error("Ordering is closed right now.");
       return;
     }
-    addToCart({ ...seller, name: seller.itemName }, seller.image);
+    addToCart(dish);
   };
 
   const handleContact = () => {
@@ -479,44 +485,63 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
             group.items.map((seller) => {
               const dish = sellerWithLiveData(seller);
               const fromPrice = priceFrom(dish.prices);
+              const portions = portionMapFor(dish, group.title);
               return (
-                <div key={seller.itemName} className="rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                  <div className="relative aspect-square overflow-hidden rounded-2xl">
-                    <img
-                      src={dish.image}
-                      alt={seller.label}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.src = "/menu1.jpeg";
-                      }}
-                    />
-                    <span
-                      className={`absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-wide text-white ${
-                        group.badge === "VEG" ? "bg-[var(--cbk-orange)]" : "bg-[var(--cbk-crimson)]"
-                      }`}
-                    >
-                      {group.badge}
-                    </span>
-                  </div>
-                  <div className="mt-2.5 flex items-start justify-between gap-1">
-                    <p className="truncate text-sm font-semibold">{seller.label}</p>
-                    <button
-                      type="button"
-                      aria-label="Favorite"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleFavorite(seller.itemName);
-                      }}
-                      className="shrink-0 rounded-full p-1 text-[var(--cbk-crimson)]"
-                    >
-                      <Heart size={15} fill={isFavorite(seller.itemName) ? "currentColor" : "none"} />
-                    </button>
-                  </div>
-                  <p className="mt-0.5 text-xs text-[var(--cbk-text)]/60">
-                    {Object.keys(dish.prices).length > 1 ? "from " : ""}
-                    <span className="text-sm font-bold text-[var(--cbk-orange)]">{formatINR(fromPrice)}</span>
-                  </p>
+                <div key={seller.itemName} className="relative rounded-3xl border border-[var(--cbk-orange)]/15 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSeller({ seller: { ...seller, label: seller.label }, dish, group })}
+                    className="block w-full text-left"
+                    aria-label={`View ${seller.label} details`}
+                  >
+                    <div className="relative aspect-square overflow-hidden rounded-2xl">
+                      <img
+                        src={dish.image}
+                        alt={seller.label}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = "/menu1.jpeg";
+                        }}
+                      />
+                      <span
+                        className={`absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-wide text-white ${
+                          group.badge === "VEG" ? "bg-[var(--cbk-orange)]" : "bg-[var(--cbk-crimson)]"
+                        }`}
+                      >
+                        {group.badge}
+                      </span>
+                      <span className="absolute bottom-1.5 right-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-[var(--cbk-crimson)] shadow">
+                        {formatINR(fromPrice)}+
+                      </span>
+                    </div>
+                    <div className="mt-2.5 flex items-start justify-between gap-1">
+                      <p className="truncate text-sm font-semibold">{seller.label}</p>
+                    </div>
+                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[var(--cbk-text)]/60">
+                      {dish.description ||
+                        (Object.keys(portions).length > 0
+                          ? Object.entries(portions).map(([variant, portion]) => `${variant} · ${portion}`).join("   ")
+                          : Object.keys(dish.prices).join(" / "))}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--cbk-text)]/60">
+                      {Object.keys(dish.prices).length > 1 ? "from " : ""}
+                      <span className="text-sm font-bold text-[var(--cbk-orange)]">{formatINR(fromPrice)}</span>
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label={`${isFavorite(seller.itemName) ? "Remove" : "Add"} ${seller.itemName} to favourites`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleFavorite(seller.itemName);
+                    }}
+                    className="absolute right-4 top-4 z-10 rounded-full bg-white/95 p-1 shadow-sm text-[var(--cbk-crimson)]"
+                  >
+                    <Heart size={15} fill={isFavorite(seller.itemName) ? "currentColor" : "none"} />
+                  </button>
+
                   <button
                     type="button"
                     disabled={!isOrderingOpen || dish.available === false}
@@ -538,6 +563,111 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
           )}
         </div>
       </main>
+
+      <AnimatePresence>
+        {activeSeller && (
+          <>
+            <Motion.button
+              type="button"
+              aria-label="Close item details"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveSeller(null)}
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            />
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center"
+            >
+              <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-[0_20px_60px_rgba(0,0,0,.4)]">
+                <div className="relative">
+                  <img
+                    src={activeSeller.dish.image}
+                    alt={activeSeller.seller.label}
+                    className="h-56 w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "/menu1.jpeg";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setActiveSeller(null)}
+                    aria-label="Close"
+                    className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                  <span
+                    className={`absolute left-3 top-3 rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wide text-white ${
+                      activeSeller.group.badge === "VEG" ? "bg-[var(--cbk-orange)]" : "bg-[var(--cbk-crimson)]"
+                    }`}
+                  >
+                    {activeSeller.group.badge}
+                  </span>
+                  <div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-[var(--cbk-crimson)] shadow">
+                    {activeSeller.group.title}
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <h3 className="font-heading text-2xl leading-tight text-[var(--cbk-text)]">{activeSeller.seller.label}</h3>
+                  <p className="mt-0.5 text-xs font-semibold text-[var(--cbk-orange)]">{activeSeller.dish.name}</p>
+
+                  {activeSeller.dish.description ? (
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--cbk-text)]/75">{activeSeller.dish.description}</p>
+                  ) : null}
+
+                  <div className="mt-4 space-y-2">
+                    {Object.entries(activeSeller.dish.prices).map(([variant, value]) => (
+                      <div
+                        key={variant}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-[var(--cbk-orange)]/15 bg-[var(--cbk-bg)] p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[var(--cbk-text)]">{variant}</p>
+                          <p className="text-xs text-[var(--cbk-text)]/60">
+                            {portionMapFor(activeSeller.dish, activeSeller.group.title)[variant] || `${activeSeller.dish.name} · ${variant}`}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="font-bold text-[var(--cbk-orange)]">{formatINR(value)}</span>
+                          <button
+                            type="button"
+                            disabled={!isOrderingOpen || activeSeller.dish.available === false}
+                            onClick={() => addToCart(activeSeller.dish, variant)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                          >
+                            <ShoppingCart size={12} />
+                            {isOrderingOpen ? "Add" : "Closed"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {activeSeller.dish.available === false && (
+                    <p className="mt-3 rounded-lg border border-[var(--cbk-crimson)]/20 bg-[var(--cbk-crimson)]/5 px-3 py-2 text-xs text-[var(--cbk-crimson)]">
+                      Currently unavailable — please check back later.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveSeller(null)}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-[var(--cbk-orange)]/30 bg-white px-4 py-2.5 text-sm font-semibold text-[var(--cbk-text)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </Motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <footer className="mx-auto max-w-7xl px-4 pb-6 pt-2 text-center text-xs text-[var(--cbk-text)]/55 sm:px-6">
         Chakhna By Kilo · Kolkata · {timings || "Lunch 12:30 – 5:30 | Dinner 6:30 – 11:30"}

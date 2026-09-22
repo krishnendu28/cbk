@@ -6,6 +6,8 @@ const pricesSchema = z
     message: "At least one price variant is required.",
   });
 
+const portionsSchema = z.record(z.string().min(1), z.string().trim().min(1).max(60));
+
 export const menuIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
@@ -17,6 +19,7 @@ export const createMenuItemSchema = z
     name: z.string().trim().min(1),
     description: z.string().trim().max(500).optional(),
     prices: pricesSchema,
+    portions: portionsSchema.optional(),
     image: z.string().trim().url().optional(),
     available: z.boolean().optional(),
   })
@@ -32,6 +35,7 @@ export const updateMenuItemSchema = z
     name: z.string().trim().min(1).optional(),
     description: z.string().trim().max(500).optional(),
     prices: pricesSchema.optional(),
+    portions: portionsSchema.optional(),
     image: z.string().trim().url().optional(),
     available: z.boolean().optional(),
   })

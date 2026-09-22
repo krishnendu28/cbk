@@ -1,4 +1,5 @@
 import { getFoodImage } from "../utils/getFoodImage.js";
+import { derivePortions } from "../utils/portions.js";
 
 const MAKHANA_IMAGE = "https://cbk-gamma.vercel.app/menu/makhana.jpg";
 const KAJU_IMAGE = "https://cbk-gamma.vercel.app/menu/kaju.jpg";
@@ -264,7 +265,7 @@ export const menuCategories = rawMenuCategories.map((category) => ({
   ...category,
   items: category.items.map((item) =>
     item.image && item.image.startsWith("http")
-      ? item
-      : { ...item, image: getFoodImage(item.name, category.title) },
+      ? { ...item, portions: derivePortions(item.name, item.prices, category.title) }
+      : { ...item, image: getFoodImage(item.name, category.title), portions: derivePortions(item.name, item.prices, category.title) },
   ),
 }));

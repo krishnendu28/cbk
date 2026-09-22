@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { MenuCategory } from "../models/Menu.js";
 import { getFoodImage } from "../data/vendor/menuImages.js";
 import { createSeededMenuState } from "../data/seedMenuState.js";
+import { derivePortions, normalizePortions } from "../utils/portions.js";
 import { logger } from "../utils/logger.js";
 
 const menuCache = {
@@ -33,14 +34,19 @@ function toPlain(category) {
   return {
     id: category.id,
     title: category.title,
-    items: (category.items || []).map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description || "",
-      prices: item.prices || {},
-      image: item.image || "",
-      available: item.available !== false,
-    })),
+    items: (category.items || []).map((item) => {
+      const derived = derivePortions(item.name, item.prices, category.title);
+      const portions = { ...derived, ...normalizePortions(item.portions) };
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description || "",
+        prices: item.prices || {},
+        portions,
+        image: item.image || "",
+        available: item.available !== false,
+      };
+    }),
   };
 }
 
@@ -187,7 +193,7 @@ function persistCategories() {
   return persistChain;
 }
 
-export function createMenuItem({ categoryId, categoryTitle, name, description, prices, image, available }) {
+export function createMenuItem({ categoryId, categoryTitle, name, description, prices, portions, image, available }) {
   ensureLoadedSync();
   let targetCategory = findCategoryByIdOrTitle(categoryId, categoryTitle);
   if (!targetCategory) {
@@ -203,11 +209,13 @@ export function createMenuItem({ categoryId, categoryTitle, name, description, p
     menuCache.categories.push(targetCategory);
   }
 
+  const normalizedPrices = normalizePrices(prices);
   const nextItem = {
     id: menuCache.nextMenuItemId++,
     name: String(name).trim(),
     description: String(description || "").trim(),
-    prices: normalizePrices(prices),
+    prices: normalizedPrices,
+    portions: normalizePortions(portions),
     image: String(image || getFoodImage(name, targetCategory.title) || ""),
     available: available !== false,
   };
@@ -218,7 +226,7 @@ export function createMenuItem({ categoryId, categoryTitle, name, description, p
   return payload;
 }
 
-export function updateMenuItem(itemId, { name, description, prices, image, categoryId, categoryTitle, available }) {
+export function updateMenuItem(itemId, { name, description, prices, portions, image, categoryId, categoryTitle, available }) {
   ensureLoadedSync();
   const found = findMenuItemById(Number(itemId));
   if (!found) return null;
@@ -231,6 +239,7 @@ export function updateMenuItem(itemId, { name, description, prices, image, categ
         ? String(description || "").trim()
         : String(found.item.description || ""),
     prices: prices ? normalizePrices(prices) : found.item.prices,
+    portions: portions !== undefined ? normalizePortions(portions) : found.item.portions || {},
     image:
       image !== undefined
         ? String(image || "")

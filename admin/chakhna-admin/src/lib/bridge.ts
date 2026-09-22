@@ -4,6 +4,7 @@ import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 type RawMenuItem = {
   name: string;
   prices?: Record<string, number>;
+  portions?: Record<string, string>;
   description?: string;
   image?: string;
   available?: boolean;
@@ -97,6 +98,8 @@ function readDemoMenuGroups(): BridgeMenuGroup[] {
           id: Number(item.id) || groupIndex * 1000 + itemIndex + 1,
           name: String(item.name || "Item"),
           price: Number(item.price) || 0,
+          prices: isPlainObject(item.prices) ? (item.prices as Record<string, number>) : undefined,
+          portions: isPlainObject(item.portions) ? (item.portions as Record<string, string>) : undefined,
           description: String(item.description || ""),
           image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
           available: item.available !== false,
@@ -202,6 +205,8 @@ export type BridgeMenuItem = {
   id: number;
   name: string;
   price: number;
+  prices?: Record<string, number>;
+  portions?: Record<string, string>;
   description?: string;
   image: string;
   available: boolean;
@@ -535,6 +540,7 @@ type BackendMenuCategory = {
     name: string;
     description?: string;
     prices?: Record<string, number>;
+    portions?: Record<string, string>;
     image?: string;
     available?: boolean;
   }>;
@@ -549,6 +555,7 @@ export function localFallbackMenuGroups(): BridgeMenuGroup[] {
         id: categoryIndex * 1000 + itemIndex + 1,
         name: item.name,
         price: pickBasePrice(item.prices),
+        prices: item.prices,
         description: String(item.description || ""),
         image: getMenuItemImageUrl(item.name, category.title, getFoodImageUrl(item.name, `${category.title}-${itemIndex}`)),
         available: true,
@@ -566,6 +573,8 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
         id: Number(item.id) || categoryIndex * 1000 + itemIndex + 1,
         name: String(item.name || "Item"),
         price: pickBasePrice(item.prices || { Regular: 0 }),
+        prices: item.prices,
+        portions: item.portions && Object.keys(item.portions).length > 0 ? item.portions : undefined,
         description: String(item.description || ""),
         image: getMenuItemImageUrl(
           String(item.name || "Item"),
@@ -602,6 +611,8 @@ export async function createBridgeMenuItem(payload: {
   categoryTitle: string;
   name: string;
   price: number;
+  prices?: Record<string, number>;
+  portions?: Record<string, string>;
   description?: string;
   image?: string;
   available?: boolean;
@@ -624,6 +635,8 @@ export async function createBridgeMenuItem(payload: {
       id: nextItemId,
       name: payload.name.trim(),
       price: Number(payload.price) || 0,
+      prices: payload.prices,
+      portions: payload.portions,
       description: String(payload.description || ""),
       image: String(payload.image || getFoodImageUrl(payload.name, `${targetGroup.title}-${nextItemId}`)),
       available: payload.available !== false,
@@ -645,7 +658,8 @@ export async function createBridgeMenuItem(payload: {
       categoryTitle: payload.categoryTitle,
       name: payload.name,
       description: payload.description,
-      prices: { Regular: payload.price },
+      prices: payload.prices && Object.keys(payload.prices).length > 0 ? payload.prices : { Regular: payload.price },
+      portions: payload.portions && Object.keys(payload.portions).length > 0 ? payload.portions : undefined,
       image: normalizeMenuImageForApi(payload.image),
       available: payload.available !== false,
     }),
@@ -656,7 +670,7 @@ export async function createBridgeMenuItem(payload: {
 
 export async function updateBridgeMenuItem(
   itemId: number,
-  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; description?: string; image?: string; available?: boolean },
+  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; prices?: Record<string, number>; portions?: Record<string, string>; description?: string; image?: string; available?: boolean },
 ) {
   if (isDemoSessionActive()) {
     const groups = readDemoMenuGroups();
@@ -669,6 +683,8 @@ export async function updateBridgeMenuItem(
       ...sourceItem,
       name: payload.name !== undefined ? payload.name.trim() : sourceItem.name,
       price: payload.price !== undefined ? Number(payload.price) || 0 : sourceItem.price,
+      prices: payload.prices && Object.keys(payload.prices).length > 0 ? payload.prices : sourceItem.prices,
+      portions: payload.portions !== undefined ? payload.portions : sourceItem.portions,
       description:
         payload.description !== undefined ? String(payload.description || "") : String(sourceItem.description || ""),
       image: payload.image !== undefined
@@ -703,13 +719,44 @@ export async function updateBridgeMenuItem(
       categoryTitle: payload.categoryTitle,
       name: payload.name,
       description: payload.description,
-      prices: payload.price !== undefined ? { Regular: payload.price } : undefined,
+      prices:
+        payload.prices !== undefined
+          ? payload.prices
+          : payload.price !== undefined
+            ? { Regular: payload.price }
+            : undefined,
+      portions: payload.portions !== undefined ? payload.portions : undefined,
       image: normalizeMenuImageForApi(payload.image),
       available: payload.available,
     }),
   });
   if (!response.ok) throw await buildRequestError(response, "Failed to update menu item");
   return response.json();
+}
+
+export async function uploadMenuItemImage(file: File): Promise<string> {
+  if (isDemoSessionActive()) {
+    throw new Error("Picture upload needs a connected admin session — paste an image URL instead.");
+  }
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read the selected picture."));
+    reader.readAsDataURL(file);
+  });
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/menu/images`, {
+    method: "POST",
+    headers: buildAdminHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify({ image: dataUrl, fileName: file.name }),
+  });
+  if (!response.ok) throw await buildRequestError(response, "Failed to upload picture");
+  const data = (await response.json()) as { url?: string };
+  if (!data?.url) throw new Error("Upload returned no URL");
+  return data.url;
 }
 
 export async function deleteBridgeMenuItem(itemId: number) {

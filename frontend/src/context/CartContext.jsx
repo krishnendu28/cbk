@@ -210,7 +210,7 @@ export function CartProvider({ children, userSession }) {
     setVariantSelections((prev) => ({ ...prev, [itemName]: variant }));
   };
 
-  const addToCart = (item) => {
+  const addToCart = (item, variantOverride) => {
     if (!isOrderingOpen) {
       toast.error("Ordering is closed right now.");
       return;
@@ -219,7 +219,7 @@ export function CartProvider({ children, userSession }) {
     const variants = Object.entries(item.prices || {});
     if (variants.length === 0) return;
 
-    const selectedVariant = variantSelections[item.name] || variants[0][0];
+    const selectedVariant = variantOverride || variantSelections[item.name] || variants[0][0];
     const selectedPrice = item.prices[selectedVariant];
 
     setCartItems((prev) => {
@@ -242,6 +242,7 @@ export function CartProvider({ children, userSession }) {
           id: `${item.name}-${selectedVariant}`,
           name: item.name,
           variant: selectedVariant,
+          portion: (item.portions || {})[selectedVariant] || "",
           quantity: 1,
           unitPrice: selectedPrice,
           totalPrice: selectedPrice,
@@ -250,7 +251,8 @@ export function CartProvider({ children, userSession }) {
     });
 
     setCartOpen(true);
-    toast.success(`${item.name} added to cart`);
+    if (selectedPrice === undefined) return;
+    toast.success(`${item.name} (${selectedVariant}) added to cart`);
   };
 
   const updateQuantity = (id, delta) => {
@@ -431,7 +433,10 @@ export function CartProvider({ children, userSession }) {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-[var(--cbk-crimson)]">{item.variant}</p>
+                        <p className="text-xs text-[var(--cbk-crimson)]">
+                          {item.variant}
+                          {item.portion ? ` · ${item.portion}` : ""}
+                        </p>
                       </div>
                       <p className="text-sm font-semibold text-[var(--cbk-orange)]">{formatINR(item.totalPrice)}</p>
                     </div>

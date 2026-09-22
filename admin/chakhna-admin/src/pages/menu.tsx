@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ImageOff, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ImageOff, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   createBridgeMenuItem,
@@ -15,6 +15,7 @@ import {
   resetBridgeMenu,
   subscribeBridgeMenu,
   updateBridgeMenuItem,
+  uploadMenuItemImage,
 } from "@/lib/bridge";
 import { getMenuItemImageUrl } from "@/lib/menu-item-images";
 
@@ -22,10 +23,14 @@ type MenuItemView = {
   id: number;
   name: string;
   price: number;
+  prices?: Record<string, number>;
+  portions?: Record<string, string>;
   description?: string;
   image: string;
   available: boolean;
 };
+
+type VariantRow = { variant: string; price: string; portion: string };
 
 function SafeImage({ src, alt, fallback, className }: { src: string; alt: string; fallback: string; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -44,18 +49,102 @@ function SafeImage({ src, alt, fallback, className }: { src: string; alt: string
   );
 }
 
+function VariantRowsEditor({
+  rows,
+  onUpdate,
+  onAdd,
+  onRemove,
+}: {
+  rows: VariantRow[];
+  onUpdate: (index: number, patch: Partial<VariantRow>) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-border bg-background/60 p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">Size / Variant &amp; Price</p>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-muted"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add variant
+        </button>
+      </div>
+      {rows.map((row, index) => (
+        <div key={index} className="grid grid-cols-[1.3fr_0.9fr_1.1fr_auto] gap-2">
+          <Input
+            placeholder="e.g. Half"
+            value={row.variant}
+            onChange={(event) => onUpdate(index, { variant: event.target.value })}
+          />
+          <Input
+            placeholder="Price"
+            type="number"
+            min="0"
+            value={row.price}
+            onChange={(event) => onUpdate(index, { price: event.target.value })}
+          />
+          <Input
+            placeholder="Portion (e.g. 4 pcs)"
+            value={row.portion}
+            onChange={(event) => onUpdate(index, { portion: event.target.value })}
+          />
+          <button
+            type="button"
+            disabled={rows.length <= 1}
+            onClick={() => onRemove(index)}
+            aria-label={`Remove ${row.variant || "variant"} row`}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+      <p className="text-xs text-muted-foreground">
+        Portion size is shown next to each option (for example: Half 4 pcs · Full 8 pcs).
+      </p>
+    </div>
+  );
+}
+
+function ImageUploadField({
+  image,
+  onImageChange,
+  isUploading,
+  onUploadFile,
+}: {
+  image: string;
+  onImageChange: (value: string) => void;
+  isUploading: boolean;
+  onUploadFile: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      <Input placeholder="Image URL (optional)" value={image} onChange={(event) => onImageChange(event.target.value)} className="sm:flex-1" />
+      <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
+        <Upload className="h-4 w-4" />
+        {isUploading ? "Uploading..." : "Upload picture"}
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={onUploadFile} disabled={isUploading} />
+      </label>
+    </div>
+  );
+}
+
 export default function MenuManagement() {
   const [menuGroups, setMenuGroups] = useState(getBridgeMenuGroups);
   const [activeGroupId, setActiveGroupId] = useState(menuGroups[0]?.id || "non-veg-chakhna");
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
+  const [variantRows, setVariantRows] = useState<VariantRow[]>([{ variant: "Regular", price: "", portion: "" }]);
   const [image, setImage] = useState("");
   const [description, setDescription] = useState("");
   const [categoryTitle, setCategoryTitle] = useState(menuGroups[0]?.title || "");
   const [available, setAvailable] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const activeGroup = menuGroups.find((group) => group.id === activeGroupId) || menuGroups[0];
@@ -100,9 +189,17 @@ export default function MenuManagement() {
 
   function startEdit(item: MenuItemView) {
     if (!activeGroup) return;
+    const priceEntries: [string, number][] =
+      item.prices && Object.keys(item.prices).length > 0 ? Object.entries(item.prices) : [["Regular", item.price]];
     setEditingId(item.id);
     setName(item.name);
-    setPrice(String(item.price));
+    setVariantRows(
+      priceEntries.map(([variant, value]) => ({
+        variant,
+        price: String(value),
+        portion: item.portions?.[variant] || "",
+      })),
+    );
     setImage(item.image || "");
     setDescription(item.description || "");
     setCategoryTitle(activeGroup.title);
@@ -112,7 +209,7 @@ export default function MenuManagement() {
   function startCreate() {
     setEditingId("new");
     setName("");
-    setPrice("");
+    setVariantRows([{ variant: "Regular", price: "", portion: "" }]);
     setImage("");
     setDescription("");
     setCategoryTitle(activeGroup?.title || "");
@@ -122,21 +219,73 @@ export default function MenuManagement() {
   function cancelEdit() {
     setEditingId(null);
     setName("");
-    setPrice("");
+    setVariantRows([{ variant: "Regular", price: "", portion: "" }]);
     setImage("");
     setDescription("");
     setCategoryTitle(activeGroup?.title || "");
     setAvailable(true);
   }
 
+  function updateVariantRow(index: number, patch: Partial<VariantRow>) {
+    setVariantRows((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+  }
+
+  function addVariantRow() {
+    setVariantRows((prev) => [...prev, { variant: "", price: "", portion: "" }]);
+  }
+
+  function removeVariantRow(index: number) {
+    setVariantRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, rowIndex) => rowIndex !== index)));
+  }
+
+  async function handleUploadImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const url = await uploadMenuItemImage(file);
+      setImage(url);
+      toast({ title: "Picture uploaded", description: "Save the item to keep this picture." });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Please try again or paste an image URL.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
+
   async function saveEditor() {
     if (!name.trim() || !categoryTitle.trim()) return;
-    const numericPrice = Number(price || 0);
-    if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
+
+    const pricesMap: Record<string, number> = {};
+    const portionsMap: Record<string, string> = {};
+    for (const row of variantRows) {
+      const variant = row.variant.trim();
+      if (!variant) continue;
+      const numericPrice = Number(row.price);
+      if (Number.isFinite(numericPrice) && numericPrice >= 0) {
+        pricesMap[variant] = numericPrice;
+      }
+      if (row.portion.trim()) {
+        portionsMap[variant] = row.portion.trim();
+      }
+    }
+
+    if (Object.keys(pricesMap).length === 0) {
+      toast({ title: "Add at least one price", description: "Enter a price for each variant.", variant: "destructive" });
+      return;
+    }
 
     const payload = {
       name: name.trim(),
-      price: numericPrice,
+      price: pricesMap[Object.keys(pricesMap)[0]] ?? Math.min(...Object.values(pricesMap)),
+      prices: pricesMap,
+      portions: portionsMap,
       description: description.trim() ? description.trim() : undefined,
       image: image.trim() || undefined,
       categoryTitle: categoryTitle.trim(),
@@ -277,7 +426,9 @@ export default function MenuManagement() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input placeholder="Food Name" value={name} onChange={(event) => setName(event.target.value)} />
-            <Input placeholder="Price" type="number" value={price} onChange={(event) => setPrice(event.target.value)} />
+            <div className="col-span-full">
+              <VariantRowsEditor rows={variantRows} onUpdate={updateVariantRow} onAdd={addVariantRow} onRemove={removeVariantRow} />
+            </div>
             <Textarea
               placeholder="Short description (optional)"
               value={description}
@@ -287,7 +438,7 @@ export default function MenuManagement() {
             />
             <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input placeholder="Category (e.g. Combos)" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
-              <Input placeholder="Image URL (optional)" value={image} onChange={(event) => setImage(event.target.value)} />
+              <ImageUploadField image={image} onImageChange={setImage} isUploading={isUploadingImage} onUploadFile={handleUploadImage} />
             </div>
           </div>
           <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
@@ -330,7 +481,7 @@ export default function MenuManagement() {
                   />
 
                   <Input placeholder="Food Name" value={name} onChange={(event) => setName(event.target.value)} />
-                  <Input placeholder="Price" type="number" value={price} onChange={(event) => setPrice(event.target.value)} />
+                  <VariantRowsEditor rows={variantRows} onUpdate={updateVariantRow} onAdd={addVariantRow} onRemove={removeVariantRow} />
                   <Textarea
                     placeholder="Short description (optional)"
                     value={description}
@@ -339,7 +490,7 @@ export default function MenuManagement() {
                   />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input placeholder="Category" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
-                    <Input placeholder="Image URL (optional)" value={image} onChange={(event) => setImage(event.target.value)} />
+                    <ImageUploadField image={image} onImageChange={setImage} isUploading={isUploadingImage} onUploadFile={handleUploadImage} />
                   </div>
 
                   <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
@@ -379,8 +530,24 @@ export default function MenuManagement() {
                       ) : null}
                       <div className="flex items-center justify-between">
                         <Badge variant="outline">{activeGroup?.title}</Badge>
-                        <p className="font-bold text-primary">Rs {item.price}</p>
+                        <p className="font-bold text-primary">
+                          Rs {Object.keys(item.prices || {}).length > 1 ? `${item.price}+` : item.price}
+                        </p>
                       </div>
+                      {item.prices && Object.keys(item.prices).length > 1 && (
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {Object.entries(item.prices)
+                            .map(([variant, value]) => `${variant} ${value}`)
+                            .join("  ·  ")}
+                        </p>
+                      )}
+                      {item.portions && Object.keys(item.portions).length > 0 && (
+                        <p className="text-[11px] text-muted-foreground/80">
+                          {Object.entries(item.portions)
+                            .map(([variant, portion]) => `${variant} ${portion}`)
+                            .join("  ·  ")}
+                        </p>
+                      )}
                       <Badge
                         variant="outline"
                         className={

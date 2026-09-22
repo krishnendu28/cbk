@@ -1,6 +1,7 @@
 import { motion as Motion } from "framer-motion";
 import { Heart, Plus } from "lucide-react";
 import { getFoodImage } from "../utils/getFoodImage";
+import { portionMapFor } from "../utils/portions";
 
 function formatINR(value) {
   return `Rs ${value}`;
@@ -11,6 +12,9 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
   const currentVariant = selectedVariant || variants[0];
   const currentPrice = item.prices?.[currentVariant];
   const imageSrc = item.image || getFoodImage(item.name, categoryTitle);
+  const portions = portionMapFor(item, categoryTitle);
+  const currentPortion = portions[currentVariant] || "";
+  const showPortionSummary = !item.description && Object.keys(portions).length > 0;
 
   return (
     <Motion.article
@@ -48,11 +52,16 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
 
         {item.description ? (
           <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[var(--cbk-text)]/60">{item.description}</p>
+        ) : showPortionSummary ? (
+          <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[var(--cbk-text)]/60">
+            {variants.map((variant) => `${variant}: ${portions[variant]}`).join("  ·  ")}
+          </p>
         ) : null}
 
         <p className="mt-0.5 text-sm font-bold text-[var(--cbk-orange)]">
           {formatINR(currentPrice)}
           {variants.length > 1 && <span className="ml-1 text-[10px] font-medium text-[var(--cbk-text)]/60">/ {currentVariant}</span>}
+          {currentPortion && <span className="ml-1 text-[10px] font-medium text-[var(--cbk-text)]/60">· {currentPortion}</span>}
         </p>
 
         {variants.length > 1 && (

@@ -5,6 +5,7 @@ import {
   listMenu,
   removeMenuItem,
   resetMenu,
+  uploadMenuImageController,
 } from "../controllers/menuController.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import { validateRequest } from "../middlewares/validate.js";
@@ -18,6 +19,7 @@ const router = Router();
 
 router.get("/", listMenu);
 router.post("/reset", requireAdmin(["owner", "manager"]), resetMenu);
+router.post("/images", requireAdmin(["owner", "manager"]), uploadMenuImageController);
 router.post("/", requireAdmin(["owner", "manager"]), validateRequest({ bodySchema: createMenuItemSchema }), addMenuItem);
 router.patch("/:id", requireAdmin(["owner", "manager"]), validateRequest({ paramsSchema: menuIdParamSchema, bodySchema: updateMenuItemSchema }), editMenuItem);
 router.delete("/:id", requireAdmin(["owner", "manager"]), validateRequest({ paramsSchema: menuIdParamSchema }), removeMenuItem);

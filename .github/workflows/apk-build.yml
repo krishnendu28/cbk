@@ -66,7 +66,10 @@ jobs:
         shell: bash
         run: |
           if [ -f build.log ]; then
-            tail -c 9000 build.log | tail -60 | sed 's/%/%25/g' | tr -d '\r' | awk 'length>0' | while IFS= read -r line; do
+            : > /tmp/err.txt
+            sed -n '/What went wrong/,/\* Try:/p' build.log >> /tmp/err.txt
+            grep -n -B40 "BUILD FAILED" build.log | tail -45 >> /tmp/err.txt
+            sed 's/%/%25/g' /tmp/err.txt | tr -d '\r' | awk 'length>0' | head -70 | while IFS= read -r line; do
               echo "::error file=build.log::$line"
             done
           else

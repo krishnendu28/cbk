@@ -249,6 +249,7 @@ export default function MenuScreen() {
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [menuError, setMenuError] = useState("");
   const [bestSellerSheetItem, setBestSellerSheetItem] = useState<MenuItem | null>(null);
+  const [bestSellersOpen, setBestSellersOpen] = useState(false);
 
   const findMenuItemById = useCallback((menuItemId: number) => {
     for (const category of menuCategories) {
@@ -536,7 +537,9 @@ export default function MenuScreen() {
                       <TouchableOpacity
                         style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
                         onPress={() => {
-                          if (isOrderingOpen && item) addToCart(item);
+                          if (!item) return;
+                          const liveItem = findMenuItemByName(product.name) || item;
+                          if (isOrderingOpen) addToCart(liveItem);
                         }}
                         activeOpacity={0.88}
                         disabled={!isOrderingOpen || !item}>
@@ -577,11 +580,22 @@ export default function MenuScreen() {
           </View>
 
           <View style={styles.bestSellersWrap}>
-            <View style={styles.bestSellersBanner}>
-              <Text style={styles.bestSellersEyebrow}>HOT LIST</Text>
-              <Text style={styles.bestSellersTitle}>Best Seller Items of the Restaurant</Text>
-              <Text style={styles.bestSellersSubtitle}>Tap Order on any dish below to add it to your cart.</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.bestSellersBanner}
+              activeOpacity={0.85}
+              onPress={() => setBestSellersOpen(true)}>
+              <View style={styles.bestSellersBannerRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bestSellersEyebrow}>HOT LIST</Text>
+                  <Text style={styles.bestSellersTitle}>Best Seller Items of the Restaurant</Text>
+                </View>
+                <View style={styles.bestSellersBannerCta}>
+                  <Text style={styles.bestSellersCtaText}>View all</Text>
+                  <Ionicons name="chevron-forward" size={15} color="#FFFFFF" />
+                </View>
+              </View>
+              <Text style={styles.bestSellersSubtitle}>Tap to open the full best-sellers list.</Text>
+            </TouchableOpacity>
             <View style={styles.sellerCardGrid}>
               {SELLER_GROUPS.flatMap((group) =>
                 group.items.map((seller) => {
@@ -884,6 +898,70 @@ export default function MenuScreen() {
         </View>
       </Modal>
 
+      <Modal visible={bestSellersOpen} animationType="slide" transparent onRequestClose={() => setBestSellersOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { marginTop: insets.top + 12, paddingLeft: horizontalSafePadding, paddingRight: horizontalSafePadding }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Best Sellers</Text>
+                <Text style={styles.modalSubtitle}>Favourite dishes of our guests.</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.82} onPress={() => setBestSellersOpen(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color={Palette.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+              {SELLER_GROUPS.map((group) => (
+                <View key={group.id} style={{ marginBottom: 14 }}>
+                  <Text style={styles.sellerGroupHeading}>{group.title}</Text>
+                  <View style={styles.sellerCardGrid}>
+                    {group.items.map((seller) => {
+                      const menuItem = findMenuItemByName(seller.itemName);
+                      const price = menuItem ? Number(Object.values(menuItem.prices || {})[0] || 0) : 0;
+                      const image = getMenuItemImage(seller.itemName, "Main Course", menuItem?.image);
+                      const isVeg = group.badge === "VEG";
+                      return (
+                        <View key={seller.itemName} style={styles.sellerImageCard}>
+                          <TouchableOpacity
+                            style={styles.sellerImageWrap}
+                            activeOpacity={0.9}
+                            onPress={() => {
+                              setBestSellersOpen(false);
+                              if (menuItem) setBestSellerSheetItem(menuItem);
+                            }}>
+                            <ResilientImage primarySource={image} secondarySource={FALLBACK_IMAGE} style={styles.sellerImage} />
+                            <View style={[styles.sellerImageBadge, { backgroundColor: isVeg ? Palette.orange : Palette.crimson }]}>
+                              <Text style={styles.sellerImageBadgeText}>{group.badge}</Text>
+                            </View>
+                          </TouchableOpacity>
+                          <View style={styles.sellerImageBody}>
+                            <Text style={styles.sellerImageName} numberOfLines={1}>{seller.label}</Text>
+                            <Text style={styles.sellerImagePrice}>Rs {price}</Text>
+                            <TouchableOpacity
+                              style={[styles.sellerImageOrderBtn, (!isOrderingOpen || !menuItem) && styles.disabledBtn]}
+                              onPress={() => {
+                                if (menuItem) {
+                                  setBestSellersOpen(false);
+                                  addToCart(menuItem);
+                                }
+                              }}
+                              activeOpacity={0.85}
+                              disabled={!isOrderingOpen || !menuItem}>
+                              <Text style={styles.sellerImageOrderText}>Order</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={cartVisible} animationType="fade" transparent>
         <KeyboardAvoidingView
           style={styles.modalBackdrop}
@@ -1152,10 +1230,14 @@ const styles = StyleSheet.create({
   orderBtnText: { color: Palette.crimson, fontWeight: "800", fontSize: 12.5 },
   disabledBtn: { opacity: 0.55 },
   bestSellersWrap: { marginTop: 14, gap: 10 },
-  bestSellersBanner: { backgroundColor: Palette.crimson, borderRadius: 14, padding: 13, gap: 2 },
+  bestSellersBanner: { backgroundColor: Palette.crimson, borderRadius: 14, padding: 13, gap: 4 },
+  bestSellersBannerRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bestSellersBannerCta: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(255,241,220,0.18)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  bestSellersCtaText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
   bestSellersEyebrow: { color: "rgba(255,241,220,0.9)", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
   bestSellersTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", lineHeight: 21 },
   bestSellersSubtitle: { color: "rgba(255,241,220,0.9)", fontSize: 11.5 },
+  sellerGroupHeading: { color: Palette.text, fontSize: 13, fontWeight: "800", marginBottom: 8 },
   sellerCardGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10, paddingHorizontal: 2 },
   sellerImageCard: { width: "48.6%", backgroundColor: Palette.card, borderRadius: 14, borderWidth: 1, borderColor: Palette.border, padding: 8, gap: 6 },
   sellerImageWrap: { position: "relative", aspectRatio: 1, borderRadius: 10, overflow: "hidden", backgroundColor: Palette.cardSoft },

@@ -17,8 +17,7 @@ function referenceMru(price: number) {
 function stripPortionSuffix(name: string, prices?: Record<string, number>): string {
   const n = String(name || "").trim();
   const variants = Object.keys(prices || {});
-  const hasHalfFull = variants.some((v) => /^half$/i.test(v) || /^full$/i.test(v));
-  if (!hasHalfFull || !/\d+\s*pcs?/i.test(n)) return n;
+  if (variants.length <= 1 || !/\d+\s*pcs?/i.test(n)) return n;
   const cleaned = n.replace(/\s*\(\s*[^()]*\d+\s*pcs?\s*\)\s*$/i, "").trim();
   if (cleaned && cleaned !== n) return cleaned;
   return n.replace(/\s+\d+\.?\d*\s*pcs?\s*$/i, "").trim() || n;

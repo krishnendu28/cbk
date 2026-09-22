@@ -2,8 +2,8 @@
   "expo": {
     "name": "Chakhna by Kilo",
     "slug": "app",
-    "version": "1.22.0",
-    "versionCode": 22,
+    "version": "1.22.1",
+    "versionCode": 23,
     "orientation": "portrait",
     "icon": "./assets/images/icon-chakhna.png",
     "scheme": "app",

@@ -14,6 +14,16 @@ function referenceMru(price: number) {
   return Math.max(price + 1, Math.round((price * 1.25) / 10) * 10);
 }
 
+function stripPortionSuffix(name: string, prices?: Record<string, number>): string {
+  const n = String(name || "").trim();
+  const variants = Object.keys(prices || {});
+  const hasHalfFull = variants.some((v) => /^half$/i.test(v) || /^full$/i.test(v));
+  if (!hasHalfFull || !/\d+\s*pcs?/i.test(n)) return n;
+  const cleaned = n.replace(/\s*\(\s*[^()]*\d+\s*pcs?\s*\)\s*$/i, "").trim();
+  if (cleaned && cleaned !== n) return cleaned;
+  return n.replace(/\s+\d+\.?\d*\s*pcs?\s*$/i, "").trim() || n;
+}
+
 export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { item: MenuItem; categoryTitle: string; openCartOnAdd?: boolean }) {
   const { variantSelections, setVariantSelections, isOrderingOpen, addToCart } = useCart();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -23,6 +33,7 @@ export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { it
   const price = Number(item.prices?.[selectedVariant] || 0);
   const menuImage = getMenuItemImage(item.name, categoryTitle, item.image);
   const isItemUnavailable = item.available === false;
+  const displayName = stripPortionSuffix(item.name, item.prices);
 
   return (
     <>
@@ -40,7 +51,7 @@ export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { it
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.itemName} numberOfLines={2}>{displayName}</Text>
           <Text style={styles.price}>Rs {price}</Text>
           {variants.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
@@ -105,6 +116,7 @@ export function MenuItemDetailSheet({
   const isFavorite = favorites.includes(item.name);
   const canOrder = isOrderingOpen && !isItemUnavailable;
   const total = price * qty;
+  const displayName = stripPortionSuffix(item.name, item.prices);
 
   const handleAdd = () => {
     if (!canOrder) return;
@@ -128,7 +140,7 @@ export function MenuItemDetailSheet({
 
           <View style={styles.sheetCard}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-              <Text style={styles.sheetTitle}>{item.name}</Text>
+              <Text style={styles.sheetTitle}>{displayName}</Text>
 
               <View style={styles.priceRow}>
                 <View style={styles.priceBadge}>
@@ -147,7 +159,7 @@ export function MenuItemDetailSheet({
 
               <Text style={styles.detailsHeading}>Details</Text>
               <Text style={styles.detailsBody}>
-                {categoryTitle ? `${categoryTitle.trim()} · ` : ""}A freshly prepared portion of {item.name}
+                {categoryTitle ? `${categoryTitle.trim()} · ` : ""}A freshly prepared portion of {displayName}
                 {variants.length > 1 ? ` — pick your ${selectedVariant} size below.` : "."} Packed fresh and served with care.
               </Text>
 

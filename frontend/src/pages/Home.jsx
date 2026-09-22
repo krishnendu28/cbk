@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useCart } from "../context/cart-context";
 import { getFoodImage } from "../utils/getFoodImage";
-import { portionMapFor } from "../utils/portions";
+import { portionMapFor, cleanPortionSuffix } from "../utils/portions";
 
 const CONTACT_PHONE = "+918420252042";
 
@@ -615,7 +615,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
 
                 <div className="p-5">
                   <h3 className="font-heading text-2xl leading-tight text-[var(--cbk-text)]">{activeSeller.seller.label}</h3>
-                  <p className="mt-0.5 text-xs font-semibold text-[var(--cbk-orange)]">{activeSeller.dish.name}</p>
+                  <p className="mt-0.5 text-xs font-semibold text-[var(--cbk-orange)]">{cleanPortionSuffix(activeSeller.dish.name, activeSeller.dish.prices)}</p>
 
                   {activeSeller.dish.description ? (
                     <p className="mt-2 text-sm leading-relaxed text-[var(--cbk-text)]/75">{activeSeller.dish.description}</p>
@@ -630,7 +630,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                         <div className="min-w-0">
                           <p className="font-semibold text-[var(--cbk-text)]">{variant}</p>
                           <p className="text-xs text-[var(--cbk-text)]/60">
-                            {portionMapFor(activeSeller.dish, activeSeller.group.title)[variant] || `${activeSeller.dish.name} · ${variant}`}
+                            {portionMapFor(activeSeller.dish, activeSeller.group.title)[variant] || `${cleanPortionSuffix(activeSeller.dish.name, activeSeller.dish.prices)} · ${variant}`}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">

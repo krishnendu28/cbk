@@ -103,3 +103,15 @@ export function portionMapFor(item, categoryTitle = "") {
     ...(item?.portions || {}),
   };
 }
+
+export function cleanPortionSuffix(name, prices = {}) {
+  const n = String(name || "").trim();
+  const input = prices && typeof prices === "object" && !Array.isArray(prices) ? prices : {};
+  const variants = Object.keys(input);
+  const isHalfFull =
+    findVariant(variants, /^half$/i) !== undefined || findVariant(variants, /^full$/i) !== undefined;
+  if (!isHalfFull || !/\d+\s*pcs?/i.test(n)) return n;
+  let cleaned = n.replace(/\s*\(\s*[^()]*\d+\s*pcs?\s*\)\s*$/i, "");
+  if (cleaned === n) cleaned = n.replace(/\s+\d+\.?\d*\s*pcs?\s*$/i, "");
+  return cleaned.trim() || n;
+}

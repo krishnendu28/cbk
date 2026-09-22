@@ -1,7 +1,7 @@
 import { motion as Motion } from "framer-motion";
 import { Heart, Plus } from "lucide-react";
 import { getFoodImage } from "../utils/getFoodImage";
-import { portionMapFor } from "../utils/portions";
+import { portionMapFor, cleanPortionSuffix } from "../utils/portions";
 
 function formatINR(value) {
   return `Rs ${value}`;
@@ -15,6 +15,7 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
   const portions = portionMapFor(item, categoryTitle);
   const currentPortion = portions[currentVariant] || "";
   const showPortionSummary = !item.description && Object.keys(portions).length > 0;
+  const displayName = cleanPortionSuffix(item.name, item.prices);
 
   return (
     <Motion.article
@@ -39,7 +40,7 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-1">
-          <h4 className="truncate text-sm font-semibold text-[var(--cbk-text)]">{item.name}</h4>
+          <h4 className="truncate text-sm font-semibold text-[var(--cbk-text)]">{displayName}</h4>
           <button
             type="button"
             aria-label={`${isFavorite ? "Remove" : "Add"} ${item.name} to favourites`}

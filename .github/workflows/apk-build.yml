@@ -53,9 +53,23 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build release APK
+      - name: Build release APK (capture log)
         working-directory: app/android
-        run: ./gradlew :app:assembleRelease --no-daemon
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g"
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease --stacktrace 2>&1 | tee build.log
+
+      - name: Upload gradle build log + reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: |
+            app/android/build.log
+            app/android/app/build/reports/**
+          if-no-files-found: warn
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

@@ -75,7 +75,7 @@ type CategoryRow = { kind: "header"; label: string } | { kind: "item"; item: Men
 const DRY_FRUIT_IMAGES = {
   makhana: "https://cbk-gamma.vercel.app/menu/makhana.jpg",
   kaju: "https://cbk-gamma.vercel.app/menu/kaju.jpg",
-  almond: "https://images.unsplash.com/photo-1508061253366-f7da158b6d46?w=400&q=80&auto=format&fit=crop",
+  almond: "https://cbk-gamma.vercel.app/menu/almond.jpg",
   kismis: "https://cbk-gamma.vercel.app/menu/kismis.jpg",
 } as const;
 
@@ -581,7 +581,7 @@ export default function MenuScreen() {
                 return (
                   <View key={product.id} style={[styles.nlCard, { width: 220 }]}>
                     <View style={styles.nlImageWrap}>
-                      <ResilientImage primarySource={{ uri: product.imageUrl }} secondarySource={FALLBACK_IMAGE} style={styles.nlImage} />
+                      <ResilientImage primarySource={getMenuItemImage(product.name, "Dry-Fruits", product.imageUrl)} secondarySource={FALLBACK_IMAGE} style={styles.nlImage} />
                       <View style={styles.nlPricePill}>
                         <Text style={styles.nlPriceText}>from Rs {product.priceFrom}</Text>
                       </View>

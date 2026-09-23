@@ -1,5 +1,5 @@
 const menuImageFiles = {
-  "Makhana Roasted 250gm": "makhana-roasted.jpg",
+  "Makhana Roasted 250gm": "makhana.jpg",
   "Kaju 1kg": "kaju.jpg",
   "Almond 1kg": "almond.jpg",
   "Kismis 1kg": "kismis.jpg",

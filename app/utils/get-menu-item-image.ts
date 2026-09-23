@@ -171,6 +171,10 @@ const menuImageFiles: Record<string, string> = {
   "Chilli Paneer Combo (Paratha)": "Chili Panner Combo(Paratha).png",
   "Veg Manchurian Combo": "Veg manchurian Combo.jpg",
   "Palak Paneer Masala Combo": "palak_panner masal combo.jpg",
+  "Makhana Roasted 250gm": "makhana.jpg",
+  "Kaju 1kg": "kaju.jpg",
+  "Almond 1kg": "almond.jpg",
+  "Kismis 1kg": "kismis.jpg",
 };
 
 const fallbackImage = require("../assets/images/logo.jpeg");

@@ -144,8 +144,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const intervalId = setInterval(() => {
       loadOrderingStatus();
       loadFirstOrderFlag();
-    }, 15000);
-    const settingsIntervalId = setInterval(loadSettings, 30000);
+    }, 8000);
+    const settingsIntervalId = setInterval(loadSettings, 12000);
 
     return () => {
       isMounted = false;

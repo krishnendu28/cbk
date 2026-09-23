@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  AppState,
   FlatList,
   Image,
   ImageBackground,
@@ -67,6 +69,9 @@ const heroSlides: HeroSlide[] = [
 ];
 
 const MAKHANA_ITEM_ID = 900001;
+const SAVED_ADDRESSES_KEY = "cbk_saved_addresses";
+const NON_VEG_KEYWORDS = ["chicken", "egg", "fish", "mutton", "prawn", "keema"];
+type CategoryRow = { kind: "header"; label: string } | { kind: "item"; item: MenuItem };
 const DRY_FRUIT_IMAGES = {
   makhana: "https://cbk-gamma.vercel.app/menu/makhana.jpg",
   kaju: "https://cbk-gamma.vercel.app/menu/kaju.jpg",
@@ -250,6 +255,8 @@ export default function MenuScreen() {
   const [menuError, setMenuError] = useState("");
   const [bestSellerSheetItem, setBestSellerSheetItem] = useState<MenuItem | null>(null);
   const [bestSellersOpen, setBestSellersOpen] = useState(false);
+  const [newLaunchSheetItem, setNewLaunchSheetItem] = useState<MenuItem | null>(null);
+  const [savedAddresses, setSavedAddresses] = useState<{ room: string; landmark: string }[]>([]);
 
   const findMenuItemById = useCallback((menuItemId: number) => {
     for (const category of menuCategories) {
@@ -351,7 +358,7 @@ export default function MenuScreen() {
     };
 
     refreshMenu();
-    const intervalId = setInterval(refreshMenu, 30000);
+    const intervalId = setInterval(refreshMenu, 10000);
 
     return () => {
       cancelled = true;
@@ -359,10 +366,58 @@ export default function MenuScreen() {
     };
   }, [activeCategory, session, mergeSpecials]);
 
+  useEffect(() => {
+    AsyncStorage.getItem(SAVED_ADDRESSES_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setSavedAddresses(parsed.filter((entry) => entry && typeof entry.room === "string" && entry.room.trim()));
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !session) return;
+      axios
+        .get(`${API_BASE_URL}/api/menu`)
+        .then((response) => {
+          if (Array.isArray(response.data)) setMenuCategories(mergeSpecials(response.data));
+        })
+        .catch(() => null);
+    });
+    return () => subscription.remove();
+  }, [session, mergeSpecials]);
+
+  const persistAddress = (roomText: string, landmarkText: string) => {
+    const cleaned = { room: roomText.trim(), landmark: landmarkText.trim() };
+    if (!cleaned.room) return;
+    setSavedAddresses((prev) => {
+      const next = [cleaned, ...prev.filter((addr) => addr.room.toLowerCase() !== cleaned.room.toLowerCase())].slice(0, 6);
+      AsyncStorage.setItem(SAVED_ADDRESSES_KEY, JSON.stringify(next)).catch(() => null);
+      return next;
+    });
+  };
+
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
     [activeCategory, menuCategories],
   );
+
+  const activeCategoryRows = useMemo<CategoryRow[]>(() => {
+    const items = activeCategoryData?.items?.filter((entry) => entry.available !== false) || [];
+    if (activeCategoryData?.id !== "combos") return items.map((item) => ({ kind: "item" as const, item }));
+    const veg = items.filter((entry) => !NON_VEG_KEYWORDS.some((keyword) => entry.name.toLowerCase().includes(keyword)));
+    const nonVeg = items.filter((entry) => NON_VEG_KEYWORDS.some((keyword) => entry.name.toLowerCase().includes(keyword)));
+    const rows: CategoryRow[] = [];
+    if (veg.length) rows.push({ kind: "header", label: `Vegetarian Combos (${veg.length})` });
+    veg.forEach((item) => rows.push({ kind: "item", item }));
+    if (nonVeg.length) rows.push({ kind: "header", label: `Non-Vegetarian Combos (${nonVeg.length})` });
+    nonVeg.forEach((item) => rows.push({ kind: "item", item }));
+    return rows;
+  }, [activeCategoryData]);
 
   const categoryCards = useMemo(() => {
     return menuCategories
@@ -522,6 +577,7 @@ export default function MenuScreen() {
               decelerationRate="fast">
               {NEW_LAUNCH_PRODUCTS.map((product) => {
                 const item = NEW_LAUNCH_ITEMS.find((entry) => entry.id === product.id);
+                const isComingSoon = product.id !== MAKHANA_ITEM_ID;
                 return (
                   <View key={product.id} style={[styles.nlCard, { width: 220 }]}>
                     <View style={styles.nlImageWrap}>
@@ -529,28 +585,51 @@ export default function MenuScreen() {
                       <View style={styles.nlPricePill}>
                         <Text style={styles.nlPriceText}>from Rs {product.priceFrom}</Text>
                       </View>
+                      {isComingSoon ? (
+                        <View style={styles.nlComingSoonPill}>
+                          <Text style={styles.nlComingSoonText}>Coming Soon</Text>
+                        </View>
+                      ) : null}
                     </View>
                     <View style={styles.nlBody}>
                       <Text style={styles.nlTitle}>{product.name}</Text>
                       <Text style={styles.nlPriceLabel}>{product.priceLabel}</Text>
                       <Text style={styles.nlDesc} numberOfLines={2}>{product.description}</Text>
-                      <TouchableOpacity
-                        style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
-                        onPress={() => {
-                          if (!item) return;
-                          const liveItem = findMenuItemByName(product.name) || item;
-                          if (isOrderingOpen) addToCart(liveItem);
-                        }}
-                        activeOpacity={0.88}
-                        disabled={!isOrderingOpen || !item}>
-                        <Ionicons name="cart" size={14} color={Palette.crimson} />
-                        <Text style={styles.orderBtnText}>Order Rs {product.priceFrom}</Text>
-                      </TouchableOpacity>
+                      {isComingSoon ? (
+                        <View style={styles.orderBtnComingSoon}>
+                          <Ionicons name="hourglass-outline" size={14} color={Palette.textMuted} />
+                          <Text style={styles.orderBtnComingSoonText}>Coming Soon</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.orderBtn, !isOrderingOpen && styles.disabledBtn]}
+                          onPress={() => {
+                            if (!item) return;
+                            const liveItem = findMenuItemByName(product.name) || item;
+                            setNewLaunchSheetItem(liveItem);
+                          }}
+                          activeOpacity={0.88}
+                          disabled={!isOrderingOpen || !item}>
+                          <Ionicons name="cart" size={14} color={Palette.crimson} />
+                          <Text style={styles.orderBtnText}>Select Size · Order</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
               })}
             </ScrollView>
+
+            <TouchableOpacity style={styles.monthlyBanner} activeOpacity={0.88} onPress={() => router.push("/monthly")}>
+              <View style={styles.monthlyBannerLeft}>
+                <Ionicons name="calendar-outline" size={22} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.monthlyBannerTitle}>Monthly Food Subscription</Text>
+                <Text style={styles.monthlyBannerSubtitle}>Fresh thalis on a month plan — choose your menu & save big.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.sectionHeaderRow}>
@@ -642,6 +721,15 @@ export default function MenuScreen() {
                 onClose={() => setBestSellerSheetItem(null)}
               />
             ) : null}
+            {newLaunchSheetItem ? (
+              <MenuItemDetailSheet
+                item={newLaunchSheetItem}
+                categoryTitle="Newly Launched"
+                openCartOnAdd
+                visible
+                onClose={() => setNewLaunchSheetItem(null)}
+              />
+            ) : null}
           </View>
         </View>
       )}
@@ -727,6 +815,7 @@ export default function MenuScreen() {
       if (isFirstOrder) {
         markFirstOrderUsed();
       }
+      persistAddress(flatRoom, landmark);
       Alert.alert("Order placed", "Your order is now in Preparing status.");
       setCartItems([]);
       setFlatRoom("");
@@ -756,7 +845,7 @@ export default function MenuScreen() {
 
   if (!session) {
     return (
-      <ImageBackground source={heroSlides[0].image} style={[styles.loginContainer, { paddingTop: insets.top + 10, paddingHorizontal: horizontalSafePadding }]}>
+      <ImageBackground source={getMenuImageByFileName("Chicken butter masala combo.jpg")} style={[styles.loginContainer, { paddingTop: insets.top + 10, paddingHorizontal: horizontalSafePadding }]}>
         <View style={styles.loginOverlay} />
         <View style={styles.loginCard}>
           <Image source={require("@/assets/images/logo.jpeg")} style={styles.logo} />
@@ -789,8 +878,8 @@ export default function MenuScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 6, paddingHorizontal: horizontalSafePadding }]}>
       <FlatList
-        data={!loadingMenu && !menuError ? activeCategoryData?.items || [] : []}
-        keyExtractor={(item) => `${activeCategoryData?.id}-${item.id}`}
+        data={!loadingMenu && !menuError ? activeCategoryRows : []}
+        keyExtractor={(item, index) => (item.kind === "header" ? `header-${item.label}-${index}` : `${activeCategoryData?.id}-${item.item?.id}`)}
         ListHeaderComponent={menuHeader}
         contentContainerStyle={{ paddingBottom: 190 }}
         keyboardShouldPersistTaps="handled"
@@ -801,7 +890,15 @@ export default function MenuScreen() {
         updateCellsBatchingPeriod={50}
         removeClippedSubviews={Platform.OS !== "web"}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        renderItem={({ item }) => <MenuItemCard item={item} categoryTitle={activeCategoryData?.title || ""} />}
+        renderItem={({ item }) =>
+          item.kind === "header" ? (
+            <View style={styles.comboGroupHeader}>
+              <Text style={styles.comboGroupHeaderText}>{item.label}</Text>
+            </View>
+          ) : (
+            <MenuItemCard item={item.item as MenuItem} categoryTitle={activeCategoryData?.title || ""} />
+          )
+        }
         ListEmptyComponent={
           !loadingMenu && !menuError ? (
             <View style={styles.emptyState}>
@@ -1001,6 +1098,29 @@ export default function MenuScreen() {
               ))}
             </ScrollView>
 
+            {savedAddresses.length > 0 ? (
+              <View style={styles.savedAddrWrap}>
+                <Text style={styles.savedAddrLabel}>Saved addresses — tap to use</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8 }}>
+                  {savedAddresses.map((addr, idx) => (
+                    <TouchableOpacity
+                      key={`${addr.room}-${idx}`}
+                      style={styles.savedAddrChip}
+                      onPress={() => {
+                        setFlatRoom(addr.room);
+                        setLandmark(addr.landmark);
+                      }}
+                      activeOpacity={0.8}>
+                      <Ionicons name="location-outline" size={12} color={Palette.crimson} />
+                      <Text style={styles.savedAddrChipText} numberOfLines={1}>
+                        {addr.landmark ? `${addr.room}, ${addr.landmark}` : addr.room}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+
             <TextInput value={flatRoom} onChangeText={setFlatRoom} placeholder="Flat / House no and Room" placeholderTextColor={Palette.textMuted} style={styles.input} />
             <TextInput value={landmark} onChangeText={setLandmark} placeholder="Nearby landmark (optional)" placeholderTextColor={Palette.textMuted} style={styles.input} />
             <TextInput value={instructions} onChangeText={setInstructions} placeholder="Instructions (e.g. less spicy, no onions)" placeholderTextColor={Palette.textMuted} style={styles.input} />
@@ -1037,7 +1157,7 @@ export default function MenuScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Palette.bg },
   loginContainer: { flex: 1, justifyContent: "center", padding: 16, backgroundColor: Palette.bg },
-  loginOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,247,237,0.9)" },
+  loginOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(255,247,237,0.72)" },
   loginCard: { backgroundColor: Palette.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: Palette.border },
   logo: { width: 78, height: 78, alignSelf: "center", borderRadius: 39, marginBottom: 8 },
   loginTitle: { color: Palette.text, fontSize: 24, fontWeight: "700", textAlign: "center" },
@@ -1202,15 +1322,82 @@ const styles = StyleSheet.create({
   },
   nlImageWrap: { position: "relative" },
   nlImage: { width: "100%", height: 140 },
-  nlPricePill: {
-    position: "absolute",
-    left: 8,
-    bottom: 8,
-    backgroundColor: "rgba(255,247,237,0.95)",
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-  },
+nlPricePill: {
+  position: "absolute",
+  left: 8,
+  bottom: 8,
+  backgroundColor: "rgba(255,247,237,0.95)",
+  borderRadius: 999,
+  paddingHorizontal: 9,
+  paddingVertical: 3,
+},
+nlComingSoonPill: {
+  position: "absolute",
+  right: 8,
+  top: 8,
+  backgroundColor: "rgba(62,31,18,0.82)",
+  borderRadius: 999,
+  paddingHorizontal: 9,
+  paddingVertical: 3,
+},
+nlComingSoonText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
+orderBtnComingSoon: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  backgroundColor: Palette.cardSoft,
+  borderRadius: 10,
+  paddingVertical: 8,
+  paddingHorizontal: 14,
+  alignSelf: "flex-start",
+  borderWidth: 1,
+  borderColor: Palette.border,
+},
+orderBtnComingSoonText: { color: Palette.textMuted, fontWeight: "800", fontSize: 12.5 },
+monthlyBanner: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+  marginTop: 12,
+  marginHorizontal: 2,
+  backgroundColor: Palette.orange,
+  borderRadius: 16,
+  paddingVertical: 12,
+  paddingHorizontal: 14,
+  borderWidth: 1,
+  borderColor: "rgba(255,255,255,0.25)",
+  shadowColor: "#B45309",
+  shadowOpacity: 0.22,
+  shadowOffset: { width: 0, height: 8 },
+  shadowRadius: 14,
+  elevation: 3,
+},
+monthlyBannerLeft: {
+  width: 38,
+  height: 38,
+  borderRadius: 19,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(255,255,255,0.22)",
+},
+monthlyBannerTitle: { color: "#FFFFFF", fontSize: 14.5, fontWeight: "800" },
+monthlyBannerSubtitle: { color: "rgba(255,255,255,0.92)", fontSize: 11.5, lineHeight: 15, marginTop: 2 },
+savedAddrWrap: { gap: 6 },
+savedAddrLabel: { color: Palette.textMuted, fontSize: 11.5, fontWeight: "700" },
+savedAddrChip: {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 5,
+  backgroundColor: Palette.surface,
+  borderRadius: 999,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderWidth: 1,
+  borderColor: Palette.borderStrong,
+  maxWidth: 260,
+},
+savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   nlPriceText: { color: Palette.crimson, fontSize: 11, fontWeight: "800" },
   nlBody: { padding: 10, gap: 4 },
   nlTitle: { color: Palette.text, fontSize: 13.5, fontWeight: "800" },
@@ -1251,6 +1438,8 @@ const styles = StyleSheet.create({
   sellerImageOrderText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
   categoriesSection: { paddingTop: 2, paddingBottom: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },
+  comboGroupHeader: { paddingVertical: 4 },
+  comboGroupHeaderText: { color: Palette.crimson, fontWeight: "800", fontSize: 14, letterSpacing: 0.4 },
   sectionDividerLine: { flex: 1, height: 1, backgroundColor: Palette.border },
   sectionTitle: { color: Palette.text, fontSize: 13, fontWeight: "800", letterSpacing: 1.6, textTransform: "uppercase", textAlign: "center" },
   categoriesGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10, paddingHorizontal: 2 },

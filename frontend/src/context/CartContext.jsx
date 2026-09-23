@@ -6,6 +6,7 @@ import {
   Building2,
   ChevronRight,
   Landmark,
+  MapPin,
   MapPinned,
   MessageSquareText,
   ShoppingCart,
@@ -16,10 +17,11 @@ import { menuCategories as fallbackMenuCategories } from "../data/menuData";
 import { CartContext } from "./cart-context";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
-const POLL_INTERVAL_MS = 30000;
+const POLL_INTERVAL_MS = 10000;
 const FIRST_ORDER_KEY = "cbk_ordered_before";
 const FAVORITES_KEY = "cbk_favorites";
 const PROMO_CODE_KEY = "cbk_promo_code";
+const SAVED_ADDRESSES_KEY = "cbk_saved_addresses";
 
 const defaultSettings = {
   deliveryCharge: 10,
@@ -69,6 +71,13 @@ export function CartProvider({ children, userSession }) {
     addressLine: "",
     landmark: "",
     instructions: "",
+  });
+  const [savedAddresses, setSavedAddresses] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SAVED_ADDRESSES_KEY) || "[]");
+    } catch {
+      return [];
+    }
   });
 
   const cartButtonRef = useRef(null);
@@ -148,8 +157,39 @@ export function CartProvider({ children, userSession }) {
       loadOutletSettings();
     }, POLL_INTERVAL_MS);
 
-    return () => window.clearInterval(pollTimer);
+    const refreshNow = () => {
+      loadMenu();
+      loadShopState();
+      loadOutletSettings();
+    };
+    window.addEventListener("focus", refreshNow);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshNow();
+    });
+
+    return () => {
+      window.clearInterval(pollTimer);
+      window.removeEventListener("focus", refreshNow);
+      document.removeEventListener("visibilitychange", refreshNow);
+    };
   }, []);
+
+  const persistAddress = (addressLine, landmark) => {
+    const room = String(addressLine || "").trim();
+    if (!room) return;
+    setSavedAddresses((prev) => {
+      const next = [
+        { room, landmark: String(landmark || "").trim() },
+        ...prev.filter((entry) => entry && String(entry.room).toLowerCase() !== room.toLowerCase()),
+      ].slice(0, 6);
+      localStorage.setItem(SAVED_ADDRESSES_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const selectSavedAddress = (address) => {
+    setCustomer((prev) => ({ ...prev, addressLine: address.room, landmark: address.landmark || "" }));
+  };
 
   const phoneDigits = normalizePhone(customer.phone);
   const firstOrderEligible = useMemo(() => {
@@ -332,6 +372,7 @@ export function CartProvider({ children, userSession }) {
       setCartItems([]);
       setCustomer((prev) => ({ ...prev, addressLine: "", landmark: "", instructions: "" }));
       setCartOpen(false);
+      persistAddress(customer.addressLine, customer.landmark);
     } catch (error) {
       toast.error(error?.response?.data?.message || "Order failed. Please try again.");
     } finally {
@@ -353,6 +394,8 @@ export function CartProvider({ children, userSession }) {
         favorites,
         toggleFavorite,
         isFavorite,
+        savedAddresses,
+        selectSavedAddress,
         addToCart,
         updateQuantity,
         clearCart,
@@ -470,6 +513,28 @@ export function CartProvider({ children, userSession }) {
                     className="w-full rounded-lg border border-[var(--cbk-orange)]/20 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--cbk-orange)]/60"
                   />
                 </div>
+
+                {savedAddresses.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="inline-flex items-center gap-1 text-xs text-[var(--cbk-text)]">
+                      <MapPin size={13} />
+                      Saved addresses — tap to use
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {savedAddresses.map((addr, idx) => (
+                        <button
+                          key={`${addr.room}-${idx}`}
+                          type="button"
+                          onClick={() => selectSavedAddress(addr)}
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--cbk-crimson)]/25 bg-white px-3 py-1.5 text-xs text-[var(--cbk-text)] transition hover:border-[var(--cbk-crimson)]/60"
+                        >
+                          <MapPin size={11} className="text-[var(--cbk-crimson)]" />
+                          <span className="truncate">{addr.landmark ? `${addr.room}, ${addr.landmark}` : addr.room}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <label className="space-y-1">
                   <span className="inline-flex items-center gap-1 text-xs text-[var(--cbk-text)]">

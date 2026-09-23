@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import {
   Clock3,
   Heart,
+  Hourglass,
   House,
   LogOut,
   Phone,
@@ -136,6 +137,8 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [activeSeller, setActiveSeller] = useState(null);
+  const [launchProduct, setLaunchProduct] = useState(null);
+  const [launchVariant, setLaunchVariant] = useState(null);
 
   useEffect(() => {
     const close = () => setProfileOpen(false);
@@ -421,48 +424,88 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
             </button>
           </div>
           <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
-            {NEW_LAUNCH_PRODUCTS.map((product) => (
-              <div
-                key={product.key}
-                className="w-40 shrink-0 rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="relative h-24 overflow-hidden rounded-xl">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.src = "/menu4.jpeg";
-                    }}
-                  />
-                  <span className="absolute bottom-1.5 left-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--cbk-crimson)] shadow">
-                    {formatINR(priceFrom(product.prices))}+
-                  </span>
-                </div>
-                <h5 className="mt-2 truncate text-xs font-bold text-[var(--cbk-text)]">{product.name}</h5>
-                <p className="mt-0.5 truncate text-[10px] text-[var(--cbk-text)]/70">
-                  {Object.values(product.prices).map((value) => `₹${value}`).join(" · ")}
-                </p>
-                <button
-                  type="button"
-                  disabled={!isOrderingOpen}
-                  onClick={() => {
-                    if (!isOrderingOpen) {
-                      toast.error("Ordering is closed right now.");
-                      return;
-                    }
-                    addToCart({ name: product.name, prices: product.prices, image: product.image });
-                  }}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-[11px] font-bold text-white shadow disabled:opacity-50"
+            {NEW_LAUNCH_PRODUCTS.map((product) => {
+              const isComingSoon = product.key !== "makhana";
+              return (
+                <div
+                  key={product.key}
+                  className="w-40 shrink-0 rounded-2xl border border-[var(--cbk-orange)]/15 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <ShoppingCart size={12} />
-                  Order
-                </button>
-              </div>
-            ))}
+                  <div className="relative h-24 overflow-hidden rounded-xl">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.src = "/menu4.jpeg";
+                      }}
+                    />
+                    <span className="absolute bottom-1.5 left-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--cbk-crimson)] shadow">
+                      {formatINR(priceFrom(product.prices))}+
+                    </span>
+                    {isComingSoon && (
+                      <span className="absolute right-1.5 top-1.5 rounded-full bg-[var(--cbk-crimson)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow">
+                        Coming Soon
+                      </span>
+                    )}
+                  </div>
+                  <h5 className="mt-2 truncate text-xs font-bold text-[var(--cbk-text)]">{product.name}</h5>
+                  <p className="mt-0.5 truncate text-[10px] text-[var(--cbk-text)]/70">
+                    {Object.values(product.prices).map((value) => `₹${value}`).join(" · ")}
+                  </p>
+                  {isComingSoon ? (
+                    <span className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-[var(--cbk-bg)] px-3 py-1.5 text-[11px] font-bold text-[var(--cbk-text)]/55">
+                      <Hourglass size={12} />
+                      Coming Soon
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!isOrderingOpen}
+                      onClick={() => {
+                        if (!isOrderingOpen) {
+                          toast.error("Ordering is closed right now.");
+                          return;
+                        }
+                        setLaunchVariant(Object.keys(product.prices)[0]);
+                        setLaunchProduct(product);
+                      }}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-[11px] font-bold text-white shadow disabled:opacity-50"
+                    >
+                      <ShoppingCart size={12} />
+                      Select Size · Order
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
+
+        <button
+          type="button"
+          onClick={() => (window.location.href = `tel:${CONTACT_PHONE}`)}
+          className="relative mb-6 w-full overflow-hidden rounded-2xl border border-[var(--cbk-orange)]/40 bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-5 py-4 text-left text-white shadow-lg transition hover:scale-[1.01]"
+        >
+          <span className="absolute -right-4 -top-4 rotate-12 rounded-lg bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[var(--cbk-crimson)] shadow">
+            Latest
+          </span>
+          <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-white/90">
+            <TicketPercent size={13} />
+            Monthly Food Subscription
+          </span>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-heading text-xl leading-tight sm:text-2xl">Home-style Thalis on a Month Plan</h3>
+              <p className="mt-1 text-sm text-white/85">Fresh lunch & dinner delivered daily — choose your menu, save big. Tap to talk to us.</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-[var(--cbk-crimson)] shadow">
+              Call Us
+              <Phone size={13} />
+            </span>
+          </div>
+        </button>
 
         <div className="mb-5 flex flex-col gap-3 rounded-2xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-5 py-4 text-white shadow-md sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -659,6 +702,122 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                     type="button"
                     onClick={() => setActiveSeller(null)}
                     className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-[var(--cbk-orange)]/30 bg-white px-4 py-2.5 text-sm font-semibold text-[var(--cbk-text)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </Motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {launchProduct && (
+          <>
+            <Motion.button
+              type="button"
+              aria-label="Close dry fruit options"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setLaunchProduct(null)}
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+            />
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: "spring", stiffness: 260, damping: 24 }}
+              className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center"
+            >
+              <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-[0_20px_60px_rgba(0,0,0,.4)]">
+                <div className="relative">
+                  <img
+                    src={launchProduct.image}
+                    alt={launchProduct.name}
+                    className="h-56 w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "/menu4.jpeg";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLaunchProduct(null)}
+                    aria-label="Close"
+                    className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                  <span className="absolute left-3 top-3 rounded-full bg-[var(--cbk-crimson)] px-2.5 py-0.5 text-[10px] font-black tracking-wide text-white">
+                    NEW LAUNCH
+                  </span>
+                  <div className="absolute bottom-3 left-3 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-[var(--cbk-crimson)] shadow">
+                    Dry Fruits · Premium
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <h3 className="font-heading text-2xl leading-tight text-[var(--cbk-text)]">{launchProduct.name}</h3>
+                  <p className="mt-0.5 text-xs font-semibold text-[var(--cbk-orange)]">
+                    {formatINR(priceFrom(launchProduct.prices))}+
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--cbk-text)]/75">{launchProduct.tagline}</p>
+
+                  <div className="mt-4 space-y-2">
+                    {Object.entries(launchProduct.prices).map(([variant, value]) => (
+                      <div
+                        key={variant}
+                        className={`flex items-center justify-between gap-2 rounded-xl border p-3 transition ${
+                          launchVariant === variant
+                            ? "border-[var(--cbk-crimson)]/50 bg-[var(--cbk-crimson)]/5"
+                            : "border-[var(--cbk-orange)]/15 bg-[var(--cbk-bg)]"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[var(--cbk-text)]">{variant}</p>
+                          <p className="text-xs text-[var(--cbk-text)]/60">Fresh pack · sealed · hygienic</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <span className="font-bold text-[var(--cbk-orange)]">{formatINR(value)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setLaunchVariant(variant)}
+                            className={`h-6 w-6 rounded-full border-2 text-center text-xs font-black ${
+                              launchVariant === variant
+                                ? "border-[var(--cbk-crimson)] bg-[var(--cbk-crimson)] text-white"
+                                : "border-[var(--cbk-crimson)]/30 bg-transparent text-transparent"
+                            }`}
+                            aria-label={`Select ${variant}`}
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!isOrderingOpen || !launchVariant}
+                    onClick={() => {
+                      if (!isOrderingOpen) {
+                        toast.error("Ordering is closed right now.");
+                        return;
+                      }
+                      addToCart({ name: launchProduct.name, prices: launchProduct.prices, image: launchProduct.image, tagline: launchProduct.tagline }, launchVariant);
+                      toast.success(`${launchProduct.name} (${launchVariant}) added to cart`);
+                      setLaunchProduct(null);
+                    }}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-4 py-3 text-sm font-bold text-white shadow disabled:opacity-50"
+                  >
+                    <ShoppingCart size={15} />
+                    Add {launchVariant || "Size"} to Cart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLaunchProduct(null)}
+                    className="mt-2 inline-flex w-full items-center justify-center rounded-xl border border-[var(--cbk-orange)]/30 bg-white px-4 py-2.5 text-sm font-semibold text-[var(--cbk-text)]"
                   >
                     Close
                   </button>

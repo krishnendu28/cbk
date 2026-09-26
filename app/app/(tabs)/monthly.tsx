@@ -247,7 +247,7 @@ export default function MonthlyScreen() {
 
     setSubsLoading(true);
     refreshSubscriptions();
-    refreshTimerRef.current = setInterval(refreshSubscriptions, 15000);
+    refreshTimerRef.current = setInterval(refreshSubscriptions, 10000);
 
     return () => {
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
@@ -258,7 +258,16 @@ export default function MonthlyScreen() {
     setSelectedPlan(null);
   }, [planType]);
 
-  const activeSubscription = useMemo(() => subs.find((row) => row.status === "Active") ?? null, [subs]);
+  const ongoingSubscription = useMemo(
+    () => subs.find((row) => row.status === "Pending" || row.status === "Active") ?? null,
+    [subs],
+  );
+
+  useEffect(() => {
+    if (ongoingSubscription) {
+      setMenuType(ongoingSubscription.planType);
+    }
+  }, [ongoingSubscription?.status, ongoingSubscription?.planType]);
 
   function formatDate(value?: string) {
     if (!value) return "—";
@@ -325,9 +334,9 @@ export default function MonthlyScreen() {
         instructions: instructions.trim(),
       });
       Alert.alert(
-        "Subscription received",
-        `You have been enrolled for the ${selectedPlan.label} plan (Rs ${selectedPlan.price}/-). Our team will call you at ${subscriptionPhone} to confirm payment and delivery.`,
-        [{ text: "Done", style: "cancel" }],
+        "Request sent",
+        `You are enrolled for the ${selectedPlan.label} plan (Rs ${selectedPlan.price}/-). Your request is awaiting admin approval — you'll see your plan and calendar above once confirmed. Our team will call you at ${subscriptionPhone} to confirm payment and delivery.`,
+        [{ text: "View My Plan", onPress: () => {} }, { text: "Done", style: "cancel" }],
       );
       setAddress("");
       setInstructions("");
@@ -335,8 +344,9 @@ export default function MonthlyScreen() {
       await refreshSubscriptions();
     } catch (error: any) {
       if (error?.response?.status === 404) {
-        // Backend monthly service not deployed yet: record the enrollment locally so the
-        // plan + calendar work right away instead of blocking the user behind a phone call.
+        // Backend monthly service not reachable: record the enrollment locally so the
+        // user sees their plan + calendar right away. It stays Pending until the
+        // team confirms payment; no meals can be redeemed before approval.
         const start = new Date();
         const end = new Date(start);
         end.setDate(end.getDate() + (selectedPlan.days || 30));
@@ -346,7 +356,7 @@ export default function MonthlyScreen() {
           phone: subscriptionPhone,
           address: address.trim(),
           instructions: instructions.trim(),
-          planType: planType,
+          planType: selectedPlan.planType,
           planId: selectedPlan.id,
           mealsTotal: selectedPlan.meals,
           mealsRemaining: selectedPlan.meals,
@@ -355,7 +365,8 @@ export default function MonthlyScreen() {
           days: selectedPlan.days,
           startDate: start.toISOString(),
           endDate: end.toISOString(),
-          status: "Active",
+          status: "Pending",
+          statusApproval: "Pending",
           redemptionLog: [],
           createdAt: start.toISOString(),
           updatedAt: start.toISOString(),
@@ -367,7 +378,7 @@ export default function MonthlyScreen() {
         Alert.alert(
           "Request noted",
           `Your ${selectedPlan.label} request (Rs ${selectedPlan.price}/-) has been noted for ${subscriptionPhone}. Our team will call you to confirm payment and delivery.`,
-          [{ text: "Done", style: "cancel" }],
+          [{ text: "View My Plan", onPress: () => {} }, { text: "Done", style: "cancel" }],
         );
         return;
       }
@@ -427,33 +438,49 @@ export default function MonthlyScreen() {
           </View>
         </View>
 
-        {activeSubscription ? (
+        {ongoingSubscription ? (
           <View style={styles.statusCard}>
             <View style={styles.statusHeaderRow}>
               <Text style={styles.statusTitle}>Your Monthly Plan</Text>
-              <View style={[styles.statusPill, activeSubscription.status === "Active" ? styles.statusPillActive : styles.statusPillClosed]}>
-                <Text style={styles.statusPillText}>{activeSubscription.status}</Text>
+              <View
+                style={[
+                  styles.statusPill,
+                  ongoingSubscription.status === "Active"
+                    ? styles.statusPillActive
+                    : ongoingSubscription.status === "Pending"
+                      ? styles.statusPillPending
+                      : styles.statusPillClosed,
+                ]}>
+                <Text style={styles.statusPillText}>{ongoingSubscription.status}</Text>
               </View>
             </View>
+            {ongoingSubscription.status === "Pending" ? (
+              <View style={styles.pendingNote}>
+                <Ionicons name="time" size={14} color="#B45309" />
+                <Text style={styles.pendingNoteText}>
+                  Awaiting approval — our team will call you to confirm payment & delivery. Your plan and calendar are ready below.
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.statusBody}>
               <View style={styles.statusGrid}>
                 <View style={styles.statusMetric}>
-                  <Text style={styles.statusMetricValue}>{activeSubscription.mealsRemaining}</Text>
+                  <Text style={styles.statusMetricValue}>{ongoingSubscription.mealsRemaining}</Text>
                   <Text style={styles.statusMetricLabel}>Meals left</Text>
                 </View>
                 <View style={styles.statusMetric}>
-                  <Text style={styles.statusMetricValue}>{activeSubscription.mealsRedeemed}</Text>
+                  <Text style={styles.statusMetricValue}>{ongoingSubscription.mealsRedeemed}</Text>
                   <Text style={styles.statusMetricLabel}>Meals taken</Text>
                 </View>
                 <View style={styles.statusMetric}>
-                  <Text style={styles.statusMetricValue}>{activeSubscription.mealsTotal}</Text>
+                  <Text style={styles.statusMetricValue}>{ongoingSubscription.mealsTotal}</Text>
                   <Text style={styles.statusMetricLabel}>Meals total</Text>
                 </View>
               </View>
               <View style={styles.statusDetailBox}>
-                <Text style={styles.statusDetailLine}>Plan: {MONTHLY_PLAN_LABELS[activeSubscription.planType]}</Text>
-                <Text style={styles.statusDetailLine}>Period: {formatDate(activeSubscription.startDate)} → {formatDate(activeSubscription.endDate)}</Text>
-                <Text style={styles.statusDetailLine}>Delivery address: {activeSubscription.address}</Text>
+                <Text style={styles.statusDetailLine}>Plan: {MONTHLY_PLAN_LABELS[ongoingSubscription.planType]}</Text>
+                <Text style={styles.statusDetailLine}>Period: {formatDate(ongoingSubscription.startDate)} → {formatDate(ongoingSubscription.endDate)}</Text>
+                <Text style={styles.statusDetailLine}>Delivery address: {ongoingSubscription.address}</Text>
               </View>
             </View>
           </View>
@@ -567,7 +594,7 @@ export default function MonthlyScreen() {
           <Text style={styles.sectionTitle}>Monthly Calendar</Text>
           <Text style={styles.sectionSubtitle}>Your meal schedule mapped by date</Text>
         </View>
-        <CalendarSection menuType={menuType} subscription={activeSubscription} />
+        <CalendarSection menuType={menuType} subscription={ongoingSubscription} />
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Pricing Plans</Text>
@@ -740,8 +767,11 @@ const styles = StyleSheet.create({
   statusTitle: { color: Palette.text, fontSize: 17, fontWeight: "700" },
   statusPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1 },
   statusPillActive: { backgroundColor: "rgba(234,88,12,0.14)", borderColor: Palette.orange },
+  statusPillPending: { backgroundColor: "rgba(180,83,9,0.12)", borderColor: "#B45309" },
   statusPillClosed: { backgroundColor: Palette.cardSoft, borderColor: Palette.borderStrong },
   statusPillText: { color: Palette.text, fontSize: 12, fontWeight: "700" },
+  pendingNote: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(180,83,9,0.08)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
+  pendingNoteText: { color: "#92400E", fontSize: 12, lineHeight: 16, flex: 1 },
   statusBody: { gap: 10 },
   statusGrid: { flexDirection: "row", gap: 8 },
   statusMetric: { flex: 1, backgroundColor: Palette.surface, borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: Palette.border },

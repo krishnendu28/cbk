@@ -256,6 +256,8 @@ export default function MenuScreen() {
   const [bestSellerSheetItem, setBestSellerSheetItem] = useState<MenuItem | null>(null);
   const [bestSellersOpen, setBestSellersOpen] = useState(false);
   const [newLaunchSheetItem, setNewLaunchSheetItem] = useState<MenuItem | null>(null);
+  const [sellerFilter, setSellerFilter] = useState<"All" | "Veg" | "NonVeg">("All");
+  const [promoZoomVisible, setPromoZoomVisible] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<{ room: string; landmark: string }[]>([]);
 
   const findMenuItemById = useCallback((menuItemId: number) => {
@@ -434,6 +436,13 @@ export default function MenuScreen() {
       });
   }, [activeCategory, menuCategories]);
 
+  const visibleSellerItems = useMemo(() => {
+    return SELLER_GROUPS.flatMap((group) => {
+      if (sellerFilter !== "All" && group.badge !== (sellerFilter === "Veg" ? "VEG" : "NON-VEG")) return [];
+      return group.items.map((seller) => ({ seller, group }));
+    });
+  }, [sellerFilter]);
+
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryChargeForCart = cartItems.length ? deliveryCharge : 0;
   const firstOrderDiscount =
@@ -504,8 +513,21 @@ export default function MenuScreen() {
               <Text style={styles.heroInfoText}>Hot & Fresh</Text>
             </View>
           </View>
+</View>
         </View>
-      </View>
+
+      <TouchableOpacity style={styles.promoStrip} onPress={() => setPromoZoomVisible(true)} activeOpacity={0.9}>
+        <ResilientImage primarySource={getMenuImageByFileName("Veg-Thali.jpg")} secondarySource={FALLBACK_IMAGE} style={styles.promoImage} />
+        <View style={styles.promoOverlay}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.promoTitle}>Fresh Thali, Every Day</Text>
+            <Text style={styles.promoSubtitle}>Tap to view full picture · Monthly subscription available</Text>
+          </View>
+          <View style={styles.promoZoomBtn}>
+            <Ionicons name="expand-outline" size={18} color="#FFFFFF" />
+          </View>
+        </View>
+      </TouchableOpacity>
 
       {loadingMenu && (
         <View style={styles.loaderContainer}>
@@ -675,9 +697,24 @@ export default function MenuScreen() {
               </View>
               <Text style={styles.bestSellersSubtitle}>Tap to open the full best-sellers list.</Text>
             </TouchableOpacity>
+            <View style={styles.sellerFilterRow}>
+              {(["All", "Veg", "NonVeg"] as const).map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[styles.sellerFilterChip, sellerFilter === option && styles.sellerFilterChipActive]}
+                  onPress={() => setSellerFilter(option)}
+                  activeOpacity={0.85}>
+                  <Text style={[styles.sellerFilterChipText, sellerFilter === option && styles.sellerFilterChipTextActive]}>
+                    {option === "Veg" ? "🌿 Veg" : option === "NonVeg" ? "🍗 Non-Veg" : "All Items"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={styles.sellerCardGrid}>
-              {SELLER_GROUPS.flatMap((group) =>
-                group.items.map((seller) => {
+              {visibleSellerItems.length === 0 ? (
+                <Text style={styles.sellerFilterEmpty}>No best sellers in this filter right now.</Text>
+              ) : (
+                visibleSellerItems.map(({ seller, group }) => {
                   const menuItem = findMenuItemByName(seller.itemName);
                   const price = menuItem ? Number(Object.values(menuItem.prices || {})[0] || 0) : 0;
                   const image = getMenuItemImage(seller.itemName, "Main Course", menuItem?.image);
@@ -709,7 +746,7 @@ export default function MenuScreen() {
                       </View>
                     </TouchableOpacity>
                   );
-                }),
+                })
               )}
             </View>
             {bestSellerSheetItem ? (
@@ -1056,6 +1093,26 @@ export default function MenuScreen() {
               ))}
             </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      <Modal visible={promoZoomVisible} animationType="fade" transparent onRequestClose={() => setPromoZoomVisible(false)}>
+        <View style={styles.zoomBackdrop}>
+          <TouchableOpacity style={styles.zoomCloseBtn} onPress={() => setPromoZoomVisible(false)} activeOpacity={0.85} hitSlop={10}>
+            <Ionicons name="close" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.zoomImageWrap}>
+            <ResilientImage
+              primarySource={getMenuImageByFileName("Veg-Thali.jpg")}
+              secondarySource={FALLBACK_IMAGE}
+              style={styles.zoomImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.zoomCaption}>Fresh Thali, Every Day · Monthly Food Subscription</Text>
+          <TouchableOpacity style={styles.zoomBackBtn} onPress={() => setPromoZoomVisible(false)} activeOpacity={0.85}>
+            <Text style={styles.zoomBackText}>Back to App</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
@@ -1436,6 +1493,26 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   sellerImagePrice: { color: Palette.orange, fontWeight: "800", fontSize: 13 },
   sellerImageOrderBtn: { backgroundColor: Palette.crimson, borderRadius: 9, alignItems: "center", paddingVertical: 7, marginTop: 2 },
   sellerImageOrderText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
+  sellerFilterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 2 },
+  sellerFilterChip: { borderRadius: 999, paddingVertical: 7, paddingHorizontal: 14, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.borderStrong },
+  sellerFilterChipActive: { backgroundColor: Palette.cream, borderColor: Palette.crimson },
+  sellerFilterChipText: { color: Palette.textMuted, fontSize: 12, fontWeight: "700" },
+  sellerFilterChipTextActive: { color: Palette.crimson },
+  sellerFilterEmpty: { color: Palette.textMuted, fontSize: 12.5, textAlign: "center", paddingVertical: 16, width: "100%" },
+
+  promoStrip: { marginTop: 12, borderRadius: 16, overflow: "hidden", position: "relative", borderWidth: 1, borderColor: Palette.border },
+  promoImage: { width: "100%", height: 150 },
+  promoOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "rgba(62,31,18,0.62)", paddingHorizontal: 12, paddingVertical: 10 },
+  promoTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
+  promoSubtitle: { color: "rgba(255,241,220,0.9)", fontSize: 11 },
+  promoZoomBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  zoomBackdrop: { flex: 1, backgroundColor: "rgba(10,5,3,0.94)", alignItems: "center", justifyContent: "center" },
+  zoomCloseBtn: { position: "absolute", top: 44, right: 18, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", zIndex: 2 },
+  zoomImageWrap: { width: "100%", paddingHorizontal: 12 },
+  zoomImage: { width: "100%", aspectRatio: 4 / 3 },
+  zoomCaption: { color: "#FFE3D6", fontSize: 13, fontWeight: "700", marginTop: 14, textAlign: "center", paddingHorizontal: 20 },
+  zoomBackBtn: { marginTop: 18, backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 28 },
+  zoomBackText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
   categoriesSection: { paddingTop: 2, paddingBottom: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },
   comboGroupHeader: { paddingVertical: 4 },

@@ -58,12 +58,19 @@ export default function FavouritesScreen() {
   const allItems = categories.flatMap((category) => category.items);
   const favouriteItems = allItems.filter((item) => favorites.includes(item.name));
 
+  const favouriteRows = categories.flatMap((category) =>
+    category.items
+      .filter((item) => favorites.includes(item.name))
+      .map((item) => ({ item, categoryTitle: category.title })),
+  );
+  const favouriteCount = favouriteItems.length;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + 6, paddingHorizontal: horizontalSafePadding }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Favourites</Text>
         <Text style={styles.subtitle}>
-          {favouriteItems.length > 0 ? `${favouriteItems.length} liked item${favouriteItems.length > 1 ? "s" : ""} · tap to view & order` : "Items you like will appear here."}
+          {favouriteCount > 0 ? `${favouriteCount} liked item${favouriteCount > 1 ? "s" : ""} · tap to view & order` : "Items you like will appear here."}
         </Text>
       </View>
 
@@ -82,18 +89,16 @@ export default function FavouritesScreen() {
         </View>
       ) : (
         <FlatList
-          data={favouriteItems}
-          keyExtractor={(item) => `${item.id}-${item.name}`}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 10 }}
+          data={favouriteRows}
+          keyExtractor={(row) => `${row.item.id}-${row.item.name}`}
           contentContainerStyle={{ gap: 10, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
-              <TouchableOpacity style={styles.favBtn} onPress={() => toggleFavorite(item.name)} hitSlop={8} activeOpacity={0.85}>
+          renderItem={({ item: row }) => (
+            <View>
+              <TouchableOpacity style={styles.favBtn} onPress={() => toggleFavorite(row.item.name)} hitSlop={8} activeOpacity={0.85}>
                 <Ionicons name="heart" size={18} color={Palette.crimson} />
               </TouchableOpacity>
-              <MenuItemCard item={item} categoryTitle="Favorites" openCartOnAdd />
+              <MenuItemCard item={row.item} categoryTitle={row.categoryTitle} openCartOnAdd />
             </View>
           )}
         />
@@ -112,7 +117,6 @@ const styles = StyleSheet.create({
   emptyCard: { marginTop: 20, backgroundColor: Palette.card, borderRadius: 16, borderWidth: 1, borderColor: Palette.border, padding: 28, alignItems: "center", gap: 10 },
   emptyTitle: { color: Palette.text, fontSize: 17, fontWeight: "700" },
   emptyText: { color: Palette.textMuted, fontSize: 13, textAlign: "center", lineHeight: 20 },
-  cardWrap: { flex: 1, maxWidth: "48.5%" },
   favBtn: {
     position: "absolute",
     top: 8,

@@ -167,7 +167,9 @@ export async function fetchMonthlySubscriptions(status?: MonthlyStatus): Promise
   }
 
   const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/subscriptions${query}`);
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/subscriptions${query}`, {
+    headers: buildAdminHeaders(),
+  });
   if (!response.ok) throw await buildRequestError(response, "Failed to fetch monthly subscriptions");
   const data = await response.json();
   return {

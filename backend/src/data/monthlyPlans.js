@@ -91,4 +91,4 @@ export const MONTHLY_CONTACT_PHONE_LABEL = "8420252042";
 export const MONTHLY_FOOTER_QUOTE = "Ghar Ka Khana, Har Din.";
 
 export const MONTHLY_PLAN_TYPES = Object.freeze(["Veg", "NonVeg", "OnlyNonVeg"]);
-export const MONTHLY_STATUSES = Object.freeze(["Active", "Completed", "Cancelled"]);
+export const MONTHLY_STATUSES = Object.freeze(["Pending", "Active", "Completed", "Cancelled", "Rejected"]);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Animated, type ImageSourcePropType } from "react-native";
+import { Animated, type ImageResizeMode, type ImageSourcePropType } from "react-native";
 
 const FALLBACK_IMAGE = require("@/assets/images/logo.jpeg");
 
@@ -8,6 +8,7 @@ type ResilientImageProps = {
   secondarySource?: ImageSourcePropType;
   style: any;
   animateOnChange?: boolean;
+  resizeMode?: ImageResizeMode;
 };
 
 export function ResilientImage({
@@ -15,6 +16,7 @@ export function ResilientImage({
   secondarySource,
   style,
   animateOnChange = false,
+  resizeMode,
 }: ResilientImageProps) {
   const [source, setSource] = useState<ImageSourcePropType>(primarySource);
   const [step, setStep] = useState(0);
@@ -41,6 +43,7 @@ export function ResilientImage({
     <Animated.Image
       source={source}
       style={[style, animateOnChange && { opacity: fade }]}
+      resizeMode={resizeMode}
       onError={() => {
         if (step === 0 && secondarySource) {
           setSource(secondarySource);

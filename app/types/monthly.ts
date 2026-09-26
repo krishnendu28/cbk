@@ -21,7 +21,7 @@ export type MonthlySubscription = {
   startDate: string;
   endDate: string;
   status: MonthlyStatus;
-  statusApproval?: "Pending" | "Active" | "Rejected";
+  statusApproval?: "Pending" | "Approved" | "Rejected";
   dailyLimit?: number;
   days?: number;
   instructions?: string;

@@ -136,6 +136,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [sellerFilter, setSellerFilter] = useState("All");
   const [activeSeller, setActiveSeller] = useState(null);
   const [launchProduct, setLaunchProduct] = useState(null);
   const [launchVariant, setLaunchVariant] = useState(null);
@@ -181,6 +182,11 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
     }
     addToCart(dish);
   };
+
+  const filteredSellerItems = SELLER_GROUPS.flatMap((group) => {
+    if (sellerFilter !== "All" && group.badge !== (sellerFilter === "Veg" ? "VEG" : "NON-VEG")) return [];
+    return group.items.map((seller) => ({ seller, group }));
+  });
 
   const handleContact = () => {
     if (CONTACT_PHONE) {
@@ -523,9 +529,30 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
           </button>
         </div>
 
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {["All", "Veg", "NonVeg"].map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setSellerFilter(option)}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+                sellerFilter === option
+                  ? "bg-[var(--cbk-crimson)] text-white shadow"
+                  : "border border-[var(--cbk-orange)]/25 bg-white text-[var(--cbk-text)]/75 hover:border-[var(--cbk-orange)]/50"
+              }`}
+            >
+              {option === "All" ? "All Items" : option === "Veg" ? "🌿 Veg" : "🍗 Non-Veg"}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {SELLER_GROUPS.flatMap((group) =>
-            group.items.map((seller) => {
+          {filteredSellerItems.length === 0 ? (
+            <p className="col-span-full py-10 text-center text-sm text-[var(--cbk-text)]/60">
+              No best sellers in this filter right now.
+            </p>
+          ) : (
+            filteredSellerItems.map(({ seller, group }) => {
               const dish = sellerWithLiveData(seller);
               const fromPrice = priceFrom(dish.prices);
               const portions = portionMapFor(dish, group.title);
@@ -602,7 +629,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                   </button>
                 </div>
               );
-            }),
+            })
           )}
         </div>
       </main>

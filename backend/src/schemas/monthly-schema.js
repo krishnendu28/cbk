@@ -27,6 +27,7 @@ export const createMonthlySubscriptionSchema = z
     meals: z.coerce.number().int().positive().refine((value) => mealsOptions.includes(value), {
       message: `Meals must be one of: ${mealsOptions.join(", ")}`,
     }),
+    instructions: z.string().trim().max(300).optional(),
   })
   .refine((data) => {
     if (data.planId && !planIds.includes(data.planId)) {

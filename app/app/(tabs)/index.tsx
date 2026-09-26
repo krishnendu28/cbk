@@ -18,6 +18,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,6 +33,8 @@ import { MenuItemCard, MenuItemDetailSheet } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 import type { MenuCategory, MenuItem } from "@/types/menu";
+
+const MONTHLY_PROMO_IMAGE = require("../../assets/images/promo-thali.jpg");
 
 type HeroSlide = {
   image: ReturnType<typeof getMenuImageByFileName>;
@@ -239,6 +242,17 @@ export default function MenuScreen() {
     validatePromoCode,
   } = useCart();
   const horizontalSafePadding = Math.max(14, Math.max(insets.left, insets.right) + 10);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const promoAsset = Image.resolveAssetSource(MONTHLY_PROMO_IMAGE);
+  const promoAspect = promoAsset?.width && promoAsset?.height ? promoAsset.width / promoAsset.height : 4 / 3;
+  const zoomAvailWidth = windowWidth - 24;
+  const zoomAvailHeight = windowHeight - insets.top - insets.bottom - 210;
+  let zoomImageWidth = zoomAvailWidth;
+  let zoomImageHeight = zoomImageWidth / promoAspect;
+  if (zoomImageHeight > zoomAvailHeight) {
+    zoomImageHeight = zoomAvailHeight;
+    zoomImageWidth = zoomImageHeight * promoAspect;
+  }
   const [loginName, setLoginName] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
   const [loginDob, setLoginDob] = useState("");
@@ -517,7 +531,7 @@ export default function MenuScreen() {
         </View>
 
       <TouchableOpacity style={styles.promoStrip} onPress={() => setPromoZoomVisible(true)} activeOpacity={0.9}>
-        <ResilientImage primarySource={getMenuImageByFileName("Veg-Thali.jpg")} secondarySource={FALLBACK_IMAGE} style={styles.promoImage} />
+        <ResilientImage primarySource={MONTHLY_PROMO_IMAGE} secondarySource={FALLBACK_IMAGE} style={styles.promoImage} />
         <View style={styles.promoOverlay}>
           <View style={{ flex: 1 }}>
             <Text style={styles.promoTitle}>Fresh Thali, Every Day</Text>
@@ -1102,14 +1116,23 @@ export default function MenuScreen() {
             <Ionicons name="close" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.zoomImageWrap}>
-            <ResilientImage
-              primarySource={getMenuImageByFileName("Veg-Thali.jpg")}
-              secondarySource={FALLBACK_IMAGE}
-              style={styles.zoomImage}
-              resizeMode="contain"
-            />
+            <ScrollView
+              style={styles.zoomScroll}
+              contentContainerStyle={styles.zoomScrollContent}
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              bouncesZoom
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}>
+              <ResilientImage
+                primarySource={MONTHLY_PROMO_IMAGE}
+                secondarySource={FALLBACK_IMAGE}
+                style={{ width: zoomImageWidth, height: zoomImageHeight }}
+                resizeMode="cover"
+              />
+            </ScrollView>
           </View>
-          <Text style={styles.zoomCaption}>Fresh Thali, Every Day · Monthly Food Subscription</Text>
+          <Text style={styles.zoomCaption}>Fresh Thali, Every Day · Pinch to zoom</Text>
           <TouchableOpacity style={styles.zoomBackBtn} onPress={() => setPromoZoomVisible(false)} activeOpacity={0.85}>
             <Text style={styles.zoomBackText}>Back to App</Text>
           </TouchableOpacity>
@@ -1508,8 +1531,9 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   promoZoomBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
   zoomBackdrop: { flex: 1, backgroundColor: "rgba(10,5,3,0.94)", alignItems: "center", justifyContent: "center" },
   zoomCloseBtn: { position: "absolute", top: 44, right: 18, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", zIndex: 2 },
-  zoomImageWrap: { width: "100%", paddingHorizontal: 12 },
-  zoomImage: { width: "100%", aspectRatio: 4 / 3 },
+  zoomImageWrap: { flex: 1, width: "100%" },
+  zoomScroll: { flex: 1, width: "100%" },
+  zoomScrollContent: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
   zoomCaption: { color: "#FFE3D6", fontSize: 13, fontWeight: "700", marginTop: 14, textAlign: "center", paddingHorizontal: 20 },
   zoomBackBtn: { marginTop: 18, backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 28 },
   zoomBackText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },

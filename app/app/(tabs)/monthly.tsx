@@ -220,6 +220,9 @@ export default function MonthlyScreen() {
   const [selectedPlan, setSelectedPlan] = useState<MonthlyPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [broadcast, setBroadcast] = useState<{ message: string; updatedAt: string } | null>(null);
+  const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
+
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshSubscriptions = useCallback(async () => {
@@ -247,12 +250,25 @@ export default function MonthlyScreen() {
 
     setSubsLoading(true);
     refreshSubscriptions();
-    refreshTimerRef.current = setInterval(refreshSubscriptions, 10000);
+    refreshBroadcast();
+    refreshTimerRef.current = setInterval(() => {
+      refreshSubscriptions();
+      refreshBroadcast();
+    }, 10000);
 
     return () => {
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     };
   }, [session, refreshSubscriptions]);
+
+  const refreshBroadcast = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/monthly/broadcast`);
+      setBroadcast(response.data?.broadcast ?? null);
+    } catch {
+      // keep current broadcast
+    }
+  }, []);
 
   useEffect(() => {
     setSelectedPlan(null);
@@ -437,6 +453,24 @@ export default function MonthlyScreen() {
             ))}
           </View>
         </View>
+
+        {broadcast && dismissedBroadcast !== broadcast.updatedAt && (
+          <View style={styles.broadcastBanner}>
+            <View style={styles.broadcastIconWrap}>
+              <Ionicons name="megaphone" size={15} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.broadcastTitle}>Notice from Chakhna By Kilo</Text>
+              <Text style={styles.broadcastMessage}>{broadcast.message}</Text>
+              <Text style={styles.broadcastTime}>
+                Posted {new Date(broadcast.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setDismissedBroadcast(broadcast.updatedAt)} hitSlop={8} activeOpacity={0.7}>
+              <Ionicons name="close" size={18} color={Palette.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {ongoingSubscription ? (
           <View style={styles.statusCard}>
@@ -850,4 +884,20 @@ const styles = StyleSheet.create({
   calDayMealTag: { color: "#FFFFFF", fontSize: 11, fontWeight: "800", backgroundColor: Palette.orange, borderRadius: 6, overflow: "hidden", paddingHorizontal: 7, paddingVertical: 2 },
   calDayMealText: { color: Palette.text, fontSize: 12.5, flex: 1, lineHeight: 18 },
   calDayMeta: { color: Palette.textMuted, fontSize: 11.5 },
+
+  broadcastBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#FFF7E6",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F1C27A",
+    padding: 12,
+    marginTop: 12,
+  },
+  broadcastIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: Palette.orange, alignItems: "center", justifyContent: "center", marginTop: 1 },
+  broadcastTitle: { color: "#92400E", fontSize: 11.5, fontWeight: "800" },
+  broadcastMessage: { color: Palette.text, fontSize: 13.5, lineHeight: 20, marginTop: 2 },
+  broadcastTime: { color: Palette.textMuted, fontSize: 10.5, marginTop: 4 },
 });

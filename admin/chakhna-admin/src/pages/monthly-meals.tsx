@@ -8,8 +8,10 @@ import {
   ChevronRight,
   DollarSign,
   Download,
+  Megaphone,
   Plus,
   RefreshCw,
+  Send,
   Trash2,
   UtensilsCrossed,
   Utensils,
@@ -33,8 +35,11 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   createMonthlySubscription,
+  clearMonthlyBroadcast,
   deleteMonthlySubscription,
   fetchMonthlyPlans,
+  getMonthlyBroadcast,
+  type MonthlyBroadcast as MonthlyBroadcastType,
   MonthlyPlan,
   MonthlyPlanCatalog,
   MonthlyPlanType,
@@ -42,6 +47,7 @@ import {
   MonthlySubscription,
   MonthlyStats,
   redeemMonthlyMeal,
+  setMonthlyBroadcast,
   subscribeMonthly,
   updateMonthlySubscription,
 } from "@/lib/monthly";
@@ -200,6 +206,10 @@ export default function MonthlyMeals() {
   const [planFilter, setPlanFilter] = useState<"All" | MonthlyPlanType>("All");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState("");
+
+  const [broadcast, setBroadcast] = useState<MonthlyBroadcastType | null>(null);
+  const [broadcastDraft, setBroadcastDraft] = useState("");
+  const [broadcastSaving, setBroadcastSaving] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -428,7 +438,54 @@ export default function MonthlyMeals() {
     }
   }
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const current = await getMonthlyBroadcast();
+        if (!active) return;
+        setBroadcast(current);
+        setBroadcastDraft(current?.message ?? "");
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selectPlans = (planType: MonthlyPlanType) => catalog?.plans[planType] ?? [];
+
+  async function handleSaveBroadcast() {
+    const message = broadcastDraft.trim();
+    if (!message) return;
+    setBroadcastSaving(true);
+    try {
+      const saved = await setMonthlyBroadcast(message);
+      setBroadcast(saved);
+      setBroadcastDraft(saved?.message ?? "");
+      toast({ title: "Broadcast live", description: "Monthly app users will see this within ~10 seconds." });
+    } catch (error) {
+      toast({ title: "Failed to send", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setBroadcastSaving(false);
+    }
+  }
+
+  async function handleClearBroadcast() {
+    setBroadcastSaving(true);
+    try {
+      await clearMonthlyBroadcast();
+      setBroadcast(null);
+      setBroadcastDraft("");
+      toast({ title: "Broadcast cleared", description: "The message has been removed from the app." });
+    } catch (error) {
+      toast({ title: "Failed to clear", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setBroadcastSaving(false);
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -514,6 +571,42 @@ export default function MonthlyMeals() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-sm border-border">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2"><Megaphone className="w-5 h-5 text-amber-600" /> Broadcast to Monthly Users</h2>
+              <p className="text-sm text-muted-foreground">
+                {broadcast
+                  ? `Live now · updated ${formatDate(broadcast.updatedAt)} · every monthly subscriber sees it in the app within ~10 seconds`
+                  : "No message is live right now. Post a message that every monthly subscriber sees in the app."}
+              </p>
+            </div>
+            {broadcast && (
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border-emerald-200 inline-flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live
+              </Badge>
+            )}
+          </div>
+          <Textarea
+            value={broadcastDraft}
+            onChange={(e) => setBroadcastDraft(e.target.value)}
+            placeholder="e.g. Dear subscribers — this week's menu is updated for the festival. Confirm your meal timings on WhatsApp."
+            rows={3}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={handleSaveBroadcast} disabled={broadcastSaving || !broadcastDraft.trim()}>
+              <Send className="w-4 h-4 mr-2" /> {broadcastSaving ? "Sending..." : "Send to all"}
+            </Button>
+            {broadcast && (
+              <Button variant="outline" disabled={broadcastSaving} onClick={handleClearBroadcast}>
+                <Trash2 className="w-4 h-4 mr-2" /> Clear
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="shadow-sm border-border">
         <CardContent className="p-4 space-y-4">
@@ -635,6 +728,7 @@ export default function MonthlyMeals() {
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Address</TableHead>
+              <TableHead>Instructions</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead className="text-center">Meals Left</TableHead>
               <TableHead className="text-right">Price</TableHead>
@@ -646,7 +740,7 @@ export default function MonthlyMeals() {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                   {isLoading ? "Loading monthly subscriptions..." : "No monthly subscribers found. Add one or wait for app signups."}
                 </TableCell>
               </TableRow>
@@ -662,6 +756,11 @@ export default function MonthlyMeals() {
                   <TableCell>
                     <span className="text-xs text-muted-foreground max-w-[220px] block truncate" title={row.address}>
                       {row.address}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`block max-w-[200px] break-words text-xs ${row.instructions ? "text-amber-800" : "text-muted-foreground/40"}`} title={row.instructions || "No instructions"}>
+                      {row.instructions || "—"}
                     </span>
                   </TableCell>
                   <TableCell>

@@ -39,6 +39,10 @@ export const createMonthlySubscriptionSchema = z
     path: ["planId"],
   });
 
+export const setMonthlyBroadcastSchema = z.object({
+  message: z.string().trim().min(1, "Message cannot be empty.").max(1000),
+});
+
 export const listMonthlySubscriptionsSchema = z.object({
   phone: z.string().trim().min(7).max(25).optional(),
   status: z.enum(MONTHLY_STATUSES).optional(),

@@ -301,6 +301,40 @@ export async function deleteMonthlySubscription(subscriptionId: string): Promise
   if (!response.ok) throw await buildRequestError(response, "Failed to delete monthly subscription");
 }
 
+export type MonthlyBroadcast = {
+  message: string;
+  updatedAt: string;
+};
+
+export async function getMonthlyBroadcast(): Promise<MonthlyBroadcast | null> {
+  if (isDemoSessionActive()) return null;
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/broadcast`, { headers: buildAdminHeaders() });
+  if (!response.ok) throw await buildRequestError(response, "Failed to fetch monthly broadcast");
+  const data = await response.json();
+  return data?.broadcast ?? null;
+}
+
+export async function setMonthlyBroadcast(message: string): Promise<MonthlyBroadcast | null> {
+  if (isDemoSessionActive()) return null;
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/broadcast`, {
+    method: "PUT",
+    headers: buildAdminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok) throw await buildRequestError(response, "Failed to save monthly broadcast");
+  const data = await response.json();
+  return data?.broadcast ?? null;
+}
+
+export async function clearMonthlyBroadcast(): Promise<void> {
+  if (isDemoSessionActive()) return;
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/broadcast`, {
+    method: "DELETE",
+    headers: buildAdminHeaders(),
+  });
+  if (!response.ok) throw await buildRequestError(response, "Failed to clear monthly broadcast");
+}
+
 /**
  * Live feed for the admin sheet. Uses a fast polling snapshot diff (works on
  * the serverless backend where websockets are unavailable) and automatically

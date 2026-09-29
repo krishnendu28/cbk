@@ -1,11 +1,14 @@
 import { Router } from "express";
 import {
+  clearMonthlyBroadcastHandler,
   createMonthlySubscriptionHandler,
   deleteMonthlySubscriptionHandler,
+  getMonthlyBroadcastHandler,
   getMonthlyPlansHandler,
   getMonthlySubscriptionHandler,
   listMonthlySubscriptionsHandler,
   redeemMonthlyMealHandler,
+  setMonthlyBroadcastHandler,
   updateMonthlySubscriptionHandler,
 } from "../controllers/monthlyController.js";
 import { requireAdmin } from "../middlewares/auth.js";
@@ -15,12 +18,21 @@ import {
   listMonthlySubscriptionsSchema,
   monthlyIdParamSchema,
   redeemMonthlyMealSchema,
+  setMonthlyBroadcastSchema,
   updateMonthlySubscriptionSchema,
 } from "../schemas/monthly-schema.js";
 
 const router = Router();
 
 router.get("/plans", getMonthlyPlansHandler);
+router.get("/broadcast", getMonthlyBroadcastHandler);
+router.put(
+  "/broadcast",
+  requireAdmin(["owner", "manager"]),
+  validateRequest({ bodySchema: setMonthlyBroadcastSchema }),
+  setMonthlyBroadcastHandler,
+);
+router.delete("/broadcast", requireAdmin(["owner", "manager"]), clearMonthlyBroadcastHandler);
 router.get(
   "/subscriptions",
   (req, res, next) => {

@@ -41,6 +41,7 @@ function toPlain(category) {
         id: item.id,
         name: item.name,
         description: item.description || "",
+        contents: item.contents || "",
         prices: item.prices || {},
         portions,
         image: item.image || "",
@@ -193,7 +194,7 @@ function persistCategories() {
   return persistChain;
 }
 
-export function createMenuItem({ categoryId, categoryTitle, name, description, prices, portions, image, available }) {
+export function createMenuItem({ categoryId, categoryTitle, name, description, contents, prices, portions, image, available }) {
   ensureLoadedSync();
   let targetCategory = findCategoryByIdOrTitle(categoryId, categoryTitle);
   if (!targetCategory) {
@@ -214,6 +215,7 @@ export function createMenuItem({ categoryId, categoryTitle, name, description, p
     id: menuCache.nextMenuItemId++,
     name: String(name).trim(),
     description: String(description || "").trim(),
+    contents: String(contents || "").trim(),
     prices: normalizedPrices,
     portions: normalizePortions(portions),
     image: String(image || getFoodImage(name, targetCategory.title) || ""),
@@ -226,7 +228,7 @@ export function createMenuItem({ categoryId, categoryTitle, name, description, p
   return payload;
 }
 
-export function updateMenuItem(itemId, { name, description, prices, portions, image, categoryId, categoryTitle, available }) {
+export function updateMenuItem(itemId, { name, description, contents, prices, portions, image, categoryId, categoryTitle, available }) {
   ensureLoadedSync();
   const found = findMenuItemById(Number(itemId));
   if (!found) return null;
@@ -238,6 +240,10 @@ export function updateMenuItem(itemId, { name, description, prices, portions, im
       description !== undefined
         ? String(description || "").trim()
         : String(found.item.description || ""),
+    contents:
+      contents !== undefined
+        ? String(contents || "").trim()
+        : String(found.item.contents || ""),
     prices: prices ? normalizePrices(prices) : found.item.prices,
     portions: portions !== undefined ? normalizePortions(portions) : found.item.portions || {},
     image:

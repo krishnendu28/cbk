@@ -26,6 +26,7 @@ type MenuItemView = {
   prices?: Record<string, number>;
   portions?: Record<string, string>;
   description?: string;
+  contents?: string;
   image: string;
   available: boolean;
 };
@@ -140,6 +141,7 @@ export default function MenuManagement() {
   const [variantRows, setVariantRows] = useState<VariantRow[]>([{ variant: "Regular", price: "", portion: "" }]);
   const [image, setImage] = useState("");
   const [description, setDescription] = useState("");
+  const [contents, setContents] = useState("");
   const [categoryTitle, setCategoryTitle] = useState(menuGroups[0]?.title || "");
   const [available, setAvailable] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -202,6 +204,7 @@ export default function MenuManagement() {
     );
     setImage(item.image || "");
     setDescription(item.description || "");
+    setContents(item.contents || "");
     setCategoryTitle(activeGroup.title);
     setAvailable(item.available !== false);
   }
@@ -212,6 +215,7 @@ export default function MenuManagement() {
     setVariantRows([{ variant: "Regular", price: "", portion: "" }]);
     setImage("");
     setDescription("");
+    setContents("");
     setCategoryTitle(activeGroup?.title || "");
     setAvailable(true);
   }
@@ -222,6 +226,7 @@ export default function MenuManagement() {
     setVariantRows([{ variant: "Regular", price: "", portion: "" }]);
     setImage("");
     setDescription("");
+    setContents("");
     setCategoryTitle(activeGroup?.title || "");
     setAvailable(true);
   }
@@ -287,6 +292,7 @@ export default function MenuManagement() {
       prices: pricesMap,
       portions: portionsMap,
       description: description.trim() ? description.trim() : undefined,
+      contents: contents.trim() ? contents.trim() : undefined,
       image: image.trim() || undefined,
       categoryTitle: categoryTitle.trim(),
       available,
@@ -436,6 +442,13 @@ export default function MenuManagement() {
               rows={2}
               className="col-span-full"
             />
+            <Textarea
+              placeholder="What's inside (e.g. 1 Aloo · 1 Egg · 1 Chicken)"
+              value={contents}
+              onChange={(event) => setContents(event.target.value)}
+              rows={2}
+              className="col-span-full"
+            />
             <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input placeholder="Category (e.g. Combos)" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
               <ImageUploadField image={image} onImageChange={setImage} isUploading={isUploadingImage} onUploadFile={handleUploadImage} />
@@ -488,6 +501,12 @@ export default function MenuManagement() {
                     onChange={(event) => setDescription(event.target.value)}
                     rows={2}
                   />
+                  <Textarea
+                    placeholder="What's inside (e.g. 1 Aloo · 1 Egg · 1 Chicken)"
+                    value={contents}
+                    onChange={(event) => setContents(event.target.value)}
+                    rows={2}
+                  />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input placeholder="Category" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
                     <ImageUploadField image={image} onImageChange={setImage} isUploading={isUploadingImage} onUploadFile={handleUploadImage} />
@@ -527,6 +546,9 @@ export default function MenuManagement() {
                       <h3 className="font-semibold text-lg leading-snug">{item.name}</h3>
                       {item.description ? (
                         <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                      ) : null}
+                      {item.contents ? (
+                        <p className="text-xs font-medium text-primary/80 line-clamp-2">{item.contents}</p>
                       ) : null}
                       <div className="flex items-center justify-between">
                         <Badge variant="outline">{activeGroup?.title}</Badge>

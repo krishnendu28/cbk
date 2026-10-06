@@ -306,6 +306,19 @@ export type MonthlyBroadcast = {
   updatedAt: string;
 };
 
+export type MonthlyBroadcastPush = {
+  targeted: number;
+  sent: number;
+  failed: number;
+  invalidRemoved: number;
+  accessTokenConfigured: boolean;
+};
+
+export type MonthlyBroadcastResult = {
+  broadcast: MonthlyBroadcast | null;
+  push?: MonthlyBroadcastPush;
+};
+
 export async function getMonthlyBroadcast(): Promise<MonthlyBroadcast | null> {
   if (isDemoSessionActive()) return null;
   const response = await fetch(`${USER_BACKEND_URL}/api/monthly/broadcast`, { headers: buildAdminHeaders() });
@@ -314,8 +327,8 @@ export async function getMonthlyBroadcast(): Promise<MonthlyBroadcast | null> {
   return data?.broadcast ?? null;
 }
 
-export async function setMonthlyBroadcast(message: string): Promise<MonthlyBroadcast | null> {
-  if (isDemoSessionActive()) return null;
+export async function setMonthlyBroadcast(message: string): Promise<MonthlyBroadcastResult> {
+  if (isDemoSessionActive()) return { broadcast: null };
   const response = await fetch(`${USER_BACKEND_URL}/api/monthly/broadcast`, {
     method: "PUT",
     headers: buildAdminHeaders({ "Content-Type": "application/json" }),
@@ -323,7 +336,7 @@ export async function setMonthlyBroadcast(message: string): Promise<MonthlyBroad
   });
   if (!response.ok) throw await buildRequestError(response, "Failed to save monthly broadcast");
   const data = await response.json();
-  return data?.broadcast ?? null;
+  return { broadcast: data?.broadcast ?? null, push: data?.push };
 }
 
 export async function clearMonthlyBroadcast(): Promise<void> {

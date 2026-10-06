@@ -51,6 +51,9 @@ export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { it
 
         <View style={styles.body}>
           <Text style={styles.itemName} numberOfLines={2}>{displayName}</Text>
+          {item.contents ? (
+            <Text style={styles.cardContents} numberOfLines={2}>{item.contents}</Text>
+          ) : null}
           <Text style={styles.price}>Rs {price}</Text>
           {variants.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} keyboardShouldPersistTaps="handled">
@@ -162,6 +165,13 @@ export function MenuItemDetailSheet({
                 {variants.length > 1 ? ` — pick your ${selectedVariant} size below.` : "."} Packed fresh and served with care.
               </Text>
 
+              {item.contents ? (
+                <View style={styles.includesBox}>
+                  <Text style={styles.detailsHeading}>What's inside</Text>
+                  <Text style={styles.includesText}>{item.contents}</Text>
+                </View>
+              ) : null}
+
               {variants.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.variantChips} keyboardShouldPersistTaps="handled">
                   {variants.map((variant) => (
@@ -225,6 +235,7 @@ const styles = StyleSheet.create({
   cardImage: { width: 96, height: 96, borderRadius: 10 },
   body: { flex: 1, justifyContent: "space-between", gap: 4, minWidth: 0 },
   itemName: { color: Palette.text, fontWeight: "700", fontSize: 14, lineHeight: 18 },
+  cardContents: { color: Palette.textMuted, fontSize: 12, lineHeight: 16 },
   price: { color: Palette.orange, fontWeight: "800" },
   unavailableBadge: {
     position: "absolute",
@@ -282,6 +293,8 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: Palette.border, marginVertical: 14 },
   detailsHeading: { color: Palette.text, fontSize: 14, fontWeight: "800", marginBottom: 6 },
   detailsBody: { color: Palette.textMuted, fontSize: 13, lineHeight: 20 },
+  includesBox: { marginTop: 12, backgroundColor: Palette.cardSoft, borderRadius: 12, borderWidth: 1, borderColor: Palette.border, padding: 12 },
+  includesText: { color: Palette.text, fontSize: 13, lineHeight: 20 },
   variantChips: { gap: 6, marginTop: 12 },
   sheetVariantBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: Palette.cardSoft, borderWidth: 1, borderColor: Palette.borderStrong },
   sheetVariantBtnActive: { borderColor: Palette.crimson, backgroundColor: "rgba(194,31,46,0.1)" },

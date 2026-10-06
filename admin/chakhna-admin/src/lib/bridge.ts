@@ -6,6 +6,7 @@ type RawMenuItem = {
   prices?: Record<string, number>;
   portions?: Record<string, string>;
   description?: string;
+  contents?: string;
   image?: string;
   available?: boolean;
 };
@@ -101,6 +102,7 @@ function readDemoMenuGroups(): BridgeMenuGroup[] {
           prices: isPlainObject(item.prices) ? (item.prices as Record<string, number>) : undefined,
           portions: isPlainObject(item.portions) ? (item.portions as Record<string, string>) : undefined,
           description: String(item.description || ""),
+          contents: String(item.contents || ""),
           image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
           available: item.available !== false,
         })),
@@ -208,6 +210,7 @@ export type BridgeMenuItem = {
   prices?: Record<string, number>;
   portions?: Record<string, string>;
   description?: string;
+  contents?: string;
   image: string;
   available: boolean;
 };
@@ -249,7 +252,7 @@ export type BridgeStaff = {
 
 const rawMenuCategories: Array<{
   title: string;
-  items: Array<{ name: string; prices: Record<string, number>; description?: string; image?: string; available?: boolean }>;
+  items: Array<{ name: string; prices: Record<string, number>; description?: string; contents?: string; image?: string; available?: boolean }>;
 }> = [
   {
     title: "Combos",
@@ -539,6 +542,7 @@ type BackendMenuCategory = {
     id: number;
     name: string;
     description?: string;
+    contents?: string;
     prices?: Record<string, number>;
     portions?: Record<string, string>;
     image?: string;
@@ -557,6 +561,7 @@ export function localFallbackMenuGroups(): BridgeMenuGroup[] {
         price: pickBasePrice(item.prices),
         prices: item.prices,
         description: String(item.description || ""),
+        contents: String(item.contents || ""),
         image: getMenuItemImageUrl(item.name, category.title, getFoodImageUrl(item.name, `${category.title}-${itemIndex}`)),
         available: true,
       })),
@@ -576,6 +581,7 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
         prices: item.prices,
         portions: item.portions && Object.keys(item.portions).length > 0 ? item.portions : undefined,
         description: String(item.description || ""),
+        contents: String(item.contents || ""),
         image: getMenuItemImageUrl(
           String(item.name || "Item"),
           String(category.title || "Menu"),
@@ -614,6 +620,7 @@ export async function createBridgeMenuItem(payload: {
   prices?: Record<string, number>;
   portions?: Record<string, string>;
   description?: string;
+  contents?: string;
   image?: string;
   available?: boolean;
 }) {
@@ -638,6 +645,7 @@ export async function createBridgeMenuItem(payload: {
       prices: payload.prices,
       portions: payload.portions,
       description: String(payload.description || ""),
+      contents: String(payload.contents || ""),
       image: String(payload.image || getFoodImageUrl(payload.name, `${targetGroup.title}-${nextItemId}`)),
       available: payload.available !== false,
     };
@@ -658,6 +666,7 @@ export async function createBridgeMenuItem(payload: {
       categoryTitle: payload.categoryTitle,
       name: payload.name,
       description: payload.description,
+      contents: payload.contents,
       prices: payload.prices && Object.keys(payload.prices).length > 0 ? payload.prices : { Regular: payload.price },
       portions: payload.portions && Object.keys(payload.portions).length > 0 ? payload.portions : undefined,
       image: normalizeMenuImageForApi(payload.image),
@@ -670,7 +679,7 @@ export async function createBridgeMenuItem(payload: {
 
 export async function updateBridgeMenuItem(
   itemId: number,
-  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; prices?: Record<string, number>; portions?: Record<string, string>; description?: string; image?: string; available?: boolean },
+  payload: { categoryId?: string; categoryTitle?: string; name?: string; price?: number; prices?: Record<string, number>; portions?: Record<string, string>; description?: string; contents?: string; image?: string; available?: boolean },
 ) {
   if (isDemoSessionActive()) {
     const groups = readDemoMenuGroups();
@@ -687,6 +696,8 @@ export async function updateBridgeMenuItem(
       portions: payload.portions !== undefined ? payload.portions : sourceItem.portions,
       description:
         payload.description !== undefined ? String(payload.description || "") : String(sourceItem.description || ""),
+      contents:
+        payload.contents !== undefined ? String(payload.contents || "") : String(sourceItem.contents || ""),
       image: payload.image !== undefined
         ? String(payload.image || getFoodImageUrl(payload.name || sourceItem.name, `${sourceGroup.title}-${itemId}`))
         : sourceItem.image,
@@ -719,6 +730,7 @@ export async function updateBridgeMenuItem(
       categoryTitle: payload.categoryTitle,
       name: payload.name,
       description: payload.description,
+      contents: payload.contents,
       prices:
         payload.prices !== undefined
           ? payload.prices

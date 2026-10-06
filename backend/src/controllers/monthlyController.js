@@ -8,6 +8,7 @@ import {
   updateSubscription,
 } from "../services/monthlyService.js";
 import { clearBroadcast, getBroadcast, setBroadcast } from "../services/broadcastService.js";
+import { sendBroadcastPushNotification } from "../services/pushNotificationService.js";
 import {
   MONTHLY_PLANS,
   MONTHLY_PLANS_FLAT,
@@ -135,7 +136,15 @@ export async function getMonthlyBroadcastHandler(req, res) {
 export async function setMonthlyBroadcastHandler(req, res) {
   try {
     const broadcast = await setBroadcast(req.body.message);
-    return res.json({ broadcast });
+    const push = await sendBroadcastPushNotification({
+      title: "Message From Chakhna",
+      body: broadcast?.message || req.body.message,
+      data: {
+        type: "monthly_broadcast",
+        updatedAt: broadcast?.updatedAt,
+      },
+    });
+    return res.json({ broadcast, push });
   } catch (error) {
     return res.status(500).json({ message: "Failed to update monthly broadcast." });
   }

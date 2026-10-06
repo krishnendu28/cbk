@@ -4,6 +4,8 @@ export type MenuItem = {
   prices: Record<string, number>;
   image?: string;
   available?: boolean;
+  description?: string;
+  contents?: string;
 };
 
 export type MenuCategory = {

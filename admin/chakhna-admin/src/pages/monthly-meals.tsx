@@ -463,9 +463,13 @@ export default function MonthlyMeals() {
     setBroadcastSaving(true);
     try {
       const saved = await setMonthlyBroadcast(message);
-      setBroadcast(saved);
-      setBroadcastDraft(saved?.message ?? "");
-      toast({ title: "Broadcast live", description: "Monthly app users will see this within ~10 seconds." });
+      setBroadcast(saved.broadcast);
+      setBroadcastDraft(saved.broadcast?.message ?? "");
+      const push = saved.push;
+      const pushNote = push
+        ? `Sent to ${push.sent} device${push.sent === 1 ? "" : "s"} (${push.targeted} targeted${push.failed ? `, ${push.failed} failed` : ""}).`
+        : "Monthly app users will see this within ~10 seconds.";
+      toast({ title: "Broadcast live", description: pushNote });
     } catch (error) {
       toast({ title: "Failed to send", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
     } finally {

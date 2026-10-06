@@ -59,6 +59,10 @@ function MenuCard({ item, categoryTitle, selectedVariant, onVariantChange, onAdd
           </p>
         ) : null}
 
+        {item.contents ? (
+          <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-[var(--cbk-orange)]/80">{item.contents}</p>
+        ) : null}
+
         <p className="mt-0.5 text-sm font-bold text-[var(--cbk-orange)]">
           {formatINR(currentPrice)}
           {variants.length > 1 && <span className="ml-1 text-[10px] font-medium text-[var(--cbk-text)]/60">/ {currentVariant}</span>}

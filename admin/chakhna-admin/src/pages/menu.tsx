@@ -442,13 +442,18 @@ export default function MenuManagement() {
               rows={2}
               className="col-span-full"
             />
-            <Textarea
-              placeholder="What's inside (e.g. 1 Aloo · 1 Egg · 1 Chicken)"
-              value={contents}
-              onChange={(event) => setContents(event.target.value)}
-              rows={2}
-              className="col-span-full"
-            />
+            <div className="col-span-full space-y-1">
+              <p className="text-sm font-medium">What's inside this item</p>
+              <p className="text-xs text-muted-foreground">
+                What the food contains — e.g. "1 Egg + Rice + Chutney + 8 Pcs". Customers see this under the food.
+              </p>
+              <Textarea
+                placeholder="e.g. 1 Egg + Rice + Chutney + 8 Pcs"
+                value={contents}
+                onChange={(event) => setContents(event.target.value)}
+                rows={2}
+              />
+            </div>
             <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3">
               <Input placeholder="Category (e.g. Combos)" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
               <ImageUploadField image={image} onImageChange={setImage} isUploading={isUploadingImage} onUploadFile={handleUploadImage} />
@@ -501,12 +506,18 @@ export default function MenuManagement() {
                     onChange={(event) => setDescription(event.target.value)}
                     rows={2}
                   />
-                  <Textarea
-                    placeholder="What's inside (e.g. 1 Aloo · 1 Egg · 1 Chicken)"
-                    value={contents}
-                    onChange={(event) => setContents(event.target.value)}
-                    rows={2}
-                  />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">What's inside this item</p>
+                    <p className="text-xs text-muted-foreground">
+                      What the food contains — e.g. "1 Egg + Rice + Chutney + 8 Pcs". Customers see this under the food.
+                    </p>
+                    <Textarea
+                      placeholder="e.g. 1 Egg + Rice + Chutney + 8 Pcs"
+                      value={contents}
+                      onChange={(event) => setContents(event.target.value)}
+                      rows={2}
+                    />
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <Input placeholder="Category" value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} />
                     <ImageUploadField image={image} onImageChange={setImage} isUploading={isUploadingImage} onUploadFile={handleUploadImage} />

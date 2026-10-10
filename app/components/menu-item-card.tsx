@@ -33,6 +33,7 @@ export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { it
   const menuImage = getMenuItemImage(item.name, categoryTitle, item.image);
   const isItemUnavailable = item.available === false;
   const displayName = stripPortionSuffix(item.name, item.prices);
+  const insideText = item.contents?.trim() || item.description?.trim() || "";
 
   return (
     <>
@@ -51,8 +52,8 @@ export function MenuItemCard({ item, categoryTitle, openCartOnAdd = true }: { it
 
         <View style={styles.body}>
           <Text style={styles.itemName} numberOfLines={2}>{displayName}</Text>
-          {item.contents ? (
-            <Text style={styles.cardContents} numberOfLines={2}>{item.contents}</Text>
+          {insideText ? (
+            <Text style={styles.cardContents} numberOfLines={2}>{insideText}</Text>
           ) : null}
           <Text style={styles.price}>Rs {price}</Text>
           {variants.length > 0 ? (
@@ -119,6 +120,7 @@ export function MenuItemDetailSheet({
   const canOrder = isOrderingOpen && !isItemUnavailable;
   const total = price * qty;
   const displayName = stripPortionSuffix(item.name, item.prices);
+  const insideText = item.contents?.trim() || item.description?.trim() || "";
 
   const handleAdd = () => {
     if (!canOrder) return;
@@ -165,10 +167,10 @@ export function MenuItemDetailSheet({
                 {variants.length > 1 ? ` — pick your ${selectedVariant} size below.` : "."} Packed fresh and served with care.
               </Text>
 
-              {item.contents ? (
+              {insideText ? (
                 <View style={styles.includesBox}>
                   <Text style={styles.detailsHeading}>What's inside</Text>
-                  <Text style={styles.includesText}>{item.contents}</Text>
+                  <Text style={styles.includesText}>{insideText}</Text>
                 </View>
               ) : null}
 

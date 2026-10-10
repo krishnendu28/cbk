@@ -509,6 +509,11 @@ export default function POS() {
                 </div>
                 <div className="p-3 space-y-2">
                   <h3 className="font-semibold">{item.name}</h3>
+                  {item.contents || item.description ? (
+                    <p className="text-xs leading-snug text-muted-foreground line-clamp-2">
+                      {item.contents || item.description}
+                    </p>
+                  ) : null}
                   <div className="flex items-center justify-between">
                     <Badge variant="outline">Rs {item.price}</Badge>
                     <Button onClick={() => addToCart(item)} size="sm">Add</Button>

@@ -18,7 +18,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,8 +32,6 @@ import { MenuItemCard, MenuItemDetailSheet } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 import type { MenuCategory, MenuItem } from "@/types/menu";
-
-const MONTHLY_PROMO_IMAGE = require("../../assets/images/promo-thali.jpg");
 
 type HeroSlide = {
   image: ReturnType<typeof getMenuImageByFileName>;
@@ -242,17 +239,6 @@ export default function MenuScreen() {
     validatePromoCode,
   } = useCart();
   const horizontalSafePadding = Math.max(14, Math.max(insets.left, insets.right) + 10);
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const promoAsset = Image.resolveAssetSource(MONTHLY_PROMO_IMAGE);
-  const promoAspect = promoAsset?.width && promoAsset?.height ? promoAsset.width / promoAsset.height : 4 / 3;
-  const zoomAvailWidth = windowWidth - 24;
-  const zoomAvailHeight = windowHeight - insets.top - insets.bottom - 210;
-  let zoomImageWidth = zoomAvailWidth;
-  let zoomImageHeight = zoomImageWidth / promoAspect;
-  if (zoomImageHeight > zoomAvailHeight) {
-    zoomImageHeight = zoomAvailHeight;
-    zoomImageWidth = zoomImageHeight * promoAspect;
-  }
   const [loginName, setLoginName] = useState("");
   const [loginPhone, setLoginPhone] = useState("");
   const [loginDob, setLoginDob] = useState("");
@@ -271,7 +257,6 @@ export default function MenuScreen() {
   const [bestSellersOpen, setBestSellersOpen] = useState(false);
   const [newLaunchSheetItem, setNewLaunchSheetItem] = useState<MenuItem | null>(null);
   const [sellerFilter, setSellerFilter] = useState<"All" | "Veg" | "NonVeg">("All");
-  const [promoZoomVisible, setPromoZoomVisible] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<{ room: string; landmark: string }[]>([]);
 
   const findMenuItemById = useCallback((menuItemId: number) => {
@@ -529,19 +514,6 @@ export default function MenuScreen() {
           </View>
 </View>
         </View>
-
-      <TouchableOpacity style={styles.promoStrip} onPress={() => setPromoZoomVisible(true)} activeOpacity={0.9}>
-        <ResilientImage primarySource={MONTHLY_PROMO_IMAGE} secondarySource={FALLBACK_IMAGE} style={styles.promoImage} />
-        <View style={styles.promoOverlay}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.promoTitle}>Fresh Thali, Every Day</Text>
-            <Text style={styles.promoSubtitle}>Tap to view full picture · Monthly subscription available</Text>
-          </View>
-          <View style={styles.promoZoomBtn}>
-            <Ionicons name="expand-outline" size={18} color="#FFFFFF" />
-          </View>
-        </View>
-      </TouchableOpacity>
 
       {loadingMenu && (
         <View style={styles.loaderContainer}>
@@ -1110,35 +1082,6 @@ export default function MenuScreen() {
         </View>
       </Modal>
 
-      <Modal visible={promoZoomVisible} animationType="fade" transparent onRequestClose={() => setPromoZoomVisible(false)}>
-        <View style={styles.zoomBackdrop}>
-          <TouchableOpacity style={styles.zoomCloseBtn} onPress={() => setPromoZoomVisible(false)} activeOpacity={0.85} hitSlop={10}>
-            <Ionicons name="close" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={styles.zoomImageWrap}>
-            <ScrollView
-              style={styles.zoomScroll}
-              contentContainerStyle={styles.zoomScrollContent}
-              maximumZoomScale={4}
-              minimumZoomScale={1}
-              bouncesZoom
-              showsVerticalScrollIndicator={false}
-              showsHorizontalScrollIndicator={false}>
-              <ResilientImage
-                primarySource={MONTHLY_PROMO_IMAGE}
-                secondarySource={FALLBACK_IMAGE}
-                style={{ width: zoomImageWidth, height: zoomImageHeight }}
-                resizeMode="cover"
-              />
-            </ScrollView>
-          </View>
-          <Text style={styles.zoomCaption}>Fresh Thali, Every Day · Pinch to zoom</Text>
-          <TouchableOpacity style={styles.zoomBackBtn} onPress={() => setPromoZoomVisible(false)} activeOpacity={0.85}>
-            <Text style={styles.zoomBackText}>Back to App</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
       <Modal visible={cartVisible} animationType="fade" transparent>
         <KeyboardAvoidingView
           style={styles.modalBackdrop}
@@ -1523,20 +1466,6 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   sellerFilterChipTextActive: { color: Palette.crimson },
   sellerFilterEmpty: { color: Palette.textMuted, fontSize: 12.5, textAlign: "center", paddingVertical: 16, width: "100%" },
 
-  promoStrip: { marginTop: 12, borderRadius: 16, overflow: "hidden", position: "relative", borderWidth: 1, borderColor: Palette.border },
-  promoImage: { width: "100%", height: 150 },
-  promoOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "rgba(62,31,18,0.62)", paddingHorizontal: 12, paddingVertical: 10 },
-  promoTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
-  promoSubtitle: { color: "rgba(255,241,220,0.9)", fontSize: 11 },
-  promoZoomBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
-  zoomBackdrop: { flex: 1, backgroundColor: "rgba(10,5,3,0.94)", alignItems: "center", justifyContent: "center" },
-  zoomCloseBtn: { position: "absolute", top: 44, right: 18, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", zIndex: 2 },
-  zoomImageWrap: { flex: 1, width: "100%" },
-  zoomScroll: { flex: 1, width: "100%" },
-  zoomScrollContent: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
-  zoomCaption: { color: "#FFE3D6", fontSize: 13, fontWeight: "700", marginTop: 14, textAlign: "center", paddingHorizontal: 20 },
-  zoomBackBtn: { marginTop: 18, backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 28 },
-  zoomBackText: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
   categoriesSection: { paddingTop: 2, paddingBottom: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },
   comboGroupHeader: { paddingVertical: 4 },

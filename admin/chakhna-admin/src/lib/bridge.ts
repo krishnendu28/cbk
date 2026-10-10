@@ -575,22 +575,28 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
     .map((category, categoryIndex) => ({
       id: String(category.id || toGroupId(category.title) || `group-${categoryIndex + 1}`),
       title: String(category.title || "Menu"),
-      items: (Array.isArray(category.items) ? category.items : []).map((item, itemIndex) => ({
-        id: Number(item.id) || categoryIndex * 1000 + itemIndex + 1,
-        name: String(item.name || "Item"),
-        price: pickBasePrice(item.prices || { Regular: 0 }),
-        prices: item.prices,
-        portions: item.portions && Object.keys(item.portions).length > 0 ? item.portions : undefined,
-        description: String(item.description || ""),
-        contents: String(item.contents || ""),
-        storedImage: String(item.image || ""),
-        image: getMenuItemImageUrl(
-          String(item.name || "Item"),
-          String(category.title || "Menu"),
-          String(item.image || getFoodImageUrl(item.name || "food", `${category.title}-${itemIndex}`)),
-        ),
-        available: item.available !== false,
-      })),
+      items: (Array.isArray(category.items) ? category.items : []).map((item, itemIndex) => {
+        const rawStoredImage = String(item.image || "");
+        const hasUploadedImage = /^https?:\/\/[^/]*s3[.-][^/]*amazonaws\.com\//i.test(rawStoredImage);
+        return {
+          id: Number(item.id) || categoryIndex * 1000 + itemIndex + 1,
+          name: String(item.name || "Item"),
+          price: pickBasePrice(item.prices || { Regular: 0 }),
+          prices: item.prices,
+          portions: item.portions && Object.keys(item.portions).length > 0 ? item.portions : undefined,
+          description: String(item.description || ""),
+          contents: String(item.contents || ""),
+          storedImage: rawStoredImage,
+          image: hasUploadedImage
+            ? rawStoredImage
+            : getMenuItemImageUrl(
+                String(item.name || "Item"),
+                String(category.title || "Menu"),
+                String(rawStoredImage || getFoodImageUrl(item.name || "food", `${category.title}-${itemIndex}`)),
+              ),
+          available: item.available !== false,
+        };
+      }),
     }))
     .filter((group) => group.items.length > 0);
 }

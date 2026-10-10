@@ -13,6 +13,8 @@ const menuCache = {
 
 let loadPromise = null;
 let persistChain = Promise.resolve();
+let lastLoadedAt = 0;
+const MENU_CACHE_TTL_MS = 5000;
 
 function isMongoConnected() {
   return mongoose.connection.readyState === 1;
@@ -72,6 +74,7 @@ function ensureLoadedSync() {
 }
 
 export async function loadMenuStateFromDb() {
+  lastLoadedAt = Date.now();
   if (!isMongoConnected()) {
     const seeded = createSeededMenuState();
     menuCache.categories = seeded.categories;
@@ -118,6 +121,24 @@ export async function ensureMenuLoaded() {
   await loadPromise;
 }
 
+// Serverless containers keep their in-memory cache for the container's whole
+// lifetime, so edits made on one container were invisible to reads served by
+// another warm container. Reload from Mongo when the cache is stale.
+export async function ensureMenuFresh() {
+  const stale = menuCache.categories.length === 0 || Date.now() - lastLoadedAt >= MENU_CACHE_TTL_MS;
+  if (!stale) return menuCache.categories;
+
+  try {
+    loadPromise = loadMenuStateFromDb();
+    await loadPromise;
+  } catch (error) {
+    logger.warn("menu.refresh_failed", { reason: error?.message || String(error) });
+    loadPromise = null;
+  }
+
+  return menuCache.categories;
+}
+
 export async function flushMenuPersistence() {
   await persistChain;
 }
@@ -159,6 +180,7 @@ export async function resetMenuToDefaults() {
   }
   menuCache.categories = seeded.categories;
   menuCache.nextMenuItemId = seeded.nextMenuItemId;
+  lastLoadedAt = Date.now();
   return menuCache.categories;
 }
 
@@ -194,7 +216,7 @@ function persistCategories() {
   return persistChain;
 }
 
-export function createMenuItem({ categoryId, categoryTitle, name, description, contents, prices, portions, image, available }) {
+export async function createMenuItem({ categoryId, categoryTitle, name, description, contents, prices, portions, image, available }) {
   ensureLoadedSync();
   let targetCategory = findCategoryByIdOrTitle(categoryId, categoryTitle);
   if (!targetCategory) {
@@ -224,11 +246,11 @@ export function createMenuItem({ categoryId, categoryTitle, name, description, c
 
   targetCategory.items.push(nextItem);
   const payload = { categoryId: targetCategory.id, categoryTitle: targetCategory.title, item: nextItem };
-  persistCategories();
+  await persistCategories();
   return payload;
 }
 
-export function updateMenuItem(itemId, { name, description, contents, prices, portions, image, categoryId, categoryTitle, available }) {
+export async function updateMenuItem(itemId, { name, description, contents, prices, portions, image, categoryId, categoryTitle, available }) {
   ensureLoadedSync();
   const found = findMenuItemById(Number(itemId));
   if (!found) return null;
@@ -276,16 +298,16 @@ export function updateMenuItem(itemId, { name, description, contents, prices, po
   targetCategory.items.push(updatedItem);
 
   const payload = { categoryId: targetCategory.id, categoryTitle: targetCategory.title, item: updatedItem };
-  persistCategories();
+  await persistCategories();
   return payload;
 }
 
-export function deleteMenuItem(itemId) {
+export async function deleteMenuItem(itemId) {
   ensureLoadedSync();
   const found = findMenuItemById(Number(itemId));
   if (!found) return false;
 
   found.category.items.splice(found.index, 1);
-  persistCategories();
+  await persistCategories();
   return true;
 }

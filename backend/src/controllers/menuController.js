@@ -1,13 +1,19 @@
 import {
   createMenuItem,
   deleteMenuItem,
+  ensureMenuFresh,
   getAllMenuCategories,
   resetMenuToDefaults,
   updateMenuItem,
 } from "../services/menuService.js";
 import { uploadMenuImage } from "../services/imageUploadService.js";
 
-export function listMenu(_req, res) {
+export async function listMenu(_req, res) {
+  try {
+    await ensureMenuFresh();
+  } catch {
+    // fall back to whatever is cached
+  }
   return res.json(getAllMenuCategories());
 }
 
@@ -38,9 +44,9 @@ export async function resetMenu(_req, res) {
   }
 }
 
-export function addMenuItem(req, res) {
+export async function addMenuItem(req, res) {
   try {
-    const payload = createMenuItem(req.body);
+    const payload = await createMenuItem(req.body);
     return res.status(201).json(payload);
   } catch (error) {
     console.error(error);
@@ -48,11 +54,11 @@ export function addMenuItem(req, res) {
   }
 }
 
-export function editMenuItem(req, res) {
+export async function editMenuItem(req, res) {
   try {
     const itemId = req.params.id;
 
-    const payload = updateMenuItem(itemId, req.body);
+    const payload = await updateMenuItem(itemId, req.body);
     if (!payload) {
       return res.status(404).json({ message: "Menu item not found." });
     }
@@ -64,11 +70,11 @@ export function editMenuItem(req, res) {
   }
 }
 
-export function removeMenuItem(req, res) {
+export async function removeMenuItem(req, res) {
   try {
     const itemId = req.params.id;
 
-    const deleted = deleteMenuItem(itemId);
+    const deleted = await deleteMenuItem(itemId);
     if (!deleted) {
       return res.status(404).json({ message: "Menu item not found." });
     }

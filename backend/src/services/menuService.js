@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import { MenuCategory } from "../models/Menu.js";
-import { getFoodImage } from "../data/vendor/menuImages.js";
+import { getFoodImage as getStockFoodImage } from "../data/vendor/menuImages.js";
+import { getFoodImage as getMenuImage } from "../data/vendor/getFoodImage.js";
 import { createSeededMenuState } from "../data/seedMenuState.js";
 import { derivePortions, normalizePortions } from "../utils/portions.js";
 import { logger } from "../utils/logger.js";
@@ -40,8 +41,18 @@ const LEGACY_ADMIN_IMAGE_PATTERN = /\/admin\/menu-optimized\//i;
 // canonical food image so a picture is never broken or deleted.
 function resolveItemImage(image, name, categoryTitle) {
   const value = String(image || "").trim();
-  if (value && !LEGACY_ADMIN_IMAGE_PATTERN.test(value)) return value;
-  return String(getFoodImage(name, categoryTitle) || "");
+  if (!value || LEGACY_ADMIN_IMAGE_PATTERN.test(value)) {
+    return String(getMenuImage(name, categoryTitle) || "");
+  }
+  // Some items were auto-healed to a generic stock photo that does not match
+  // the dish (e.g. a stock dal photo for the Dal Tadka Combo). When the stored
+  // image is exactly that generic fallback, prefer the curated dish image so
+  // the picture matches the food. Deliberately-set / uploaded images are kept.
+  const stockFallback = String(getStockFoodImage(name, categoryTitle) || "").trim();
+  if (stockFallback && value === stockFallback) {
+    return String(getMenuImage(name, categoryTitle) || value);
+  }
+  return value;
 }
 
 function toPlain(category) {
@@ -266,7 +277,7 @@ export async function createMenuItem({ categoryId, categoryTitle, name, descript
     contents: String(contents || "").trim(),
     prices: normalizedPrices,
     portions: normalizePortions(portions),
-    image: resolveItemImage(image || getFoodImage(name, targetCategory.title), name, targetCategory.title),
+    image: resolveItemImage(image || getMenuImage(name, targetCategory.title), name, targetCategory.title),
     available: available !== false,
   };
 
@@ -297,7 +308,7 @@ export async function updateMenuItem(itemId, { name, description, contents, pric
     image:
       image !== undefined
         ? resolveItemImage(image, name || found.item.name, found.category.title)
-        : String(found.item.image || getFoodImage(name || found.item.name, found.category.title) || ""),
+        : String(found.item.image || getMenuImage(name || found.item.name, found.category.title) || ""),
     available: available !== undefined ? Boolean(available) : found.item.available !== false,
   };
 

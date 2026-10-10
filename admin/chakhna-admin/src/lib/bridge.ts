@@ -212,6 +212,7 @@ export type BridgeMenuItem = {
   description?: string;
   contents?: string;
   image: string;
+  storedImage?: string;
   available: boolean;
 };
 
@@ -582,6 +583,7 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
         portions: item.portions && Object.keys(item.portions).length > 0 ? item.portions : undefined,
         description: String(item.description || ""),
         contents: String(item.contents || ""),
+        storedImage: String(item.image || ""),
         image: getMenuItemImageUrl(
           String(item.name || "Item"),
           String(category.title || "Menu"),

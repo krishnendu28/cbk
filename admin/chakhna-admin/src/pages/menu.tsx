@@ -28,6 +28,7 @@ type MenuItemView = {
   description?: string;
   contents?: string;
   image: string;
+  storedImage?: string;
   available: boolean;
 };
 
@@ -140,6 +141,7 @@ export default function MenuManagement() {
   const [name, setName] = useState("");
   const [variantRows, setVariantRows] = useState<VariantRow[]>([{ variant: "Regular", price: "", portion: "" }]);
   const [image, setImage] = useState("");
+  const [originalImage, setOriginalImage] = useState("");
   const [description, setDescription] = useState("");
   const [contents, setContents] = useState("");
   const [categoryTitle, setCategoryTitle] = useState(menuGroups[0]?.title || "");
@@ -202,7 +204,8 @@ export default function MenuManagement() {
         portion: item.portions?.[variant] || "",
       })),
     );
-    setImage(item.image || "");
+    setImage(item.storedImage ?? item.image ?? "");
+    setOriginalImage((item.storedImage ?? item.image ?? "").trim());
     setDescription(item.description || "");
     setContents(item.contents || "");
     setCategoryTitle(activeGroup.title);
@@ -214,6 +217,7 @@ export default function MenuManagement() {
     setName("");
     setVariantRows([{ variant: "Regular", price: "", portion: "" }]);
     setImage("");
+    setOriginalImage("");
     setDescription("");
     setContents("");
     setCategoryTitle(activeGroup?.title || "");
@@ -225,6 +229,7 @@ export default function MenuManagement() {
     setName("");
     setVariantRows([{ variant: "Regular", price: "", portion: "" }]);
     setImage("");
+    setOriginalImage("");
     setDescription("");
     setContents("");
     setCategoryTitle(activeGroup?.title || "");
@@ -286,6 +291,7 @@ export default function MenuManagement() {
       return;
     }
 
+    const trimmedImage = image.trim();
     const payload = {
       name: name.trim(),
       price: pricesMap[Object.keys(pricesMap)[0]] ?? Math.min(...Object.values(pricesMap)),
@@ -293,7 +299,7 @@ export default function MenuManagement() {
       portions: portionsMap,
       description: description.trim() ? description.trim() : undefined,
       contents: contents.trim() ? contents.trim() : undefined,
-      image: image.trim() || undefined,
+      image: trimmedImage && trimmedImage !== originalImage ? trimmedImage : undefined,
       categoryTitle: categoryTitle.trim(),
       available,
     };

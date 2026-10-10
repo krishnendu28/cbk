@@ -32,6 +32,18 @@ function normalizePrices(input) {
   return { Regular: 0 };
 }
 
+const LEGACY_ADMIN_IMAGE_PATTERN = /\/admin\/menu-optimized\//i;
+
+// The admin app once saved its own bundled image path resolved against the API
+// host (e.g. https://<api>/admin/menu-optimized/<file>), which is not a real
+// image URL. Treat those (and blanks) as "no image" and fall back to the
+// canonical food image so a picture is never broken or deleted.
+function resolveItemImage(image, name, categoryTitle) {
+  const value = String(image || "").trim();
+  if (value && !LEGACY_ADMIN_IMAGE_PATTERN.test(value)) return value;
+  return String(getFoodImage(name, categoryTitle) || "");
+}
+
 function toPlain(category) {
   return {
     id: category.id,
@@ -46,7 +58,7 @@ function toPlain(category) {
         contents: item.contents || "",
         prices: item.prices || {},
         portions,
-        image: item.image || "",
+        image: resolveItemImage(item.image, item.name, category.title),
         available: item.available !== false,
       };
     }),
@@ -91,8 +103,18 @@ export async function loadMenuStateFromDb() {
     return menuCache.categories;
   }
 
+  let repairedImage = false;
   menuCache.categories = docs
-    .map((doc) => toPlain(doc))
+    .map((doc) => {
+      const plain = toPlain(doc);
+      const rawItems = Array.isArray(doc.items) ? doc.items : [];
+      plain.items.forEach((item, index) => {
+        if (String(rawItems[index]?.image || "").trim() !== String(item.image || "").trim()) {
+          repairedImage = true;
+        }
+      });
+      return plain;
+    })
     .sort((a, b) => String(a.title).localeCompare(String(b.title)));
 
   let maxItemId = 0;
@@ -104,6 +126,10 @@ export async function loadMenuStateFromDb() {
     });
   });
   menuCache.nextMenuItemId = maxItemId + 1;
+
+  if (repairedImage) {
+    persistCategories().catch(() => {});
+  }
 
   return menuCache.categories;
 }
@@ -240,7 +266,7 @@ export async function createMenuItem({ categoryId, categoryTitle, name, descript
     contents: String(contents || "").trim(),
     prices: normalizedPrices,
     portions: normalizePortions(portions),
-    image: String(image || getFoodImage(name, targetCategory.title) || ""),
+    image: resolveItemImage(image || getFoodImage(name, targetCategory.title), name, targetCategory.title),
     available: available !== false,
   };
 
@@ -270,7 +296,7 @@ export async function updateMenuItem(itemId, { name, description, contents, pric
     portions: portions !== undefined ? normalizePortions(portions) : found.item.portions || {},
     image:
       image !== undefined
-        ? String(image || "")
+        ? resolveItemImage(image, name || found.item.name, found.category.title)
         : String(found.item.image || getFoodImage(name || found.item.name, found.category.title) || ""),
     available: available !== undefined ? Boolean(available) : found.item.available !== false,
   };

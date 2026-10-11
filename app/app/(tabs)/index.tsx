@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { useCart } from "@/context/cart-context";
@@ -32,6 +33,7 @@ import { MenuItemCard, MenuItemDetailSheet } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
 import type { MenuCategory, MenuItem } from "@/types/menu";
+import { isNonVegItem, isVegItem, type VegFilter } from "@/utils/veg";
 
 type HeroSlide = {
   image: ReturnType<typeof getMenuImageByFileName>;
@@ -70,7 +72,6 @@ const heroSlides: HeroSlide[] = [
 
 const MAKHANA_ITEM_ID = 900001;
 const SAVED_ADDRESSES_KEY = "cbk_saved_addresses";
-const NON_VEG_KEYWORDS = ["chicken", "egg", "fish", "mutton", "prawn", "keema"];
 type CategoryRow = { kind: "header"; label: string } | { kind: "item"; item: MenuItem };
 const DRY_FRUIT_IMAGES = {
   makhana: "https://cbk-gamma.vercel.app/menu/makhana.jpg",
@@ -231,6 +232,22 @@ function normalizeDateOfBirth(value: string): string | undefined {
   return undefined;
 }
 
+function dateToIso(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDobToDate(value: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (match) {
+    const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date(2000, 0, 1);
+}
+
 export default function MenuScreen() {
   const { session, isHydrated, login, loginAsGuest, logout } = useSession();
   const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
@@ -278,6 +295,9 @@ export default function MenuScreen() {
   const [bestSellersOpen, setBestSellersOpen] = useState(false);
   const [newLaunchSheetItem, setNewLaunchSheetItem] = useState<MenuItem | null>(null);
   const [sellerFilter, setSellerFilter] = useState<"All" | "Veg" | "NonVeg">("All");
+  const [categoryFilter, setCategoryFilter] = useState<VegFilter>("All");
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [checkoutPhone, setCheckoutPhone] = useState("");
   const [savedAddresses, setSavedAddresses] = useState<{ room: string; landmark: string }[]>([]);
 
   const findMenuItemById = useCallback((menuItemId: number) => {
@@ -423,6 +443,12 @@ export default function MenuScreen() {
     });
   };
 
+  useEffect(() => {
+    if (session?.phone) {
+      setCheckoutPhone((prev) => (prev ? prev : session.phone));
+    }
+  }, [session?.phone]);
+
   const activeCategoryData = useMemo(
     () => menuCategories.find((category) => category.id === activeCategory) ?? menuCategories[0],
     [activeCategory, menuCategories],
@@ -430,16 +456,23 @@ export default function MenuScreen() {
 
   const activeCategoryRows = useMemo<CategoryRow[]>(() => {
     const items = activeCategoryData?.items?.filter((entry) => entry.available !== false) || [];
+    if (!items.length) return [];
+
+    const veg = items.filter((entry) => isVegItem(entry.name));
+    const nonVeg = items.filter((entry) => isNonVegItem(entry.name));
+
+    if (categoryFilter === "Veg") return veg.map((item) => ({ kind: "item" as const, item }));
+    if (categoryFilter === "NonVeg") return nonVeg.map((item) => ({ kind: "item" as const, item }));
+
     if (activeCategoryData?.id !== "combos") return items.map((item) => ({ kind: "item" as const, item }));
-    const veg = items.filter((entry) => !NON_VEG_KEYWORDS.some((keyword) => entry.name.toLowerCase().includes(keyword)));
-    const nonVeg = items.filter((entry) => NON_VEG_KEYWORDS.some((keyword) => entry.name.toLowerCase().includes(keyword)));
+
     const rows: CategoryRow[] = [];
     if (veg.length) rows.push({ kind: "header", label: `Vegetarian Combos (${veg.length})` });
     veg.forEach((item) => rows.push({ kind: "item", item }));
     if (nonVeg.length) rows.push({ kind: "header", label: `Non-Vegetarian Combos (${nonVeg.length})` });
     nonVeg.forEach((item) => rows.push({ kind: "item", item }));
     return rows;
-  }, [activeCategoryData]);
+  }, [activeCategoryData, categoryFilter]);
 
   const categoryCards = useMemo(() => {
     return menuCategories
@@ -780,6 +813,28 @@ export default function MenuScreen() {
               />
             ) : null}
           </View>
+
+          <View style={styles.categoryFilterWrap}>
+            <View style={styles.categoryFilterHead}>
+              <Text style={styles.categoryFilterTitle}>{(activeCategoryData?.title || "Menu").toUpperCase()}</Text>
+              <Text style={styles.categoryFilterCount}>
+                {activeCategoryRows.filter((row) => row.kind === "item").length} items
+              </Text>
+            </View>
+            <View style={styles.sellerFilterRow}>
+              {(["All", "Veg", "NonVeg"] as const).map((option) => (
+                <TouchableOpacity
+                  key={`cat-filter-${option}`}
+                  style={[styles.sellerFilterChip, categoryFilter === option && styles.sellerFilterChipActive]}
+                  onPress={() => setCategoryFilter(option)}
+                  activeOpacity={0.85}>
+                  <Text style={[styles.sellerFilterChipText, categoryFilter === option && styles.sellerFilterChipTextActive]}>
+                    {option === "Veg" ? "🌿 Veg" : option === "NonVeg" ? "🍗 Non-Veg" : "All"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
       )}
     </View>
@@ -796,6 +851,15 @@ export default function MenuScreen() {
       return;
     }
     login({ name: loginName, phone: cleanedPhone, dateOfBirth: normalizeDateOfBirth(loginDob) });
+  };
+
+  const handleDobChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === "android") {
+      setShowDobPicker(false);
+    }
+    if (event.type === "set" && selectedDate) {
+      setLoginDob(dateToIso(selectedDate));
+    }
   };
 
   async function callRestaurant() {
@@ -845,6 +909,12 @@ export default function MenuScreen() {
       return;
     }
 
+    const cleanedCheckoutPhone = digitsOnly(checkoutPhone);
+    if (cleanedCheckoutPhone.length !== 10) {
+      Alert.alert("Phone required", "Please enter a valid 10-digit contact phone number to place the order.");
+      return;
+    }
+
     if (!cartItems.length) {
       Alert.alert("Cart empty", "Add items before checkout.");
       return;
@@ -854,16 +924,17 @@ export default function MenuScreen() {
     try {
       const trimmedName = (session.name || "").trim();
       const customerName = trimmedName.length >= 2 ? trimmedName : session.guest ? "Guest" : "Customer";
+      const safeEta = Math.min(180, Math.max(15, Math.round(Number(etaMinutes) || 30)));
       await axios.post(`${API_BASE_URL}/api/orders`, {
         customerName,
-        phone: session.phone,
+        phone: cleanedCheckoutPhone,
         dateOfBirth: normalizeDateOfBirth(session.dateOfBirth || ""),
         address: `Flat/Room: ${flatRoom}${landmark.trim() ? `, Landmark: ${landmark}` : ""}`,
         instructions: instructions.trim(),
         items: cartItems,
         subtotal,
         promoCode: promoInput.trim() || undefined,
-        deliveryEtaMinutes: etaMinutes,
+        deliveryEtaMinutes: safeEta,
         total: grandTotal,
       });
 
@@ -923,13 +994,42 @@ export default function MenuScreen() {
             keyboardType="phone-pad"
             maxLength={10}
           />
-          <TextInput
-            value={loginDob}
-            onChangeText={setLoginDob}
-            placeholder="Date of birth (optional, e.g. 1995-08-24)"
-            placeholderTextColor={Palette.textMuted}
-            style={styles.input}
-          />
+          <TouchableOpacity style={styles.dobField} onPress={() => setShowDobPicker(true)} activeOpacity={0.85}>
+            <Ionicons name="calendar-outline" size={16} color={Palette.crimson} />
+            <Text style={[styles.dobFieldText, !loginDob && styles.dobFieldPlaceholder]}>
+              {loginDob ? loginDob : "Date of birth (optional) — tap to pick"}
+            </Text>
+          </TouchableOpacity>
+          {showDobPicker && Platform.OS === "android" ? (
+            <DateTimePicker
+              value={parseDobToDate(loginDob)}
+              mode="date"
+              display="calendar"
+              maximumDate={new Date()}
+              minimumDate={new Date(1900, 0, 1)}
+              onChange={handleDobChange}
+            />
+          ) : null}
+          {showDobPicker && Platform.OS !== "android" ? (
+            <Modal transparent animationType="fade" visible onRequestClose={() => setShowDobPicker(false)}>
+              <View style={styles.dobModalBackdrop}>
+                <View style={styles.dobModalCard}>
+                  <Text style={styles.dobModalTitle}>Select your date of birth</Text>
+                  <DateTimePicker
+                    value={parseDobToDate(loginDob)}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
+                    onChange={handleDobChange}
+                  />
+                  <TouchableOpacity style={styles.dobModalDone} onPress={() => setShowDobPicker(false)} activeOpacity={0.85}>
+                    <Text style={styles.dobModalDoneText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          ) : null}
           <TouchableOpacity style={styles.callBtn} onPress={callRestaurant}>
             <Ionicons name="call-outline" size={16} color={Palette.crimson} />
             <Text style={styles.callBtnText}>Call Restaurant: {RESTAURANT_PHONE_LABEL}</Text>
@@ -1193,6 +1293,15 @@ export default function MenuScreen() {
               </View>
             ) : null}
 
+            <TextInput
+              value={checkoutPhone}
+              onChangeText={(value) => setCheckoutPhone(digitsOnly(value).slice(0, 10))}
+              placeholder="Contact phone number *"
+              placeholderTextColor={Palette.textMuted}
+              style={styles.input}
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
             <TextInput value={flatRoom} onChangeText={setFlatRoom} placeholder="Flat / House no and Room" placeholderTextColor={Palette.textMuted} style={styles.input} />
             <TextInput value={landmark} onChangeText={setLandmark} placeholder="Nearby landmark (optional)" placeholderTextColor={Palette.textMuted} style={styles.input} />
             <TextInput value={instructions} onChangeText={setInstructions} placeholder="Instructions (e.g. less spicy, no onions)" placeholderTextColor={Palette.textMuted} style={styles.input} />
@@ -1238,6 +1347,14 @@ const styles = StyleSheet.create({
   loginTitle: { color: Palette.text, fontSize: 24, fontWeight: "700", textAlign: "center" },
   loginSubtitle: { color: Palette.textMuted, textAlign: "center", marginBottom: 12 },
   input: { backgroundColor: Palette.surface, color: Palette.text, borderRadius: 10, borderWidth: 1, borderColor: Palette.borderStrong, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
+  dobField: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: Palette.surface, borderRadius: 10, borderWidth: 1, borderColor: Palette.borderStrong, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 8 },
+  dobFieldText: { color: Palette.text, fontSize: 14, flex: 1 },
+  dobFieldPlaceholder: { color: Palette.textMuted },
+  dobModalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center", padding: 24 },
+  dobModalCard: { width: "100%", backgroundColor: Palette.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: Palette.border },
+  dobModalTitle: { color: Palette.text, fontSize: 15, fontWeight: "700", textAlign: "center", marginBottom: 8 },
+  dobModalDone: { backgroundColor: Palette.crimson, borderRadius: 10, paddingVertical: 11, alignItems: "center", marginTop: 8 },
+  dobModalDoneText: { color: "#FFFFFF", fontWeight: "800", fontSize: 14 },
   callBtn: { backgroundColor: Palette.cardSoft, borderRadius: 10, paddingVertical: 10, marginBottom: 8, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, borderWidth: 1, borderColor: Palette.borderStrong },
   callBtnText: { color: Palette.crimson, textAlign: "center", fontWeight: "700" },
   loginBtn: { backgroundColor: Palette.crimson, borderRadius: 10, paddingVertical: 11, marginTop: 2 },
@@ -1489,6 +1606,10 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   sellerFilterChipText: { color: Palette.textMuted, fontSize: 12, fontWeight: "700" },
   sellerFilterChipTextActive: { color: Palette.crimson },
   sellerFilterEmpty: { color: Palette.textMuted, fontSize: 12.5, textAlign: "center", paddingVertical: 16, width: "100%" },
+  categoryFilterWrap: { marginTop: 18, marginBottom: 4, gap: 10 },
+  categoryFilterHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 2 },
+  categoryFilterTitle: { color: Palette.text, fontWeight: "800", fontSize: 15, letterSpacing: 0.6 },
+  categoryFilterCount: { color: Palette.textMuted, fontSize: 11.5, fontWeight: "600" },
 
   categoriesSection: { paddingTop: 2, paddingBottom: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 10 },

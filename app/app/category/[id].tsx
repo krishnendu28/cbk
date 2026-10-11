@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -11,6 +11,7 @@ import { useSession } from "@/context/session-context";
 import { Palette } from "@/constants/theme";
 import type { MenuCategory } from "@/types/menu";
 import { API_BASE_URL } from "@/utils/api";
+import { isNonVegItem, isVegItem, type VegFilter } from "@/utils/veg";
 
 export default function CategoryScreen() {
   const router = useRouter();
@@ -25,8 +26,20 @@ export default function CategoryScreen() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<VegFilter>("All");
 
   const category = categories.find((entry) => entry.id === id);
+
+  useEffect(() => {
+    setCategoryFilter("All");
+  }, [id]);
+
+  const visibleItems = useMemo(() => {
+    const items = category?.items || [];
+    if (categoryFilter === "Veg") return items.filter((entry) => isVegItem(entry.name));
+    if (categoryFilter === "NonVeg") return items.filter((entry) => isNonVegItem(entry.name));
+    return items;
+  }, [category, categoryFilter]);
 
   useEffect(() => {
     if (!session) return;
@@ -75,7 +88,7 @@ export default function CategoryScreen() {
           </Text>
           {category ? (
             <Text style={styles.headerSubtitle}>
-              {category.items.length} {category.items.length === 1 ? "item" : "items"}
+              {visibleItems.length} {visibleItems.length === 1 ? "item" : "items"}
             </Text>
           ) : null}
         </View>
@@ -97,26 +110,45 @@ export default function CategoryScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={category?.items || []}
-          keyExtractor={(item) => `${category?.id}-${item.id}`}
-          contentContainerStyle={{ paddingHorizontal: horizontalSafePadding, paddingTop: 12, paddingBottom: cartItems.length > 0 ? 90 : 40 }}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          updateCellsBatchingPeriod={50}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-          renderItem={({ item }) => (
-            <MenuItemCard item={item} categoryTitle={category?.title || ""} openCartOnAdd={false} />
-          )}
-          ListEmptyComponent={
-            <View style={styles.centerState}>
-              <Text style={styles.stateTitle}>No items in this category</Text>
-              <Text style={styles.stateText}>Please check back later.</Text>
-            </View>
-          }
-        />
+        <View style={{ flex: 1 }}>
+          <View style={[styles.filterRow, { paddingHorizontal: horizontalSafePadding }]}>
+            {(["All", "Veg", "NonVeg"] as const).map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={[styles.filterChip, categoryFilter === option && styles.filterChipActive]}
+                onPress={() => setCategoryFilter(option)}
+                activeOpacity={0.85}>
+                <Text style={[styles.filterChipText, categoryFilter === option && styles.filterChipTextActive]}>
+                  {option === "Veg" ? "🌿 Veg" : option === "NonVeg" ? "🍗 Non-Veg" : "All"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <FlatList
+            data={visibleItems}
+            keyExtractor={(item) => `${category?.id}-${item.id}`}
+            contentContainerStyle={{ paddingHorizontal: horizontalSafePadding, paddingTop: 12, paddingBottom: cartItems.length > 0 ? 90 : 40 }}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            updateCellsBatchingPeriod={50}
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            renderItem={({ item }) => (
+              <MenuItemCard item={item} categoryTitle={category?.title || ""} openCartOnAdd={false} />
+            )}
+            ListEmptyComponent={
+              <View style={styles.centerState}>
+                <Text style={styles.stateTitle}>
+                  {categoryFilter === "All" ? "No items in this category" : "No items in this filter"}
+                </Text>
+                <Text style={styles.stateText}>
+                  {categoryFilter === "All" ? "Please check back later." : "Try another filter."}
+                </Text>
+              </View>
+            }
+          />
+        </View>
       )}
 
       {cartItems.length > 0 && (
@@ -151,6 +183,11 @@ const styles = StyleSheet.create({
   stateText: { color: Palette.textMuted, fontSize: 13, textAlign: "center", lineHeight: 19 },
   retryBtn: { backgroundColor: Palette.crimson, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10, marginTop: 6 },
   retryBtnText: { color: "#FFFFFF", fontWeight: "700", textAlign: "center" },
+  filterRow: { flexDirection: "row", gap: 8, paddingTop: 4, paddingBottom: 8 },
+  filterChip: { borderRadius: 999, paddingVertical: 7, paddingHorizontal: 14, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.borderStrong },
+  filterChipActive: { backgroundColor: Palette.cream, borderColor: Palette.crimson },
+  filterChipText: { color: Palette.textMuted, fontSize: 12, fontWeight: "700" },
+  filterChipTextActive: { color: Palette.crimson },
   cartPill: { position: "absolute", backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E1826", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
   cartPillText: { color: "#FFFFFF", fontWeight: "800", flexShrink: 1 },
   cartPillTotalWrap: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },

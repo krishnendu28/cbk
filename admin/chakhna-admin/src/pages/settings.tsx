@@ -25,7 +25,7 @@ import {
 export default function Settings() {
   const { outletId } = useAppOutlet();
   const queryClient = useQueryClient();
-  const { data: settings, isLoading, isError, error } = useGetSettings(outletId);
+  const { data: settings, isLoading, isError, error, refetch } = useGetSettings(outletId);
   const updateSettings = useUpdateSettings();
   const [draftSettings, setDraftSettings] = useState<typeof settings | null>(null);
   const [isOrderingOpen, setIsOrderingOpen] = useState(true);
@@ -282,6 +282,9 @@ export default function Settings() {
           <p className="mt-1 text-sm text-muted-foreground">
             {error instanceof Error ? error.message : "Please verify backend settings endpoint and admin access."}
           </p>
+          <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+            Try again
+          </Button>
         </div>
       </div>
     );
@@ -293,6 +296,9 @@ export default function Settings() {
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="font-medium">Settings are currently unavailable.</p>
           <p className="mt-1 text-sm text-muted-foreground">Please refresh or check backend connectivity.</p>
+          <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+            Try again
+          </Button>
         </div>
       </div>
     );

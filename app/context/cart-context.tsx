@@ -38,6 +38,8 @@ type CartContextType = {
   orderWindows: OrderWindow[];
   firstOrderDiscountEnabled: boolean;
   firstOrderDiscountRate: number;
+  discountEnabled: boolean;
+  discountRate: number;
   isFirstOrder: boolean;
   markFirstOrderUsed: () => void;
   promoActive: boolean;
@@ -61,6 +63,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [orderWindows, setOrderWindows] = useState<OrderWindow[]>([]);
   const [firstOrderDiscountEnabled, setFirstOrderDiscountEnabled] = useState(false);
   const [firstOrderDiscountRate, setFirstOrderDiscountRate] = useState(15);
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountRate, setDiscountRate] = useState(0);
   const [isFirstOrder, setIsFirstOrder] = useState(false);
   const [promoActive, setPromoActive] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -118,6 +122,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (Array.isArray(settings?.orderWindows)) setOrderWindows(settings.orderWindows as OrderWindow[]);
         setFirstOrderDiscountEnabled(Boolean(settings?.firstOrderDiscountEnabled));
         if (Number(settings?.firstOrderDiscountRate) > 0) setFirstOrderDiscountRate(Number(settings.firstOrderDiscountRate));
+        setDiscountEnabled(Boolean(settings?.discountEnabled));
+        setDiscountRate(Number(settings?.discountRate || 0));
         setPromoActive(Boolean(settings?.promoActive));
         setPromoCode(String(settings?.promoDiscountCode || "").trim());
         setPromoRate(Number(settings?.promoDiscountRate || 0));
@@ -266,6 +272,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         orderWindows,
         firstOrderDiscountEnabled,
         firstOrderDiscountRate,
+        discountEnabled,
+        discountRate,
         isFirstOrder,
         markFirstOrderUsed,
         promoActive,

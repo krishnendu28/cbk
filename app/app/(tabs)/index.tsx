@@ -212,6 +212,25 @@ const CATEGORY_CARD_META: Record<string, CategoryCardMeta> = {
 const RESTAURANT_PHONE_LABEL = "+91 8420252042";
 const RESTAURANT_PHONE_DIAL = "+918420252042";
 
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function normalizeDateOfBirth(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const dayFirst = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dayFirst) {
+    const day = dayFirst[1].padStart(2, "0");
+    const month = dayFirst[2].padStart(2, "0");
+    return `${dayFirst[3]}-${month}-${day}`;
+  }
+
+  return undefined;
+}
+
 export default function MenuScreen() {
   const { session, isHydrated, login, loginAsGuest, logout } = useSession();
   const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
@@ -231,6 +250,8 @@ export default function MenuScreen() {
     orderWindows,
     firstOrderDiscountEnabled,
     firstOrderDiscountRate,
+    discountEnabled,
+    discountRate,
     isFirstOrder,
     markFirstOrderUsed,
     promoRate,
@@ -444,11 +465,15 @@ export default function MenuScreen() {
 
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.totalPrice, 0), [cartItems]);
   const deliveryChargeForCart = cartItems.length ? deliveryCharge : 0;
-  const firstOrderDiscount =
-    firstOrderDiscountEnabled && isFirstOrder ? Number(((subtotal * firstOrderDiscountRate) / 100).toFixed(2)) : 0;
   const promoApplied = validatePromoCode(promoInput);
   const promoDiscount = promoApplied ? Number(((subtotal * promoRate) / 100).toFixed(2)) : 0;
-  const totalDiscount = firstOrderDiscount + promoDiscount;
+  const firstOrderDiscount =
+    firstOrderDiscountEnabled && isFirstOrder ? Number(((subtotal * firstOrderDiscountRate) / 100).toFixed(2)) : 0;
+  const generalDiscount =
+    !promoDiscount && !firstOrderDiscount && discountEnabled && discountRate > 0
+      ? Number(((subtotal * discountRate) / 100).toFixed(2))
+      : 0;
+  const totalDiscount = promoDiscount || firstOrderDiscount || generalDiscount;
   const grandTotal = Math.max(0, subtotal - totalDiscount + deliveryChargeForCart);
 
   const timingLabel = useMemo(() => {
@@ -564,10 +589,22 @@ export default function MenuScreen() {
             </View>
           ) : null}
 
-          {firstOrderDiscountEnabled && isFirstOrder ? (
+          {promoActive && promoRate > 0 ? (
+            <View style={styles.offersStrip}>
+              <Ionicons name="pricetag-outline" size={14} color={Palette.crimson} />
+              <Text style={styles.offersText}>
+                {promoCode ? `Use code ${promoCode} · ` : ""}{promoRate}% off your order right now.
+              </Text>
+            </View>
+          ) : firstOrderDiscountEnabled && isFirstOrder ? (
             <View style={styles.offersStrip}>
               <Ionicons name="gift-outline" size={14} color={Palette.crimson} />
               <Text style={styles.offersText}>First order! Get {firstOrderDiscountRate}% off on your first meal.</Text>
+            </View>
+          ) : discountEnabled && discountRate > 0 ? (
+            <View style={styles.offersStrip}>
+              <Ionicons name="pricetag-outline" size={14} color={Palette.crimson} />
+              <Text style={styles.offersText}>Get {discountRate}% off on your order now.</Text>
             </View>
           ) : null}
 
@@ -749,12 +786,16 @@ export default function MenuScreen() {
   );
 
   const handleLogin = () => {
-    const cleanedPhone = loginPhone.trim();
+    const cleanedPhone = digitsOnly(loginPhone);
     if (!cleanedPhone) {
       Alert.alert("Phone required", "Please enter your phone number to continue.");
       return;
     }
-    login({ name: loginName, phone: cleanedPhone, dateOfBirth: loginDob.trim() || undefined });
+    if (cleanedPhone.length !== 10) {
+      Alert.alert("Invalid phone number", "Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    login({ name: loginName, phone: cleanedPhone, dateOfBirth: normalizeDateOfBirth(loginDob) });
   };
 
   async function callRestaurant() {
@@ -811,10 +852,12 @@ export default function MenuScreen() {
 
     setPlacingOrder(true);
     try {
+      const trimmedName = (session.name || "").trim();
+      const customerName = trimmedName.length >= 2 ? trimmedName : session.guest ? "Guest" : "Customer";
       await axios.post(`${API_BASE_URL}/api/orders`, {
-        customerName: session.name || (session.guest ? "Guest" : ""),
+        customerName,
         phone: session.phone,
-        dateOfBirth: session.dateOfBirth,
+        dateOfBirth: normalizeDateOfBirth(session.dateOfBirth || ""),
         address: `Flat/Room: ${flatRoom}${landmark.trim() ? `, Landmark: ${landmark}` : ""}`,
         instructions: instructions.trim(),
         items: cartItems,
@@ -840,7 +883,14 @@ export default function MenuScreen() {
       if (error?.response?.status === 403) {
         Alert.alert("Ordering closed", error?.response?.data?.message || "Ordering is currently closed.");
       } else {
-        Alert.alert("Order failed", error?.response?.data?.message || "Please try again.");
+        const issues = error?.response?.data?.issues;
+        const issueText = Array.isArray(issues)
+          ? issues.map((issue: any) => issue?.message).filter(Boolean).join("\n")
+          : "";
+        Alert.alert(
+          "Order failed",
+          issueText || error?.response?.data?.message || "Please try again.",
+        );
       }
     } finally {
       setPlacingOrder(false);
@@ -864,11 +914,19 @@ export default function MenuScreen() {
           <Text style={styles.loginTitle}>Chakhna By Kilo</Text>
           <Text style={styles.loginSubtitle}>Premium food ordering in your pocket.</Text>
           <TextInput value={loginName} onChangeText={setLoginName} placeholder="Name (optional)" placeholderTextColor={Palette.textMuted} style={styles.input} />
-          <TextInput value={loginPhone} onChangeText={setLoginPhone} placeholder="Phone number *" placeholderTextColor={Palette.textMuted} style={styles.input} keyboardType="phone-pad" />
+          <TextInput
+            value={loginPhone}
+            onChangeText={(value) => setLoginPhone(digitsOnly(value).slice(0, 10))}
+            placeholder="Phone number *"
+            placeholderTextColor={Palette.textMuted}
+            style={styles.input}
+            keyboardType="phone-pad"
+            maxLength={10}
+          />
           <TextInput
             value={loginDob}
             onChangeText={setLoginDob}
-            placeholder="Date of birth (optional, for birthday offers)"
+            placeholder="Date of birth (optional, e.g. 1995-08-24)"
             placeholderTextColor={Palette.textMuted}
             style={styles.input}
           />
@@ -988,7 +1046,9 @@ export default function MenuScreen() {
                     ? `${promoCode ? `Use code ${promoCode} · ` : ""}${promoRate}% OFF your next order`
                     : firstOrderDiscountEnabled && isFirstOrder
                       ? `First order ${firstOrderDiscountRate}% off`
-                      : "No active offers right now"}
+                      : discountEnabled && discountRate > 0
+                        ? `${discountRate}% OFF on all orders`
+                        : "No active offers right now"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1140,11 +1200,14 @@ export default function MenuScreen() {
 
             <View style={styles.billBox}>
               <Text style={styles.billText}>Subtotal: Rs {subtotal}</Text>
-              {firstOrderDiscount > 0 ? (
+              {promoDiscount > 0 ? (
+                <Text style={styles.billDiscount}>Promo Applied ({promoRate}%): -Rs {promoDiscount}</Text>
+              ) : null}
+              {promoDiscount <= 0 && firstOrderDiscount > 0 ? (
                 <Text style={styles.billDiscount}>First Order Discount ({firstOrderDiscountRate}%): -Rs {firstOrderDiscount}</Text>
               ) : null}
-              {promoApplied ? (
-                <Text style={styles.billDiscount}>Promo Applied ({promoRate}%): -Rs {promoDiscount}</Text>
+              {promoDiscount <= 0 && firstOrderDiscount <= 0 && generalDiscount > 0 ? (
+                <Text style={styles.billDiscount}>Discount ({discountRate}%): -Rs {generalDiscount}</Text>
               ) : null}
               <Text style={styles.billText}>Delivery: Rs {deliveryChargeForCart}</Text>
               <Text style={styles.billEta}>Estimated delivery: about {etaMinutes} min</Text>

@@ -194,6 +194,65 @@ async function main() {
   });
   console.log("delete promo order", r.status, "ok", r.body?.ok);
 
+  // Admin "Enable Discount" (general outlet discount) should apply to repeat orders.
+  const settingsSnapshot = (await helper("/api/outlets/1/settings")).body;
+  r = await helper("/api/outlets/1/settings", {
+    method: "PUT",
+    headers: { authorization: "Bearer dev-owner-token" },
+    body: { ...settingsSnapshot, discountEnabled: true, discountRate: 10 },
+  });
+  console.log("enable general discount", r.status, "rate", r.body?.discountRate);
+  if (r.status !== 200 || Number(r.body?.discountRate) !== 10) throw new Error("failed to enable general discount");
+
+  r = await helper("/api/orders", {
+    method: "POST",
+    headers: { origin: "http://localhost:5173" },
+    body: {
+      customerName: "Discount Person",
+      phone: "6666666666",
+      address: "Discount Address Kolkata",
+      items: [{ name: "French Fries", variant: "Regular", quantity: 2, unitPrice: 100, totalPrice: 200 }],
+      total: 210,
+    },
+  });
+  console.log("general discount first order", r.status, "isFirstOrder", r.body?.isFirstOrder, "rate", r.body?.discountRate, "total", r.body?.total);
+  if (r.status !== 201) throw new Error("general discount first order failed");
+  if (r.body?.isFirstOrder !== true || Number(r.body?.discountRate) !== 15) {
+    throw new Error("first order should still get the 15% first-order discount (first-order wins)");
+  }
+  const generalFirstOrderId = r.body._id;
+
+  r = await helper("/api/orders", {
+    method: "POST",
+    headers: { origin: "http://localhost:5173" },
+    body: {
+      customerName: "Discount Person",
+      phone: "6666666666",
+      address: "Discount Address Kolkata",
+      items: [{ name: "French Fries", variant: "Regular", quantity: 2, unitPrice: 100, totalPrice: 200 }],
+      total: 210,
+    },
+  });
+  console.log("general discount repeat order", r.status, "isFirstOrder", r.body?.isFirstOrder, "rate", r.body?.discountRate, "amount", r.body?.discountAmount, "total", r.body?.total);
+  if (r.status !== 201) throw new Error("general discount repeat order failed");
+  if (r.body?.isFirstOrder !== false) throw new Error("repeat order should not be flagged first order");
+  if (Number(r.body?.discountRate) !== 10 || Number(r.body?.discountAmount) !== 20) {
+    throw new Error("repeat order should get the 10% outlet discount");
+  }
+  if (Number(r.body?.total) !== 190) throw new Error("repeat order total should be 200 - 20 + 10 = 190");
+  const generalRepeatOrderId = r.body._id;
+
+  await helper(`/api/orders/${generalFirstOrderId}`, { method: "DELETE" });
+  await helper(`/api/orders/${generalRepeatOrderId}`, { method: "DELETE" });
+
+  r = await helper("/api/outlets/1/settings", {
+    method: "PUT",
+    headers: { authorization: "Bearer dev-owner-token" },
+    body: { ...settingsSnapshot, discountEnabled: false, discountRate: 0 },
+  });
+  console.log("disable general discount", r.status);
+  if (r.status !== 200) throw new Error("failed to disable general discount");
+
   r = await helper("/api/orders");
   console.log("list orders after delete", r.status, "count", r.body?.length);
 

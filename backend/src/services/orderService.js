@@ -224,12 +224,21 @@ export async function createOrder({
     finalDiscountRate = Number(outletSettings.promoDiscountRate || 0);
     finalDiscountAmount = Math.round((orderSubtotal * finalDiscountRate) / 100);
     finalPromoCode = promoCodeActive || normalizedPromoCode;
-  } else if (isFirstOrder) {
-    const firstOrderDiscount = applyFirstOrderDiscount(outletSettings, orderSubtotal);
+  } else {
+    const firstOrderDiscount = isFirstOrder ? applyFirstOrderDiscount(outletSettings, orderSubtotal) : null;
     if (firstOrderDiscount) {
       finalDiscountEnabled = true;
       finalDiscountRate = firstOrderDiscount.rate;
       finalDiscountAmount = firstOrderDiscount.amount;
+    } else if (!finalDiscountEnabled) {
+      // Admin-configured "Enable Discount" applies to all user orders unless the
+      // caller (POS) already supplied a manual discount.
+      const outletDiscountRate = Math.min(100, Math.max(0, Number(outletSettings.discountRate) || 0));
+      if (outletSettings.discountEnabled && outletDiscountRate > 0) {
+        finalDiscountEnabled = true;
+        finalDiscountRate = outletDiscountRate;
+        finalDiscountAmount = Math.round((orderSubtotal * outletDiscountRate) / 100);
+      }
     }
   }
 

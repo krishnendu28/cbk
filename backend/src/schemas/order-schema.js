@@ -22,20 +22,45 @@ export const orderIdParamSchema = z.object({
   id: z.string().trim().min(1),
 });
 
+function normalizeDateOfBirth(value) {
+  if (value === undefined || value === null) return undefined;
+  const trimmed = String(value).trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const dayFirst = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (dayFirst) {
+    const day = dayFirst[1].padStart(2, "0");
+    const month = dayFirst[2].padStart(2, "0");
+    return `${dayFirst[3]}-${month}-${day}`;
+  }
+
+  return trimmed;
+}
+
+function normalizeCustomerName(value) {
+  if (value === undefined || value === null) return "Customer";
+  const trimmed = String(value).trim();
+  return trimmed.length >= 2 ? trimmed : "Customer";
+}
+
 export const createOrderSchema = z.object({
-  customerName: z.string().trim().min(2).max(120),
+  customerName: z.preprocess(normalizeCustomerName, z.string().trim().min(2).max(120)),
   phone: phoneSchema,
-  dateOfBirth: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-        !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()) &&
-        new Date(`${value}T00:00:00.000Z`).getTime() <= Date.now(),
-      { message: "Invalid date of birth." },
-    )
-    .optional(),
+  dateOfBirth: z.preprocess(
+    normalizeDateOfBirth,
+    z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+          !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()) &&
+          new Date(`${value}T00:00:00.000Z`).getTime() <= Date.now(),
+        { message: "Invalid date of birth." },
+      )
+      .optional(),
+  ),
   address: z.string().trim().min(5).max(300),
   instructions: z.string().trim().max(300).optional().default(""),
   items: z.array(orderItemSchema).min(1),

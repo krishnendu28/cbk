@@ -31,9 +31,20 @@ export type MonthlyMenuRow = {
 
 export type MonthlyRedemptionLogEntry = {
   redeemedAt: string;
+  date?: string;
   meal: "Lunch" | "Dinner";
   note?: string;
   redeemedBy?: string;
+};
+
+export type MonthlyMealSelection = {
+  date: string;
+  meal: "Lunch" | "Dinner";
+  wanted: boolean;
+  served: boolean;
+  servedAt?: string | null;
+  source?: string;
+  updatedAt?: string | null;
 };
 
 export type MonthlySubscription = {
@@ -55,6 +66,7 @@ export type MonthlySubscription = {
   days?: number;
   instructions?: string;
   redemptionLog: MonthlyRedemptionLogEntry[];
+  mealSelections?: MonthlyMealSelection[];
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +87,32 @@ export type MonthlyStats = {
 export type MonthlySubscriptionResponse = {
   subscriptions: MonthlySubscription[];
   stats: MonthlyStats;
+};
+
+export type DailyDemandMeal = {
+  wanted: number;
+  served: number;
+  pending: number;
+  names: string[];
+};
+
+export type DailyDemandSubscriber = {
+  _id: string;
+  name: string;
+  phone: string;
+  planType: MonthlyPlanType;
+  address: string;
+  mealsRemaining: number;
+  mealsTotal: number;
+  lunch: { wanted: boolean; served: boolean };
+  dinner: { wanted: boolean; served: boolean };
+};
+
+export type DailyDemand = {
+  date: string;
+  lunch: DailyDemandMeal;
+  dinner: DailyDemandMeal;
+  subscribers: DailyDemandSubscriber[];
 };
 
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
@@ -252,6 +290,127 @@ export async function redeemMonthlyMeal(
   });
   if (!response.ok) throw await buildRequestError(response, "Failed to redeem meal");
   return response.json();
+}
+
+export async function serveMonthlyMeal(
+  subscriptionId: string,
+  payload: { meal?: "Lunch" | "Dinner"; date?: string; note?: string },
+): Promise<{ subscription: MonthlySubscription; served: boolean; countedNow: boolean; date: string; meal: "Lunch" | "Dinner" }> {
+  if (isDemoSessionActive()) {
+    const subscriptions = readDemoSubscriptions();
+    const index = subscriptions.findIndex((row) => row._id === subscriptionId);
+    if (index < 0) throw new Error("Monthly subscription not found");
+    const row = subscriptions[index];
+    const meal = payload.meal || "Lunch";
+    const date = payload.date || new Date().toISOString().slice(0, 10);
+    const selections = row.mealSelections || [];
+    const existing = selections.find((s) => s.date === date && s.meal === meal);
+    let countedNow = false;
+    if (!(existing && existing.wanted)) {
+      row.mealsRemaining = Math.max(0, Number(row.mealsRemaining) - 1);
+      row.redemptionLog = [
+        ...(row.redemptionLog || []),
+        { redeemedAt: new Date().toISOString(), date, meal, note: payload.note || "", redeemedBy: "admin" },
+      ];
+      countedNow = true;
+    }
+    if (existing) {
+      existing.wanted = true;
+      existing.served = true;
+      existing.servedAt = new Date().toISOString();
+    } else {
+      selections.push({ date, meal, wanted: true, served: true, servedAt: new Date().toISOString(), source: "admin" });
+    }
+    row.mealSelections = selections;
+    if (row.mealsRemaining <= 0) row.status = "Completed";
+    row.updatedAt = new Date().toISOString();
+    saveDemoSubscriptions(subscriptions);
+    return { subscription: row, served: true, countedNow, date, meal };
+  }
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/subscriptions/${subscriptionId}/serve`, {
+    method: "POST",
+    headers: buildAdminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw await buildRequestError(response, "Failed to mark meal served");
+  return response.json();
+}
+
+export async function adjustMonthlyMeals(
+  subscriptionId: string,
+  delta: number,
+): Promise<{ subscription: MonthlySubscription; changed: number }> {
+  if (isDemoSessionActive()) {
+    const subscriptions = readDemoSubscriptions();
+    const index = subscriptions.findIndex((row) => row._id === subscriptionId);
+    if (index < 0) throw new Error("Monthly subscription not found");
+    const row = subscriptions[index];
+    row.mealsRemaining = Math.max(0, Number(row.mealsRemaining) + delta);
+    if (Number(row.mealsRemaining) > Number(row.mealsTotal)) row.mealsTotal = row.mealsRemaining;
+    row.updatedAt = new Date().toISOString();
+    saveDemoSubscriptions(subscriptions);
+    return { subscription: row, changed: delta };
+  }
+
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/subscriptions/${subscriptionId}/adjust`, {
+    method: "POST",
+    headers: buildAdminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ delta }),
+  });
+  if (!response.ok) throw await buildRequestError(response, "Failed to adjust meals");
+  return response.json();
+}
+
+export async function fetchDailyDemand(date?: string): Promise<DailyDemand> {
+  const empty = (dateValue: string): DailyDemand => ({
+    date: dateValue,
+    lunch: { wanted: 0, served: 0, pending: 0, names: [] },
+    dinner: { wanted: 0, served: 0, pending: 0, names: [] },
+    subscribers: [],
+  });
+
+  if (isDemoSessionActive()) {
+    const dateValue = date || new Date().toISOString().slice(0, 10);
+    const active = readDemoSubscriptions().filter((row) => row.status === "Active");
+    const subscribers = active.map((row) => {
+      const sel = (meal: "Lunch" | "Dinner") => (row.mealSelections || []).find((s) => s.date === dateValue && s.meal === meal);
+      const l = sel("Lunch");
+      const d = sel("Dinner");
+      return {
+        _id: row._id,
+        name: row.name,
+        phone: row.phone,
+        planType: row.planType,
+        address: row.address,
+        mealsRemaining: row.mealsRemaining,
+        mealsTotal: row.mealsTotal,
+        lunch: { wanted: Boolean(l?.wanted), served: Boolean(l?.served) },
+        dinner: { wanted: Boolean(d?.wanted), served: Boolean(d?.served) },
+      };
+    });
+    const summ = (meal: "lunch" | "dinner") => {
+      const list = subscribers.filter((row) => row[meal].wanted);
+      return {
+        wanted: list.length,
+        served: list.filter((row) => row[meal].served).length,
+        pending: list.filter((row) => !row[meal].served).length,
+        names: list.map((row) => row.name),
+      };
+    };
+    return { date: dateValue, lunch: summ("lunch"), dinner: summ("dinner"), subscribers };
+  }
+
+  const query = date ? `?date=${encodeURIComponent(date)}` : "";
+  const response = await fetch(`${USER_BACKEND_URL}/api/monthly/demand${query}`, { headers: buildAdminHeaders() });
+  if (!response.ok) throw await buildRequestError(response, "Failed to fetch daily demand");
+  const data = await response.json();
+  return {
+    date: data?.date || date || new Date().toISOString().slice(0, 10),
+    lunch: data?.lunch ?? empty("").lunch,
+    dinner: data?.dinner ?? empty("").dinner,
+    subscribers: Array.isArray(data?.subscribers) ? data.subscribers : [],
+  };
 }
 
 export async function updateMonthlySubscription(

@@ -4,11 +4,14 @@ import {
   Activity,
   CalendarCheck,
   CalendarDays,
+  CheckCircle2,
+  ChefHat,
   ChevronLeft,
   ChevronRight,
   DollarSign,
   Download,
   Megaphone,
+  Minus,
   Plus,
   RefreshCw,
   Send,
@@ -34,11 +37,14 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  adjustMonthlyMeals,
   createMonthlySubscription,
   clearMonthlyBroadcast,
   deleteMonthlySubscription,
+  fetchDailyDemand,
   fetchMonthlyPlans,
   getMonthlyBroadcast,
+  type DailyDemand,
   type MonthlyBroadcast as MonthlyBroadcastType,
   MonthlyPlan,
   MonthlyPlanCatalog,
@@ -46,7 +52,7 @@ import {
   MonthlyStatus,
   MonthlySubscription,
   MonthlyStats,
-  redeemMonthlyMeal,
+  serveMonthlyMeal,
   setMonthlyBroadcast,
   subscribeMonthly,
   updateMonthlySubscription,
@@ -174,7 +180,6 @@ const emptyForm: FormState = { name: "", phone: "", address: "", planType: "Veg"
 
 type ServeState = {
   subscription: MonthlySubscription;
-  count: string;
   meal: "Lunch" | "Dinner";
   note: string;
 };
@@ -207,6 +212,9 @@ export default function MonthlyMeals() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastUpdatedLabel, setLastUpdatedLabel] = useState("");
 
+  const [demand, setDemand] = useState<DailyDemand | null>(null);
+  const [demandBusy, setDemandBusy] = useState<string | null>(null);
+
   const [broadcast, setBroadcast] = useState<MonthlyBroadcastType | null>(null);
   const [broadcastDraft, setBroadcastDraft] = useState("");
   const [broadcastSaving, setBroadcastSaving] = useState(false);
@@ -234,6 +242,50 @@ export default function MonthlyMeals() {
     setStats(snapshot.stats);
     setLastUpdated(new Date());
   }, []);
+
+  const loadDemand = useCallback(async () => {
+    try {
+      const next = await fetchDailyDemand();
+      setDemand(next);
+    } catch {
+      // transient error, keep current demand
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDemand();
+    const timer = window.setInterval(loadDemand, 8000);
+    return () => window.clearInterval(timer);
+  }, [loadDemand]);
+
+  async function handleServeFromDemand(subscriptionId: string, meal: "Lunch" | "Dinner") {
+    setDemandBusy(`${subscriptionId}-${meal}`);
+    try {
+      const result = await serveMonthlyMeal(subscriptionId, { meal });
+      toast({
+        title: "Meal served",
+        description: `${result.subscription.name} · ${result.subscription.mealsRemaining} meals left.${result.countedNow ? " 1 meal counted." : ""}`,
+      });
+      await loadDemand();
+    } catch (error) {
+      toast({ title: "Failed to serve meal", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setDemandBusy(null);
+    }
+  }
+
+  async function handleAdjust(row: MonthlySubscription, delta: number) {
+    try {
+      const result = await adjustMonthlyMeals(row._id, delta);
+      toast({
+        title: delta > 0 ? "Meals added" : "Meals reduced",
+        description: `${row.name} now has ${result.subscription.mealsRemaining} meals left.`,
+      });
+      await loadDemand();
+    } catch (error) {
+      toast({ title: "Failed to adjust meals", description: error instanceof Error ? error.message : "Unknown error", variant: "destructive" });
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -376,20 +428,18 @@ export default function MonthlyMeals() {
 
   async function handleServe() {
     if (!serveTarget) return;
-    const count = Number(serveTarget.count) || 1;
     setServing(true);
     try {
-      const result = await redeemMonthlyMeal(serveTarget.subscription._id, {
-        count,
+      const result = await serveMonthlyMeal(serveTarget.subscription._id, {
         meal: serveTarget.meal,
         note: serveTarget.note.trim(),
-        redeemedBy: "admin",
       });
       toast({
         title: "Meal served",
-        description: `${result.redeemed} meal(s) marked for ${serveTarget.subscription.name}. ${result.subscription.mealsRemaining} remaining.`,
+        description: `${result.subscription.name} · ${result.countedNow ? "1 meal counted" : "already requested (not double-counted)"}. ${result.subscription.mealsRemaining} remaining.`,
       });
       setServeTarget(null);
+      await loadDemand();
     } catch (error) {
       toast({
         title: "Failed to serve meal",
@@ -575,6 +625,109 @@ export default function MonthlyMeals() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-sm border-border">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold flex items-center gap-2"><ChefHat className="w-5 h-5 text-orange-600" /> Today's Meal Demand</h2>
+              <p className="text-sm text-muted-foreground">
+                {demand ? `${format(new Date(`${demand.date}T00:00:00`), "EEE, dd MMM yyyy")} · ` : ""}Who pressed Yes for lunch &amp; dinner in the app today
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-200">Lunch {demand?.lunch.wanted ?? 0}</Badge>
+              <Badge variant="secondary" className="bg-rose-100 text-rose-800 border-rose-200">Dinner {demand?.dinner.wanted ?? 0}</Badge>
+              <Button variant="outline" size="icon" onClick={() => loadDemand()} title="Refresh demand"><RefreshCw className="w-4 h-4" /></Button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {(["lunch", "dinner"] as const).map((mealKey) => {
+              const info = demand?.[mealKey];
+              const isLunch = mealKey === "lunch";
+              return (
+                <div key={mealKey} className={`rounded-lg border p-3 ${isLunch ? "border-orange-200 bg-orange-50/60" : "border-rose-200 bg-rose-50/60"}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold capitalize flex items-center gap-1.5">
+                      <UtensilsCrossed className={`w-4 h-4 ${isLunch ? "text-orange-600" : "text-rose-600"}`} /> {mealKey}
+                    </span>
+                    <span className="text-sm">
+                      <b>{info?.wanted ?? 0}</b> wanted · <span className="text-emerald-700">{info?.served ?? 0} served</span> · <span className="text-amber-700">{info?.pending ?? 0} pending</span>
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(info?.names.length ?? 0) === 0 ? (
+                      <span className="text-xs text-muted-foreground">No requests yet.</span>
+                    ) : (
+                      info!.names.map((name, index) => (
+                        <span key={`${name}-${index}`} className="text-xs bg-white/70 border rounded-full px-2 py-0.5">{name}</span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead>Subscriber</TableHead>
+                  <TableHead className="text-center">Meals Left</TableHead>
+                  <TableHead className="text-center">Lunch</TableHead>
+                  <TableHead className="text-center">Dinner</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(demand?.subscribers.length ?? 0) === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-sm">No active subscribers yet.</TableCell>
+                  </TableRow>
+                )}
+                {demand?.subscribers.map((subscriber) => (
+                  <TableRow key={subscriber._id}>
+                    <TableCell>
+                      <div className="font-semibold">{subscriber.name}</div>
+                      <div className="text-xs text-muted-foreground">{subscriber.phone} · {planTypeLabels[subscriber.planType]}</div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={`font-bold tabular-nums ${subscriber.mealsRemaining <= 2 ? "text-rose-600" : ""}`}>{subscriber.mealsRemaining}</span>
+                      <span className="text-xs text-muted-foreground"> / {subscriber.mealsTotal}</span>
+                    </TableCell>
+                    {(["lunch", "dinner"] as const).map((mealKey) => {
+                      const state = subscriber[mealKey];
+                      const label = mealKey === "lunch" ? "Lunch" : "Dinner";
+                      const busy = demandBusy === `${subscriber._id}-${label}`;
+                      return (
+                        <TableCell key={mealKey} className="text-center">
+                          {state.wanted && state.served ? (
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Served
+                            </Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant={state.wanted ? "outline" : "ghost"}
+                              disabled={busy}
+                              onClick={() => handleServeFromDemand(subscriber._id, label)}
+                              title={state.wanted ? "Mark this requested meal as served" : "Count this meal even without an app request"}
+                            >
+                              {state.wanted ? "Mark served" : "Serve"}
+                            </Button>
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <p className="text-xs text-muted-foreground">A "Yes" in the app already reserves (decrements) the meal. "Mark served" only confirms it. Serving someone who did not press Yes still counts one meal.</p>
+        </CardContent>
+      </Card>
 
       <Card className="shadow-sm border-border">
         <CardContent className="p-4 space-y-3">
@@ -777,8 +930,29 @@ export default function MonthlyMeals() {
                     <div className="text-xs mt-1">{planLabel(plan, row)}</div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="text-lg font-bold tabular-nums">{row.mealsRemaining}</div>
-                    <div className="text-[11px] text-muted-foreground">of {row.mealsTotal} · <span className="text-emerald-600">{row.mealsRedeemed} used</span></div>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-6 w-6"
+                        disabled={row.status !== "Active" || Number(row.mealsRemaining) <= 0}
+                        onClick={() => handleAdjust(row, -1)}
+                        title="Remove one meal"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </Button>
+                      <span className="text-lg font-bold tabular-nums w-8 inline-block">{row.mealsRemaining}</span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-6 w-6"
+                        onClick={() => handleAdjust(row, 1)}
+                        title="Add one meal"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">of {row.mealsTotal} · <span className="text-emerald-600">{row.mealsRedeemed} used</span></div>
                   </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums">Rs {row.price}</TableCell>
                   <TableCell>
@@ -830,7 +1004,7 @@ export default function MonthlyMeals() {
                         variant="outline"
                         disabled={row.status !== "Active" || Number(row.mealsRemaining) <= 0}
                         onClick={() =>
-                          setServeTarget({ subscription: row, count: "1", meal: "Lunch", note: "" })
+                          setServeTarget({ subscription: row, meal: "Lunch", note: "" })
                         }
                         title="Mark a meal as served"
                       >
@@ -924,27 +1098,16 @@ export default function MonthlyMeals() {
           </DialogHeader>
           {serveTarget && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Meal</Label>
-                  <Select value={serveTarget.meal} onValueChange={(value) => setServeTarget({ ...serveTarget, meal: value as "Lunch" | "Dinner" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Lunch">Lunch</SelectItem>
-                      <SelectItem value="Dinner">Dinner</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Count</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={serveTarget.subscription.mealsRemaining}
-                    value={serveTarget.count}
-                    onChange={(e) => setServeTarget({ ...serveTarget, count: e.target.value })}
-                  />
-                </div>
+              <div>
+                <Label>Meal</Label>
+                <Select value={serveTarget.meal} onValueChange={(value) => setServeTarget({ ...serveTarget, meal: value as "Lunch" | "Dinner" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Lunch">Lunch</SelectItem>
+                    <SelectItem value="Dinner">Dinner</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">If the subscriber already pressed Yes for this meal today, it is only confirmed — not counted twice.</p>
               </div>
               <div>
                 <Label>Note (optional)</Label>

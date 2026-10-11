@@ -627,17 +627,6 @@ export default function MenuScreen() {
                 );
               })}
             </ScrollView>
-
-            <TouchableOpacity style={styles.monthlyBanner} activeOpacity={0.88} onPress={() => router.push("/monthly")}>
-              <View style={styles.monthlyBannerLeft}>
-                <Ionicons name="calendar-outline" size={22} color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.monthlyBannerTitle}>Monthly Food Subscription</Text>
-                <Text style={styles.monthlyBannerSubtitle}>Fresh thalis on a month plan — choose your menu & save big.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
           </View>
 
           <View style={styles.sectionHeaderRow}>
@@ -1378,34 +1367,6 @@ orderBtnComingSoon: {
   borderColor: Palette.border,
 },
 orderBtnComingSoonText: { color: Palette.textMuted, fontWeight: "800", fontSize: 12.5 },
-monthlyBanner: {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 12,
-  marginTop: 12,
-  marginHorizontal: 2,
-  backgroundColor: Palette.orange,
-  borderRadius: 16,
-  paddingVertical: 12,
-  paddingHorizontal: 14,
-  borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.25)",
-  shadowColor: "#B45309",
-  shadowOpacity: 0.22,
-  shadowOffset: { width: 0, height: 8 },
-  shadowRadius: 14,
-  elevation: 3,
-},
-monthlyBannerLeft: {
-  width: 38,
-  height: 38,
-  borderRadius: 19,
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: "rgba(255,255,255,0.22)",
-},
-monthlyBannerTitle: { color: "#FFFFFF", fontSize: 14.5, fontWeight: "800" },
-monthlyBannerSubtitle: { color: "rgba(255,255,255,0.92)", fontSize: 11.5, lineHeight: 15, marginTop: 2 },
 savedAddrWrap: { gap: 6 },
 savedAddrLabel: { color: Palette.textMuted, fontSize: 11.5, fontWeight: "700" },
 savedAddrChip: {

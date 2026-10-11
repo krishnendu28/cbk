@@ -55,11 +55,41 @@ export const redeemMonthlyMealSchema = z.object({
   redeemedBy: z.string().trim().max(60).default("partner"),
 });
 
+const serviceDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+  .optional();
+
+export const setMealSelectionSchema = z.object({
+  phone: phoneSchema,
+  meal: z.enum(["Lunch", "Dinner"]).default("Lunch"),
+  wanted: z.coerce.boolean(),
+  date: serviceDateSchema,
+  note: z.string().trim().max(200).default(""),
+});
+
+export const serveMonthlyMealSchema = z.object({
+  meal: z.enum(["Lunch", "Dinner"]).default("Lunch"),
+  date: serviceDateSchema,
+  note: z.string().trim().max(200).default(""),
+  source: z.string().trim().max(60).default("admin"),
+});
+
+export const dailyDemandQuerySchema = z.object({
+  date: serviceDateSchema,
+});
+
+export const adjustMonthlyMealsSchema = z.object({
+  delta: z.coerce.number().int().refine((value) => value !== 0, { message: "Delta must not be zero." }),
+});
+
 export const updateMonthlySubscriptionSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   phone: phoneSchema.optional(),
   address: z.string().trim().min(3).max(300).optional(),
   mealsTotal: z.coerce.number().int().positive().max(240).optional(),
+  mealsDelta: z.coerce.number().int().optional(),
   price: z.coerce.number().nonnegative().optional(),
   status: z.enum(MONTHLY_STATUSES).optional(),
   notes: z.string().trim().max(500).optional(),

@@ -3,9 +3,23 @@ import mongoose from "mongoose";
 const redemptionEntrySchema = new mongoose.Schema(
   {
     redeemedAt: { type: Date, default: Date.now },
+    date: { type: String, default: "", trim: true },
     meal: { type: String, enum: ["Lunch", "Dinner"], required: true },
     note: { type: String, default: "", trim: true },
     redeemedBy: { type: String, default: "partner", trim: true },
+  },
+  { _id: false },
+);
+
+const mealSelectionSchema = new mongoose.Schema(
+  {
+    date: { type: String, required: true, trim: true },
+    meal: { type: String, enum: ["Lunch", "Dinner"], required: true },
+    wanted: { type: Boolean, default: false },
+    served: { type: Boolean, default: false },
+    servedAt: { type: Date },
+    source: { type: String, default: "user", trim: true },
+    updatedAt: { type: Date, default: Date.now },
   },
   { _id: false },
 );
@@ -36,6 +50,7 @@ const monthlySubscriptionSchema = new mongoose.Schema(
     days: { type: Number, default: 30 },
     instructions: { type: String, default: "", trim: true },
     redemptionLog: { type: [redemptionEntrySchema], default: [] },
+    mealSelections: { type: [mealSelectionSchema], default: [] },
     notes: { type: String, default: "", trim: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },

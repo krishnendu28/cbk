@@ -1,30 +1,44 @@
 import { Router } from "express";
 import {
+  adjustMonthlyMealsHandler,
   clearMonthlyBroadcastHandler,
   createMonthlySubscriptionHandler,
   deleteMonthlySubscriptionHandler,
   getMonthlyBroadcastHandler,
+  getMonthlyDemandHandler,
   getMonthlyPlansHandler,
   getMonthlySubscriptionHandler,
   listMonthlySubscriptionsHandler,
   redeemMonthlyMealHandler,
+  serveMonthlyMealHandler,
   setMonthlyBroadcastHandler,
+  setMonthlyMealSelectionHandler,
   updateMonthlySubscriptionHandler,
 } from "../controllers/monthlyController.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import { validateRequest } from "../middlewares/validate.js";
 import {
+  adjustMonthlyMealsSchema,
   createMonthlySubscriptionSchema,
+  dailyDemandQuerySchema,
   listMonthlySubscriptionsSchema,
   monthlyIdParamSchema,
   redeemMonthlyMealSchema,
+  serveMonthlyMealSchema,
   setMonthlyBroadcastSchema,
+  setMealSelectionSchema,
   updateMonthlySubscriptionSchema,
 } from "../schemas/monthly-schema.js";
 
 const router = Router();
 
 router.get("/plans", getMonthlyPlansHandler);
+router.get(
+  "/demand",
+  requireAdmin(["owner", "manager"]),
+  validateRequest({ querySchema: dailyDemandQuerySchema }),
+  getMonthlyDemandHandler,
+);
 router.get("/broadcast", getMonthlyBroadcastHandler);
 router.put(
   "/broadcast",
@@ -54,6 +68,23 @@ router.post(
   requireAdmin(["owner", "manager"]),
   validateRequest({ paramsSchema: monthlyIdParamSchema, bodySchema: redeemMonthlyMealSchema }),
   redeemMonthlyMealHandler,
+);
+router.post(
+  "/subscriptions/:id/meals",
+  validateRequest({ paramsSchema: monthlyIdParamSchema, bodySchema: setMealSelectionSchema }),
+  setMonthlyMealSelectionHandler,
+);
+router.post(
+  "/subscriptions/:id/serve",
+  requireAdmin(["owner", "manager"]),
+  validateRequest({ paramsSchema: monthlyIdParamSchema, bodySchema: serveMonthlyMealSchema }),
+  serveMonthlyMealHandler,
+);
+router.post(
+  "/subscriptions/:id/adjust",
+  requireAdmin(["owner", "manager"]),
+  validateRequest({ paramsSchema: monthlyIdParamSchema, bodySchema: adjustMonthlyMealsSchema }),
+  adjustMonthlyMealsHandler,
 );
 router.patch(
   "/subscriptions/:id",

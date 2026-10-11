@@ -1,5 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { AppState, Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
@@ -138,6 +138,8 @@ async function registerPushTokenWithBackend() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const [launchBannerVisible, setLaunchBannerVisible] = useState(true);
   const [updatePrompt, setUpdatePrompt] = useState<UpdatePromptState>({
     visible: false,
     latestVersion: '',
@@ -205,6 +207,11 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLaunchBannerVisible(false), 15000);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -339,6 +346,54 @@ export default function RootLayout() {
             </View>
           </View>
         </Modal>
+
+        {launchBannerVisible ? (
+          <Pressable
+            onPress={() => {
+              setLaunchBannerVisible(false);
+              router.push('/monthly');
+            }}
+            style={{
+              position: 'absolute',
+              top: (Constants.statusBarHeight || 0) + 8,
+              left: 12,
+              right: 12,
+              zIndex: 60,
+              elevation: 10,
+              backgroundColor: '#C21F2E',
+              borderRadius: 14,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              shadowColor: '#000',
+              shadowOpacity: 0.22,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 4 },
+            }}
+          >
+            <View
+              style={{
+                borderRadius: 999,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                backgroundColor: 'rgba(255,255,255,0.22)',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>NEW</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>Monthly Food Subscription</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.92)', fontSize: 11.5, marginTop: 2 }}>
+                Fresh thalis on a month plan — tap to see menus & save big.
+              </Text>
+            </View>
+            <Pressable onPress={() => setLaunchBannerVisible(false)} hitSlop={10}>
+              <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700', paddingHorizontal: 2 }}>×</Text>
+            </Pressable>
+          </Pressable>
+        ) : null}
       </ThemeProvider>
     </CartProvider>
     </SessionProvider>

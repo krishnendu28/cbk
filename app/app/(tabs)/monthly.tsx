@@ -59,6 +59,12 @@ const PLAN_CARDS: { key: PlanType; title: string; subtitle: string; color: strin
 ];
 
 const CALENDAR_WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function istToday() {
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  return { key: ist.toISOString().slice(0, 10), weekday: WEEKDAYS_FULL[ist.getUTCDay()] };
+}
 
 function menuForDay(menuType: PlanType, date: Date) {
   const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
@@ -219,6 +225,7 @@ export default function MonthlyScreen() {
   const [planType, setPlanType] = useState<PlanType>("Veg");
   const [selectedPlan, setSelectedPlan] = useState<MonthlyPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mealBusy, setMealBusy] = useState<"Lunch" | "Dinner" | null>(null);
 
   const [broadcast, setBroadcast] = useState<{ message: string; updatedAt: string } | null>(null);
   const [dismissedBroadcast, setDismissedBroadcast] = useState<string | null>(null);
@@ -284,6 +291,14 @@ export default function MonthlyScreen() {
       setMenuType(ongoingSubscription.planType);
     }
   }, [ongoingSubscription?.status, ongoingSubscription?.planType]);
+
+  const { key: todayKey, weekday: todayWeekday } = istToday();
+  const todayMenuRow = ongoingSubscription
+    ? MONTHLY_MENU[ongoingSubscription.planType].find((row) => row.day === todayWeekday) ?? null
+    : null;
+  const todaySelections = (ongoingSubscription?.mealSelections ?? []).filter((sel) => sel.date === todayKey);
+  const lunchSelection = todaySelections.find((sel) => sel.meal === "Lunch");
+  const dinnerSelection = todaySelections.find((sel) => sel.meal === "Dinner");
 
   function formatDate(value?: string) {
     if (!value) return "—";
@@ -404,6 +419,42 @@ export default function MonthlyScreen() {
     }
   }
 
+  async function setTodayMeal(meal: "Lunch" | "Dinner", wanted: boolean) {
+    if (!session || !ongoingSubscription) return;
+    setMealBusy(meal);
+    try {
+      const { key } = istToday();
+      await axios.post(`${API_BASE_URL}/api/monthly/subscriptions/${ongoingSubscription._id}/meals`, {
+        phone: session.phone,
+        meal,
+        wanted,
+        date: key,
+      });
+      await refreshSubscriptions();
+    } catch (error: any) {
+      Alert.alert("Could not update meal", error?.response?.data?.message || "Please try again.");
+    } finally {
+      setMealBusy(null);
+    }
+  }
+
+  function confirmTodayOnWhatsApp() {
+    if (!ongoingSubscription) return;
+    const { weekday } = istToday();
+    const menuRow = MONTHLY_MENU[ongoingSubscription.planType].find((row) => row.day === weekday);
+    const message = [
+      "Hello Chakhna By Kilo,",
+      `Monthly meal plan: ${MONTHLY_PLAN_LABELS[ongoingSubscription.planType]}`,
+      `Name: ${session?.name || ongoingSubscription.name}`,
+      `Phone: ${session?.phone || ongoingSubscription.phone}`,
+      `Today (${weekday}) — Lunch: ${menuRow?.lunch || "as per menu"}`,
+      `Today (${weekday}) — Dinner: ${menuRow?.dinner || "as per menu"}`,
+      `Meals left: ${ongoingSubscription.mealsRemaining}`,
+    ].join("\n");
+    const url = `https://wa.me/${MONTHLY_WHATSAPP_DIAL}?text=${encodeURIComponent(message)}`;
+    Linking.openURL(url).catch(() => Alert.alert("WhatsApp unavailable", "Please call us to confirm today's meal."));
+  }
+
   function renderPlanCard(planTypeKey: PlanType, title: string, subtitle: string, color: string) {
     return (
       <View style={styles.planCard}>
@@ -473,6 +524,7 @@ export default function MonthlyScreen() {
         )}
 
         {ongoingSubscription ? (
+          <>
           <View style={styles.statusCard}>
             <View style={styles.statusHeaderRow}>
               <Text style={styles.statusTitle}>Your Monthly Plan</Text>
@@ -518,6 +570,64 @@ export default function MonthlyScreen() {
               </View>
             </View>
           </View>
+          {ongoingSubscription.status === "Active" ? (
+            <View style={styles.todayCard}>
+              <View style={styles.todayHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.todayTitle}>Today's Meals</Text>
+                  <Text style={styles.todaySubtitle}>{todayWeekday} · {MONTHLY_PLAN_LABELS[ongoingSubscription.planType]} menu</Text>
+                </View>
+                <View style={styles.todayMealsLeftPill}>
+                  <Text style={styles.todayMealsLeftValue}>{ongoingSubscription.mealsRemaining}</Text>
+                  <Text style={styles.todayMealsLeftLabel}>left</Text>
+                </View>
+              </View>
+              <Text style={styles.todayHint}>Tell us if you want your meal today. A "Yes" reserves one meal.</Text>
+              {(["Lunch", "Dinner"] as const).map((meal) => {
+                const menuText = meal === "Lunch" ? todayMenuRow?.lunch : todayMenuRow?.dinner;
+                const selection = meal === "Lunch" ? lunchSelection : dinnerSelection;
+                const wanted = Boolean(selection?.wanted);
+                const served = Boolean(selection?.served);
+                const busy = mealBusy === meal;
+                return (
+                  <View key={meal} style={styles.todayMealRow}>
+                    <View style={styles.todayMealInfo}>
+                      <View style={styles.todayMealTitleRow}>
+                        <Text style={styles.todayMealTitle}>{meal}</Text>
+                        {served ? (
+                          <View style={styles.todayServedPill}><Text style={styles.todayServedPillText}>Served</Text></View>
+                        ) : wanted ? (
+                          <View style={styles.todayChosenPill}><Text style={styles.todayChosenPillText}>Chosen</Text></View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.todayMealText}>{menuText || "Menu unavailable"}</Text>
+                    </View>
+                    <View style={styles.todayToggleRow}>
+                      <TouchableOpacity
+                        style={[styles.todayYesBtn, wanted && styles.todayYesBtnActive]}
+                        disabled={busy}
+                        onPress={() => setTodayMeal(meal, true)}
+                        activeOpacity={0.85}>
+                        <Text style={[styles.todayYesText, wanted && styles.todayYesTextActive]}>Yes</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.todayNoBtn, selection && !wanted && styles.todayNoBtnActive]}
+                        disabled={busy}
+                        onPress={() => setTodayMeal(meal, false)}
+                        activeOpacity={0.85}>
+                        <Text style={[styles.todayNoText, selection && !wanted && styles.todayNoTextActive]}>No</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+              <TouchableOpacity style={styles.todayWhatsappBtn} onPress={confirmTodayOnWhatsApp} activeOpacity={0.88}>
+                <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" />
+                <Text style={styles.todayWhatsappText}>Send today's choice on WhatsApp</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          </>
         ) : (
           <View style={styles.enrollCard}>
             {subsLoading && (
@@ -900,4 +1010,33 @@ const styles = StyleSheet.create({
   broadcastTitle: { color: "#92400E", fontSize: 11.5, fontWeight: "800" },
   broadcastMessage: { color: Palette.text, fontSize: 13.5, lineHeight: 20, marginTop: 2 },
   broadcastTime: { color: Palette.textMuted, fontSize: 10.5, marginTop: 4 },
+
+  todayCard: { backgroundColor: Palette.card, borderRadius: 16, borderWidth: 1, borderColor: Palette.border, padding: 14, gap: 10, marginTop: 12 },
+  todayHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  todayTitle: { color: Palette.text, fontSize: 17, fontWeight: "800" },
+  todaySubtitle: { color: Palette.textMuted, fontSize: 12, marginTop: 2 },
+  todayMealsLeftPill: { alignItems: "center", backgroundColor: Palette.cardSoft, borderRadius: 12, borderWidth: 1, borderColor: Palette.orange, paddingHorizontal: 12, paddingVertical: 6 },
+  todayMealsLeftValue: { color: Palette.crimson, fontSize: 18, fontWeight: "800" },
+  todayMealsLeftLabel: { color: Palette.textMuted, fontSize: 10, fontWeight: "600" },
+  todayHint: { color: Palette.textMuted, fontSize: 12, lineHeight: 17 },
+  todayMealRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: Palette.surface, borderRadius: 12, borderWidth: 1, borderColor: Palette.border, padding: 10 },
+  todayMealInfo: { flex: 1, gap: 3 },
+  todayMealTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  todayMealTitle: { color: Palette.text, fontSize: 14, fontWeight: "800" },
+  todayMealText: { color: Palette.textMuted, fontSize: 12, lineHeight: 16 },
+  todayServedPill: { backgroundColor: "rgba(5,150,105,0.14)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  todayServedPillText: { color: "#047857", fontSize: 10, fontWeight: "800" },
+  todayChosenPill: { backgroundColor: "rgba(234,88,12,0.16)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  todayChosenPillText: { color: Palette.orange, fontSize: 10, fontWeight: "800" },
+  todayToggleRow: { flexDirection: "row", gap: 8 },
+  todayYesBtn: { minWidth: 46, alignItems: "center", borderRadius: 10, borderWidth: 1.5, borderColor: Palette.borderStrong, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: Palette.card },
+  todayYesBtnActive: { backgroundColor: Palette.crimson, borderColor: Palette.crimson },
+  todayYesText: { color: Palette.textMuted, fontSize: 13, fontWeight: "800" },
+  todayYesTextActive: { color: "#FFFFFF" },
+  todayNoBtn: { minWidth: 46, alignItems: "center", borderRadius: 10, borderWidth: 1.5, borderColor: Palette.borderStrong, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: Palette.card },
+  todayNoBtnActive: { backgroundColor: Palette.text, borderColor: Palette.text },
+  todayNoText: { color: Palette.textMuted, fontSize: 13, fontWeight: "800" },
+  todayNoTextActive: { color: "#FFFFFF" },
+  todayWhatsappBtn: { backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 2 },
+  todayWhatsappText: { color: "#FFFFFF", fontSize: 13.5, fontWeight: "800" },
 });

@@ -2,9 +2,20 @@ export type MonthlyStatus = "Pending" | "Active" | "Completed" | "Cancelled" | "
 
 export type MonthlyRedemptionLogEntry = {
   redeemedAt: string;
+  date?: string;
   meal: "Lunch" | "Dinner";
   note?: string;
   redeemedBy?: string;
+};
+
+export type MonthlyMealSelection = {
+  date: string;
+  meal: "Lunch" | "Dinner";
+  wanted: boolean;
+  served: boolean;
+  servedAt?: string | null;
+  source?: string;
+  updatedAt?: string | null;
 };
 
 export type MonthlySubscription = {
@@ -26,6 +37,7 @@ export type MonthlySubscription = {
   days?: number;
   instructions?: string;
   redemptionLog: MonthlyRedemptionLogEntry[];
+  mealSelections?: MonthlyMealSelection[];
   notes?: string;
   createdAt: string;
   updatedAt: string;

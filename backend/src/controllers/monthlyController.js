@@ -1,10 +1,14 @@
 import {
+  adjustMealsRemaining,
   createSubscription,
   deleteSubscription,
+  getDailyDemand,
   getMonthlyStats,
   getSubscriptionById,
   listSubscriptions,
   redeemMeals,
+  serveMeal,
+  setMealSelection,
   updateSubscription,
 } from "../services/monthlyService.js";
 import { clearBroadcast, getBroadcast, setBroadcast } from "../services/broadcastService.js";
@@ -156,5 +160,95 @@ export async function clearMonthlyBroadcastHandler(req, res) {
     return res.json({ broadcast: null });
   } catch (error) {
     return res.status(500).json({ message: "Failed to clear monthly broadcast." });
+  }
+}
+
+function digits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function sendMealActionError(res, result) {
+  if (result?.error === "NOT_FOUND") {
+    return res.status(404).json({ message: "Monthly subscription not found." });
+  }
+  if (result?.error === "CLOSED") {
+    return res.status(400).json({ message: `Subscription is ${String(result.detail).toLowerCase()}.` });
+  }
+  if (result?.error === "NO_MEALS") {
+    return res.status(400).json({ message: "No meals remaining on this subscription." });
+  }
+  if (result?.error === "PENDING_APPROVAL") {
+    return res.status(400).json({ message: "Subscription is pending approval. Please wait for admin confirmation." });
+  }
+  if (result?.error === "REJECTED") {
+    return res.status(400).json({ message: "This subscription was not approved." });
+  }
+  if (result?.error === "EXPIRED_PLAN") {
+    return res.status(400).json({ message: "This subscription period has ended. Please contact the outlet to renew." });
+  }
+  return null;
+}
+
+export async function setMonthlyMealSelectionHandler(req, res) {
+  try {
+    const subscription = await getSubscriptionById(req.params.id);
+    if (!subscription) {
+      return res.status(404).json({ message: "Monthly subscription not found." });
+    }
+    if (digits(subscription.phone).slice(-10) !== digits(req.body.phone).slice(-10)) {
+      return res.status(403).json({ message: "Phone number does not match this subscription." });
+    }
+    const result = await setMealSelection(req.params.id, {
+      date: req.body.date,
+      meal: req.body.meal,
+      wanted: req.body.wanted,
+      source: "user",
+      note: req.body.note,
+    });
+    const errorResponse = sendMealActionError(res, result);
+    if (errorResponse) return errorResponse;
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to record your meal choice." });
+  }
+}
+
+export async function serveMonthlyMealHandler(req, res) {
+  try {
+    const result = await serveMeal(req.params.id, {
+      date: req.body.date,
+      meal: req.body.meal,
+      note: req.body.note,
+      source: req.body.source || "admin",
+    });
+    const errorResponse = sendMealActionError(res, result);
+    if (errorResponse) return errorResponse;
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to mark meal served." });
+  }
+}
+
+export async function getMonthlyDemandHandler(req, res) {
+  try {
+    const demand = await getDailyDemand(req.query?.date);
+    return res.json(demand);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch daily demand." });
+  }
+}
+
+export async function adjustMonthlyMealsHandler(req, res) {
+  try {
+    const result = await adjustMealsRemaining(req.params.id, req.body.delta);
+    if (result?.error === "NOT_FOUND") {
+      return res.status(404).json({ message: "Monthly subscription not found." });
+    }
+    if (result?.error === "INVALID_DELTA") {
+      return res.status(400).json({ message: "Provide a non-zero meals adjustment." });
+    }
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to adjust meals." });
   }
 }

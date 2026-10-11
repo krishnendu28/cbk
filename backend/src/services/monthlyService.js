@@ -50,7 +50,7 @@ function toSerializable(subscription) {
     planId: doc.planId || "",
     mealsTotal: Number(doc.mealsTotal),
     mealsRemaining: Number(doc.mealsRemaining),
-    mealsRedeemed: Array.isArray(doc.redemptionLog) ? doc.redemptionLog.length : Math.max(0, Number(doc.mealsTotal) - Number(doc.mealsRemaining)),
+    mealsRedeemed: Math.max(0, Number(doc.mealsTotal) - Number(doc.mealsRemaining)),
     price: Number(doc.price),
     startDate: doc.startDate instanceof Date ? doc.startDate.toISOString() : new Date(doc.startDate).toISOString(),
     endDate: doc.endDate instanceof Date ? doc.endDate.toISOString() : new Date(doc.endDate).toISOString(),
@@ -62,9 +62,29 @@ function toSerializable(subscription) {
     redemptionLog: Array.isArray(doc.redemptionLog)
       ? doc.redemptionLog.map((entry) => ({
           redeemedAt: entry.redeemedAt instanceof Date ? entry.redeemedAt.toISOString() : new Date(entry.redeemedAt).toISOString(),
+          date: entry.date || "",
           meal: entry.meal,
           note: entry.note || "",
           redeemedBy: entry.redeemedBy || "partner",
+        }))
+      : [],
+    mealSelections: Array.isArray(doc.mealSelections)
+      ? doc.mealSelections.map((selection) => ({
+          date: selection.date,
+          meal: selection.meal,
+          wanted: Boolean(selection.wanted),
+          served: Boolean(selection.served),
+          servedAt: selection.servedAt
+            ? selection.servedAt instanceof Date
+              ? selection.servedAt.toISOString()
+              : new Date(selection.servedAt).toISOString()
+            : null,
+          source: selection.source || "user",
+          updatedAt: selection.updatedAt
+            ? selection.updatedAt instanceof Date
+              ? selection.updatedAt.toISOString()
+              : new Date(selection.updatedAt).toISOString()
+            : null,
         }))
       : [],
     notes: doc.notes || "",
@@ -364,6 +384,14 @@ function applyPatchToSubscription(doc, patch) {
     doc.mealsRemaining = Math.max(0, Number(doc.mealsRemaining) + remainingAdjustment);
   }
 
+  if (patch.mealsDelta !== undefined && patch.mealsDelta !== null) {
+    const change = Math.trunc(Number(patch.mealsDelta) || 0);
+    if (change !== 0) {
+      doc.mealsRemaining = Math.max(0, Number(doc.mealsRemaining) + change);
+      if (Number(doc.mealsRemaining) > Number(doc.mealsTotal)) doc.mealsTotal = Number(doc.mealsRemaining);
+    }
+  }
+
   if (patch.status) {
     doc.status = patch.status;
     if (patch.status === "Active") doc.statusApproval = "Approved";
@@ -430,5 +458,277 @@ export function getMonthlyStats(subscriptions) {
     vegCount: active.filter((row) => row.planType === "Veg").length,
     nonVegCount: active.filter((row) => row.planType === "NonVeg").length,
     onlyNonVegCount: active.filter((row) => row.planType === "OnlyNonVeg").length,
+  };
+}
+
+// --- Daily meal demand (user Yes/No) + admin serving --------------------------
+
+// The kitchen runs in India, so "today" is resolved in IST regardless of where
+// the serverless container runs or which device calls the API.
+export function serviceDateString(value = new Date()) {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(value instanceof Date ? value : new Date(value));
+  } catch {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+}
+
+function normalizeServiceDate(value) {
+  const text = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : serviceDateString();
+}
+
+function normalizeMeal(value) {
+  return ["Lunch", "Dinner"].includes(value) ? value : "Lunch";
+}
+
+async function loadRecord(id) {
+  if (isMongoConnected()) {
+    try {
+      const doc = await MonthlySubscription.findById(id);
+      if (doc) return { kind: "mongo", doc };
+    } catch (error) {
+      logger.warn("monthly.mongo_load_fallback_memory", { reason: error?.message || String(error) });
+    }
+    const memory = memorySubscriptions.find((row) => row._id === id);
+    if (memory) return { kind: "memory", entry: memory };
+    return null;
+  }
+  const memory = memorySubscriptions.find((row) => row._id === id);
+  return memory ? { kind: "memory", entry: memory } : null;
+}
+
+async function saveRecord(record, event) {
+  let serialized;
+  if (record.kind === "mongo") {
+    record.doc.updatedAt = new Date();
+    await record.doc.save();
+    serialized = toSerializable(record.doc);
+  } else {
+    record.entry.updatedAt = new Date().toISOString();
+    serialized = toSerializable(record.entry);
+  }
+  if (event) emitMonthlyChanged(event, serialized);
+  return serialized;
+}
+
+function pushRedemption(rec, { serviceDate, meal, source, note = "" }) {
+  const entry = {
+    redeemedAt: new Date(),
+    date: serviceDate,
+    meal,
+    note: String(note || ""),
+    redeemedBy: source || "user",
+  };
+  if (Array.isArray(rec.redemptionLog)) rec.redemptionLog.push(entry);
+  else rec.redemptionLog = [entry];
+}
+
+function removeRedemption(rec, { serviceDate, meal, source }) {
+  const log = rec.redemptionLog;
+  if (!Array.isArray(log)) return;
+  let index = log.findIndex(
+    (entry) => entry.date === serviceDate && entry.meal === meal && (entry.redeemedBy || "") === (source || "user"),
+  );
+  if (index < 0) index = log.findIndex((entry) => entry.date === serviceDate && entry.meal === meal && (entry.redeemedBy || "") !== "admin");
+  if (index >= 0) log.splice(index, 1);
+}
+
+function findSelection(rec, serviceDate, meal) {
+  if (!Array.isArray(rec.mealSelections)) rec.mealSelections = [];
+  return rec.mealSelections.find((selection) => selection.date === serviceDate && selection.meal === meal) || null;
+}
+
+function upsertSelection(rec, serviceDate, meal, wanted, source, served) {
+  let selection = findSelection(rec, serviceDate, meal);
+  const now = new Date();
+  if (!selection) {
+    selection = {
+      date: serviceDate,
+      meal,
+      wanted: Boolean(wanted),
+      served: Boolean(served),
+      servedAt: served ? now : null,
+      source: source || "user",
+      updatedAt: now,
+    };
+    rec.mealSelections.push(selection);
+  } else {
+    selection.wanted = Boolean(wanted);
+    selection.source = source || "user";
+    if (served === undefined) {
+      selection.served = false;
+      selection.servedAt = null;
+    } else {
+      selection.served = Boolean(served);
+      selection.servedAt = served ? now : null;
+    }
+    selection.updatedAt = now;
+  }
+  return selection;
+}
+
+/**
+ * Record what a subscriber wants for a given meal/day (the app Yes/No).
+ * Yes  -> the meal is reserved and one meal is taken from mealsRemaining.
+ * No   -> reverses a previous Yes (before it was served), returning the meal.
+ * The admin can still see the demand and mark it served.
+ */
+export async function setMealSelection(id, { date, meal, wanted, source = "user", note = "" } = {}) {
+  const record = await loadRecord(id);
+  if (!record) return { error: "NOT_FOUND" };
+
+  const rec = record.kind === "mongo" ? record.doc : record.entry;
+  const serviceDate = normalizeServiceDate(date);
+  const mealType = normalizeMeal(meal);
+  const nextWanted = Boolean(wanted);
+
+  const gate = approvalGate(rec.status, rec.statusApproval);
+  if (gate) return gate;
+  if (rec.status === "Cancelled" || rec.status === "Rejected" || rec.status === "Completed") {
+    return { error: "CLOSED", detail: rec.status };
+  }
+  if (isExpired(rec.endDate)) {
+    rec.status = "Completed";
+    const serialized = await saveRecord(record, "subscription:expired");
+    return { error: "EXPIRED_PLAN", detail: { endDate: rec.endDate }, subscription: serialized };
+  }
+
+  const selection = findSelection(rec, serviceDate, mealType);
+  const currentlyWanted = Boolean(selection && selection.wanted);
+  if (currentlyWanted === nextWanted) {
+    return { subscription: toSerializable(rec), changed: false, wanted: nextWanted, date: serviceDate, meal: mealType };
+  }
+
+  if (nextWanted) {
+    if (Number(rec.mealsRemaining) <= 0) return { error: "NO_MEALS" };
+    rec.mealsRemaining = Math.max(0, Number(rec.mealsRemaining) - 1);
+    pushRedemption(rec, { serviceDate, meal: mealType, source, note });
+  } else if (currentlyWanted) {
+    rec.mealsRemaining = Math.min(Number(rec.mealsTotal) || Number(rec.mealsRemaining) + 1, Number(rec.mealsRemaining) + 1);
+    removeRedemption(rec, { serviceDate, meal: mealType, source });
+  }
+
+  upsertSelection(rec, serviceDate, mealType, nextWanted, source, false);
+  rec.status = computeNextStatus(rec.mealsRemaining, rec.status);
+
+  const serialized = await saveRecord(record, "subscription:mealSelection");
+  return { subscription: serialized, changed: true, wanted: nextWanted, date: serviceDate, meal: mealType };
+}
+
+/**
+ * Admin/kitchen marks a meal as served for a subscriber. If the subscriber
+ * already confirmed Yes for that meal/day it only flips the "served" flag
+ * (no double count); otherwise it reserves and counts the meal.
+ */
+export async function serveMeal(id, { date, meal, note = "", source = "admin" } = {}) {
+  const record = await loadRecord(id);
+  if (!record) return { error: "NOT_FOUND" };
+
+  const rec = record.kind === "mongo" ? record.doc : record.entry;
+  const serviceDate = normalizeServiceDate(date);
+  const mealType = normalizeMeal(meal);
+
+  const gate = approvalGate(rec.status, rec.statusApproval);
+  if (gate) return gate;
+  if (rec.status === "Cancelled" || rec.status === "Rejected" || rec.status === "Completed") {
+    return { error: "CLOSED", detail: rec.status };
+  }
+  if (isExpired(rec.endDate)) {
+    rec.status = "Completed";
+    const serialized = await saveRecord(record, "subscription:expired");
+    return { error: "EXPIRED_PLAN", detail: { endDate: rec.endDate }, subscription: serialized };
+  }
+
+  const selection = findSelection(rec, serviceDate, mealType);
+  if (selection && selection.wanted) {
+    upsertSelection(rec, serviceDate, mealType, true, selection.source || source, true);
+    const serialized = await saveRecord(record, "subscription:served");
+    return { subscription: serialized, served: true, countedNow: false, date: serviceDate, meal: mealType };
+  }
+
+  if (Number(rec.mealsRemaining) <= 0) return { error: "NO_MEALS" };
+  rec.mealsRemaining = Math.max(0, Number(rec.mealsRemaining) - 1);
+  pushRedemption(rec, { serviceDate, meal: mealType, source, note });
+  upsertSelection(rec, serviceDate, mealType, true, source, true);
+  rec.status = computeNextStatus(rec.mealsRemaining, rec.status);
+
+  const serialized = await saveRecord(record, "subscription:served");
+  return { subscription: serialized, served: true, countedNow: true, date: serviceDate, meal: mealType };
+}
+
+/**
+ * Admin increases/decreases the meals available for a subscriber without
+ * touching the redemption history. Increasing also grows mealsTotal so the
+ * "remaining <= total" invariant holds.
+ */
+export async function adjustMealsRemaining(id, delta) {
+  const change = Math.trunc(Number(delta) || 0);
+  if (!change) return { error: "INVALID_DELTA" };
+
+  const record = await loadRecord(id);
+  if (!record) return { error: "NOT_FOUND" };
+  const rec = record.kind === "mongo" ? record.doc : record.entry;
+
+  const nextRemaining = Math.max(0, Number(rec.mealsRemaining) + change);
+  rec.mealsRemaining = nextRemaining;
+  if (nextRemaining > Number(rec.mealsTotal)) rec.mealsTotal = nextRemaining;
+  rec.status = computeNextStatus(rec.mealsRemaining, rec.status);
+
+  const serialized = await saveRecord(record, "subscription:updated");
+  return { subscription: serialized, changed: change };
+}
+
+/**
+ * Daily demand snapshot for the admin kitchen: who wants Lunch/Dinner today,
+ * how many meals to cook, and each subscriber's remaining balance.
+ */
+export async function getDailyDemand(date) {
+  const serviceDate = normalizeServiceDate(date);
+  const subscriptions = await listSubscriptions({});
+  const active = subscriptions.filter((row) => row.status === "Active");
+
+  const subscribers = active.map((row) => {
+    const selections = Array.isArray(row.mealSelections) ? row.mealSelections : [];
+    const pick = (meal) => selections.find((selection) => selection.date === serviceDate && selection.meal === meal) || null;
+    const toView = (selection) =>
+      selection
+        ? { wanted: Boolean(selection.wanted), served: Boolean(selection.served) }
+        : { wanted: false, served: false };
+    return {
+      _id: row._id,
+      name: row.name,
+      phone: row.phone,
+      planType: row.planType,
+      address: row.address,
+      mealsRemaining: row.mealsRemaining,
+      mealsTotal: row.mealsTotal,
+      lunch: toView(pick("Lunch")),
+      dinner: toView(pick("Dinner")),
+    };
+  });
+
+  const summarize = (meal) => {
+    const list = subscribers.filter((row) => row[meal].wanted);
+    return {
+      wanted: list.length,
+      served: list.filter((row) => row[meal].served).length,
+      pending: list.filter((row) => !row[meal].served).length,
+      names: list.map((row) => row.name),
+    };
+  };
+
+  return {
+    date: serviceDate,
+    lunch: summarize("lunch"),
+    dinner: summarize("dinner"),
+    subscribers,
   };
 }

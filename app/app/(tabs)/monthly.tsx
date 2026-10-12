@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { Palette } from "@/constants/theme";
-import { AdBanner } from "@/components/admob/ad-banner";
 import {
   MONTHLY_BADGES,
   MONTHLY_FEATURES,
@@ -838,10 +837,6 @@ export default function MonthlyScreen() {
           <Text style={styles.footerQuote}>{`"${MONTHLY_FOOTER_QUOTE}"`}</Text>
           <Text style={styles.footerTagline}>By Kilo ♥ By Choice ♥ By Taste</Text>
         </View>
-
-        <View style={styles.inlineAdWrap}>
-          <AdBanner />
-        </View>
       </ScrollView>
     </View>
   );
@@ -964,7 +959,6 @@ const styles = StyleSheet.create({
   footerLocation: { color: "#FFFFFF", fontSize: 13.5, fontWeight: "700", textAlign: "center" },
   footerQuote: { color: "#FFE3D6", fontSize: 12.5, fontStyle: "italic", marginTop: 2 },
   footerTagline: { color: "#FFD9C7", fontSize: 11.5 },
-  inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center", marginTop: 14 },
 
   calCard: { backgroundColor: Palette.card, borderRadius: 16, borderWidth: 1, borderColor: Palette.border, padding: 12, gap: 10, marginTop: 10 },
   calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

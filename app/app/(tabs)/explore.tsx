@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { Palette } from "@/constants/theme";
-import { AdBanner } from "@/components/admob/ad-banner";
 
 type Order = {
   _id: string;
@@ -91,9 +90,6 @@ export default function OrdersScreen() {
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyText}>{emptyText}</Text>
-            <View style={styles.inlineAdWrap}>
-              <AdBanner />
-            </View>
           </View>
         }
         renderItem={({ item }) => {
@@ -150,7 +146,6 @@ const styles = StyleSheet.create({
   subtitle: { color: Palette.textMuted, marginTop: 4 },
   emptyWrap: { alignItems: "center", gap: 12, paddingTop: 18 },
   emptyText: { color: Palette.textMuted, textAlign: "center", marginTop: 18 },
-  inlineAdWrap: { minHeight: 54, justifyContent: "center", alignItems: "center" },
   orderCard: { backgroundColor: Palette.card, borderWidth: 1, borderColor: Palette.border, borderRadius: 14, padding: 12, gap: 9 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orderId: { color: Palette.text, fontWeight: "700" },

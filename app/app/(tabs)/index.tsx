@@ -27,8 +27,6 @@ import { API_BASE_URL } from "@/utils/api";
 import { useSession } from "@/context/session-context";
 import { useCart } from "@/context/cart-context";
 import { Palette } from "@/constants/theme";
-import { AdBanner } from "@/components/admob/ad-banner";
-import { useInterstitialAd } from "@/hooks/use-interstitial-ad";
 import { MenuItemCard, MenuItemDetailSheet } from "@/components/menu-item-card";
 import { FALLBACK_IMAGE, ResilientImage } from "@/components/resilient-image";
 import { getMenuImageByFileName, getMenuItemImage } from "@/utils/get-menu-item-image";
@@ -252,7 +250,6 @@ const DEFAULT_DOB_DATE = new Date(2000, 0, 1);
 
 export default function MenuScreen() {
   const { session, isHydrated, login, loginAsGuest, logout } = useSession();
-  const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
@@ -958,7 +955,6 @@ export default function MenuScreen() {
       setInstructions("");
       setPromoInput("");
       setCartVisible(false);
-      showCheckoutInterstitial();
     } catch (error: any) {
       if (error?.response?.status === 403) {
         Alert.alert("Ordering closed", error?.response?.data?.message || "Ordering is currently closed.");
@@ -1083,26 +1079,10 @@ export default function MenuScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateTitle}>{menuCategories.length ? "No items in this category" : "Loading menu..."}</Text>
               <Text style={styles.emptyStateText}>{menuCategories.length ? "Try another category." : "Please wait a moment."}</Text>
-              <View style={styles.inlineAdWrap}>
-                <AdBanner />
-              </View>
             </View>
           ) : null
         }
       />
-
-      <View
-        style={[
-          styles.adBannerWrap,
-          {
-            left: horizontalSafePadding,
-            right: horizontalSafePadding,
-            bottom: cartItems.length > 0 ? Math.max(16, insets.bottom + 10) + 62 : Math.max(14, insets.bottom + 6),
-          },
-        ]}
-      >
-        <AdBanner />
-      </View>
 
       {cartItems.length > 0 && (
         <TouchableOpacity
@@ -1110,7 +1090,6 @@ export default function MenuScreen() {
           style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding, bottom: Math.max(16, insets.bottom + 10) }]}
           onPress={() => {
             setCartVisible(true);
-            showCheckoutInterstitial();
           }}
         >
           <Ionicons name="cart" size={16} color="#FFFFFF" />
@@ -1638,7 +1617,6 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   categoryCardTitleActive: { color: "#FFFFFF" },
   orderingClosedBanner: { position: "absolute", backgroundColor: "rgba(194,31,46,0.92)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, zIndex: 2 },
   orderingClosedText: { color: "#FFFFFF", textAlign: "center", fontWeight: "600", fontSize: 12 },
-  adBannerWrap: { position: "absolute", alignItems: "center" },
   checkoutPill: { position: "absolute", backgroundColor: Palette.green, borderRadius: 999, paddingVertical: 13, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 8, shadowColor: "#0E7A3C", shadowOpacity: 0.3, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 5 },
   checkoutPillText: { color: "#FFFFFF", fontWeight: "800", fontSize: 14 },
   checkoutPillBadge: { marginLeft: "auto", backgroundColor: "rgba(255,255,255,0.24)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
@@ -1683,7 +1661,6 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 54, gap: 8 },
   emptyStateTitle: { color: Palette.text, fontSize: 16, fontWeight: "700" },
   emptyStateText: { color: Palette.textMuted, fontSize: 13, textAlign: "center" },
-  inlineAdWrap: { marginTop: 14, minHeight: 54, justifyContent: "center", alignItems: "center" },
   errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 100, paddingHorizontal: 24 },
   errorTitle: { color: Palette.crimson, fontSize: 20, fontWeight: "700", marginTop: 12 },
   errorMessage: { color: Palette.textMuted, fontSize: 14, marginTop: 8, textAlign: "center", lineHeight: 20 },

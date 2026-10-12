@@ -8,7 +8,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { SessionProvider } from '@/context/session-context';
 import { CartProvider } from '@/context/cart-context';
-import { initializeAdMob } from '@/utils/admob';
 import { checkForPlayStoreUpdate } from '@/utils/update-check';
 import { API_BASE_URL } from '@/utils/api';
 
@@ -215,12 +214,6 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (Constants.appOwnership === 'expo') {
-      console.warn('admob_skipped_expo_go');
-    } else {
-      initializeAdMob().catch(() => undefined);
-    }
-
     registerPushTokenWithBackend().catch((error) => {
       console.warn('push_token_registration_failed', error);
     });

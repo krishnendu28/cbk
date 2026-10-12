@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: Palette.cream, borderColor: Palette.crimson },
   filterChipText: { color: Palette.textMuted, fontSize: 12, fontWeight: "700" },
   filterChipTextActive: { color: Palette.crimson },
-  cartPill: { position: "absolute", backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E1826", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
+  cartPill: { position: "absolute", backgroundColor: Palette.green, borderRadius: 999, paddingVertical: 12, paddingHorizontal: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#0E7A3C", shadowOpacity: 0.22, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
   cartPillText: { color: "#FFFFFF", fontWeight: "800", flexShrink: 1 },
   cartPillTotalWrap: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   cartPillTotal: { color: "#FFFFFF", fontWeight: "700" },

@@ -248,6 +248,8 @@ function parseDobToDate(value: string): Date {
   return new Date(2000, 0, 1);
 }
 
+const DEFAULT_DOB_DATE = new Date(2000, 0, 1);
+
 export default function MenuScreen() {
   const { session, isHydrated, login, loginAsGuest, logout } = useSession();
   const { showIfLoaded: showCheckoutInterstitial } = useInterstitialAd();
@@ -297,6 +299,7 @@ export default function MenuScreen() {
   const [sellerFilter, setSellerFilter] = useState<"All" | "Veg" | "NonVeg">("All");
   const [categoryFilter, setCategoryFilter] = useState<VegFilter>("All");
   const [showDobPicker, setShowDobPicker] = useState(false);
+  const [dobDate, setDobDate] = useState<Date>(DEFAULT_DOB_DATE);
   const [checkoutPhone, setCheckoutPhone] = useState("");
   const [savedAddresses, setSavedAddresses] = useState<{ room: string; landmark: string }[]>([]);
 
@@ -853,13 +856,19 @@ export default function MenuScreen() {
     login({ name: loginName, phone: cleanedPhone, dateOfBirth: normalizeDateOfBirth(loginDob) });
   };
 
+  const openDobPicker = () => {
+    setDobDate(parseDobToDate(loginDob));
+    setShowDobPicker(true);
+  };
+
   const handleDobChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === "android") {
       setShowDobPicker(false);
+      if (event.type !== "set" || !selectedDate) return;
     }
-    if (event.type === "set" && selectedDate) {
-      setLoginDob(dateToIso(selectedDate));
-    }
+    const next = selectedDate || dobDate;
+    setDobDate(next);
+    setLoginDob(dateToIso(next));
   };
 
   async function callRestaurant() {
@@ -994,7 +1003,7 @@ export default function MenuScreen() {
             keyboardType="phone-pad"
             maxLength={10}
           />
-          <TouchableOpacity style={styles.dobField} onPress={() => setShowDobPicker(true)} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.dobField} onPress={openDobPicker} activeOpacity={0.85}>
             <Ionicons name="calendar-outline" size={16} color={Palette.crimson} />
             <Text style={[styles.dobFieldText, !loginDob && styles.dobFieldPlaceholder]}>
               {loginDob ? loginDob : "Date of birth (optional) — tap to pick"}
@@ -1002,7 +1011,7 @@ export default function MenuScreen() {
           </TouchableOpacity>
           {showDobPicker && Platform.OS === "android" ? (
             <DateTimePicker
-              value={parseDobToDate(loginDob)}
+              value={dobDate}
               mode="date"
               display="calendar"
               maximumDate={new Date()}
@@ -1016,7 +1025,7 @@ export default function MenuScreen() {
                 <View style={styles.dobModalCard}>
                   <Text style={styles.dobModalTitle}>Select your date of birth</Text>
                   <DateTimePicker
-                    value={parseDobToDate(loginDob)}
+                    value={dobDate}
                     mode="date"
                     display="spinner"
                     maximumDate={new Date()}
@@ -1088,7 +1097,7 @@ export default function MenuScreen() {
           {
             left: horizontalSafePadding,
             right: horizontalSafePadding,
-            bottom: cartItems.length > 0 ? 70 : 14,
+            bottom: cartItems.length > 0 ? Math.max(16, insets.bottom + 10) + 62 : Math.max(14, insets.bottom + 6),
           },
         ]}
       >
@@ -1098,14 +1107,17 @@ export default function MenuScreen() {
       {cartItems.length > 0 && (
         <TouchableOpacity
           activeOpacity={0.88}
-          style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding }]}
+          style={[styles.checkoutPill, { left: horizontalSafePadding, right: horizontalSafePadding, bottom: Math.max(16, insets.bottom + 10) }]}
           onPress={() => {
             setCartVisible(true);
             showCheckoutInterstitial();
           }}
         >
           <Ionicons name="cart" size={16} color="#FFFFFF" />
-          <Text style={styles.checkoutPillText}>Checkout Cart ({cartItems.length})</Text>
+          <Text style={styles.checkoutPillText}>View Cart ({cartItems.length})</Text>
+          <View style={styles.checkoutPillBadge}>
+            <Text style={styles.checkoutPillBadgeText}>Rs {grandTotal}</Text>
+          </View>
         </TouchableOpacity>
       )}
 
@@ -1247,85 +1259,84 @@ export default function MenuScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 210 }} contentContainerStyle={{ gap: 10 }}>
-              {cartItems.map((item) => (
-                <View key={item.id} style={styles.cartRow}>
-                  {item.image ? (
-                    <ResilientImage
-                      primarySource={{ uri: item.image }}
-                      secondarySource={FALLBACK_IMAGE}
-                      style={styles.cartThumb}
-                    />
-                  ) : null}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cartItemName}>{item.name}</Text>
-                    <Text style={styles.cartVariant}>{item.variant}</Text>
-                  </View>
-                  <View style={styles.qtyWrap}>
-                    <Pressable onPress={() => updateQuantity(item.id, -1)} style={styles.qtyBtn}><Text style={styles.qtyLabel}>-</Text></Pressable>
-                    <Text style={styles.qtyValue}>{item.quantity}</Text>
-                    <Pressable onPress={() => updateQuantity(item.id, 1)} style={styles.qtyBtn}><Text style={styles.qtyLabel}>+</Text></Pressable>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-
-            {savedAddresses.length > 0 ? (
-              <View style={styles.savedAddrWrap}>
-                <Text style={styles.savedAddrLabel}>Saved addresses — tap to use</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8 }}>
-                  {savedAddresses.map((addr, idx) => (
-                    <TouchableOpacity
-                      key={`${addr.room}-${idx}`}
-                      style={styles.savedAddrChip}
-                      onPress={() => {
-                        setFlatRoom(addr.room);
-                        setLandmark(addr.landmark);
-                      }}
-                      activeOpacity={0.8}>
-                      <Ionicons name="location-outline" size={12} color={Palette.crimson} />
-                      <Text style={styles.savedAddrChipText} numberOfLines={1}>
-                        {addr.landmark ? `${addr.room}, ${addr.landmark}` : addr.room}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+              <View style={styles.cartSummaryRow}>
+                <Text style={styles.cartSummaryText}>{cartItems.length} item{cartItems.length === 1 ? "" : "s"} in cart</Text>
+                <TouchableOpacity onPress={() => setCartItems([])} activeOpacity={0.8}>
+                  <Text style={styles.cartClearText}>Clear all</Text>
+                </TouchableOpacity>
               </View>
-            ) : null}
 
-            <TextInput
-              value={checkoutPhone}
-              onChangeText={(value) => setCheckoutPhone(digitsOnly(value).slice(0, 10))}
-              placeholder="Contact phone number *"
-              placeholderTextColor={Palette.textMuted}
-              style={styles.input}
-              keyboardType="phone-pad"
-              maxLength={10}
-            />
-            <TextInput value={flatRoom} onChangeText={setFlatRoom} placeholder="Flat / House no and Room" placeholderTextColor={Palette.textMuted} style={styles.input} />
-            <TextInput value={landmark} onChangeText={setLandmark} placeholder="Nearby landmark (optional)" placeholderTextColor={Palette.textMuted} style={styles.input} />
-            <TextInput value={instructions} onChangeText={setInstructions} placeholder="Instructions (e.g. less spicy, no onions)" placeholderTextColor={Palette.textMuted} style={styles.input} />
-            <TextInput value={promoInput} onChangeText={setPromoInput} placeholder={promoActive && promoCode ? `Promo code (hint: ${promoCode})` : "Promo code (optional)"} placeholderTextColor={Palette.textMuted} style={styles.input} autoCapitalize="characters" />
+              <View style={styles.cartGrid}>
+                {cartItems.map((item) => (
+                  <View key={item.id} style={styles.cartTile}>
+                    <Text style={styles.cartTileName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.cartTileVariant} numberOfLines={1}>{item.variant}</Text>
+                    <View style={styles.cartTileBottom}>
+                      <View style={styles.qtyWrap}>
+                        <Pressable onPress={() => updateQuantity(item.id, -1)} style={styles.qtyBtn}><Text style={styles.qtyLabel}>-</Text></Pressable>
+                        <Text style={styles.qtyValue}>{item.quantity}</Text>
+                        <Pressable onPress={() => updateQuantity(item.id, 1)} style={styles.qtyBtn}><Text style={styles.qtyLabel}>+</Text></Pressable>
+                      </View>
+                      <Text style={styles.cartTilePrice}>Rs {item.totalPrice}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
 
-            <View style={styles.billBox}>
-              <Text style={styles.billText}>Subtotal: Rs {subtotal}</Text>
-              {promoDiscount > 0 ? (
-                <Text style={styles.billDiscount}>Promo Applied ({promoRate}%): -Rs {promoDiscount}</Text>
+              {savedAddresses.length > 0 ? (
+                <View style={styles.savedAddrWrap}>
+                  <Text style={styles.savedAddrLabel}>Saved addresses — tap to use</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8 }}>
+                    {savedAddresses.map((addr, idx) => (
+                      <TouchableOpacity
+                        key={`${addr.room}-${idx}`}
+                        style={styles.savedAddrChip}
+                        onPress={() => setFlatRoom(addr.room)}
+                        activeOpacity={0.8}>
+                        <Ionicons name="location-outline" size={12} color={Palette.crimson} />
+                        <Text style={styles.savedAddrChipText} numberOfLines={1}>
+                          {addr.room}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               ) : null}
-              {promoDiscount <= 0 && firstOrderDiscount > 0 ? (
-                <Text style={styles.billDiscount}>First Order Discount ({firstOrderDiscountRate}%): -Rs {firstOrderDiscount}</Text>
-              ) : null}
-              {promoDiscount <= 0 && firstOrderDiscount <= 0 && generalDiscount > 0 ? (
-                <Text style={styles.billDiscount}>Discount ({discountRate}%): -Rs {generalDiscount}</Text>
-              ) : null}
-              <Text style={styles.billText}>Delivery: Rs {deliveryChargeForCart}</Text>
-              <Text style={styles.billEta}>Estimated delivery: about {etaMinutes} min</Text>
-              <Text style={styles.billTotal}>Payable: Rs {grandTotal}</Text>
-            </View>
 
-            <TouchableOpacity style={[styles.placeBtn, !isOrderingOpen && styles.placeBtnDisabled]} disabled={placingOrder || !isOrderingOpen} onPress={placeOrder}>
-              <Text style={styles.placeBtnText}>{placingOrder ? "Placing..." : isOrderingOpen ? "Place Order" : "Ordering Closed"}</Text>
-            </TouchableOpacity>
+              <TextInput
+                value={checkoutPhone}
+                onChangeText={(value) => setCheckoutPhone(digitsOnly(value).slice(0, 10))}
+                placeholder="Contact phone number *"
+                placeholderTextColor={Palette.textMuted}
+                style={styles.input}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+              <TextInput value={flatRoom} onChangeText={setFlatRoom} placeholder="Flat / House no and Room" placeholderTextColor={Palette.textMuted} style={styles.input} />
+              <TextInput value={instructions} onChangeText={setInstructions} placeholder="Instructions (e.g. less spicy, no onions)" placeholderTextColor={Palette.textMuted} style={styles.input} />
+              <TextInput value={promoInput} onChangeText={setPromoInput} placeholder={promoActive && promoCode ? `Promo code (hint: ${promoCode})` : "Promo code (optional)"} placeholderTextColor={Palette.textMuted} style={styles.input} autoCapitalize="characters" />
+
+              <View style={styles.billBox}>
+                <Text style={styles.billText}>Subtotal: Rs {subtotal}</Text>
+                {promoDiscount > 0 ? (
+                  <Text style={styles.billDiscount}>Promo Applied ({promoRate}%): -Rs {promoDiscount}</Text>
+                ) : null}
+                {promoDiscount <= 0 && firstOrderDiscount > 0 ? (
+                  <Text style={styles.billDiscount}>First Order Discount ({firstOrderDiscountRate}%): -Rs {firstOrderDiscount}</Text>
+                ) : null}
+                {promoDiscount <= 0 && firstOrderDiscount <= 0 && generalDiscount > 0 ? (
+                  <Text style={styles.billDiscount}>Discount ({discountRate}%): -Rs {generalDiscount}</Text>
+                ) : null}
+                <Text style={styles.billText}>Delivery: Rs {deliveryChargeForCart}</Text>
+                <Text style={styles.billEta}>Estimated delivery: about {etaMinutes} min</Text>
+                <Text style={styles.billTotal}>Payable: Rs {grandTotal}</Text>
+              </View>
+
+              <TouchableOpacity style={[styles.placeBtn, !isOrderingOpen && styles.placeBtnDisabled]} disabled={placingOrder || !isOrderingOpen} onPress={placeOrder}>
+                <Text style={styles.placeBtnText}>{placingOrder ? "Placing..." : isOrderingOpen ? `Place Order · Rs ${grandTotal}` : "Ordering Closed"}</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
             {!isOrderingOpen && (
@@ -1628,8 +1639,10 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   orderingClosedBanner: { position: "absolute", backgroundColor: "rgba(194,31,46,0.92)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, zIndex: 2 },
   orderingClosedText: { color: "#FFFFFF", textAlign: "center", fontWeight: "600", fontSize: 12 },
   adBannerWrap: { position: "absolute", alignItems: "center" },
-  checkoutPill: { position: "absolute", bottom: 16, right: 16, left: 16, backgroundColor: Palette.crimson, borderRadius: 999, paddingVertical: 12, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, shadowColor: "#9E1826", shadowOpacity: 0.18, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 2 },
-  checkoutPillText: { color: "#FFFFFF", fontWeight: "800" },
+  checkoutPill: { position: "absolute", backgroundColor: Palette.green, borderRadius: 999, paddingVertical: 13, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 8, shadowColor: "#0E7A3C", shadowOpacity: 0.3, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 5 },
+  checkoutPillText: { color: "#FFFFFF", fontWeight: "800", fontSize: 14 },
+  checkoutPillBadge: { marginLeft: "auto", backgroundColor: "rgba(255,255,255,0.24)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
+  checkoutPillBadgeText: { color: "#FFFFFF", fontWeight: "800", fontSize: 13 },
   modalBackdrop: { flex: 1, justifyContent: "flex-start", backgroundColor: "rgba(62,31,18,0.42)" },
   modalCard: { backgroundColor: Palette.card, borderRadius: 20, padding: 14, gap: 10, borderWidth: 1, borderColor: Palette.border, shadowColor: "#3E1F12", shadowOpacity: 0.2, shadowOffset: { width: 0, height: 6 }, shadowRadius: 18, elevation: 8, maxHeight: "88%" },
   profileCard: { backgroundColor: Palette.card, borderRadius: 20, padding: 14, gap: 10, borderWidth: 1, borderColor: Palette.border, shadowColor: "#3E1F12", shadowOpacity: 0.2, shadowOffset: { width: 0, height: 6 }, shadowRadius: 18, elevation: 8, maxWidth: 460, alignSelf: "center", width: "100%" },
@@ -1637,11 +1650,16 @@ savedAddrChipText: { color: Palette.text, fontSize: 11.5, fontWeight: "600" },
   modalTitle: { color: Palette.text, fontSize: 20, fontWeight: "700" },
   modalSubtitle: { color: Palette.textMuted, fontSize: 12, marginTop: 3 },
   modalCloseBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: Palette.cardSoft, borderWidth: 1, borderColor: Palette.border },
-  cartRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: Palette.cardSoft, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: Palette.border, gap: 10 },
-  cartThumb: { width: 42, height: 42, borderRadius: 8, backgroundColor: Palette.cardSoft },
-  cartItemName: { color: Palette.text, fontWeight: "600" },
-  cartVariant: { color: Palette.textMuted, fontSize: 12, marginTop: 2 },
-  qtyWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cartSummaryRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 2 },
+  cartSummaryText: { color: Palette.textMuted, fontSize: 12, fontWeight: "700" },
+  cartClearText: { color: Palette.crimson, fontSize: 12, fontWeight: "800" },
+  cartGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  cartTile: { width: "48.5%", backgroundColor: Palette.cardSoft, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: Palette.border, gap: 3 },
+  cartTileName: { color: Palette.text, fontWeight: "700", fontSize: 13 },
+  cartTileVariant: { color: Palette.textMuted, fontSize: 11 },
+  cartTileBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  cartTilePrice: { color: Palette.text, fontWeight: "800", fontSize: 13 },
+  qtyWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
   qtyBtn: { backgroundColor: Palette.cream, borderRadius: 8, width: 26, height: 26, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: Palette.borderStrong },
   qtyLabel: { color: Palette.text, fontWeight: "700" },
   qtyValue: { color: Palette.text },

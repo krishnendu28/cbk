@@ -196,6 +196,7 @@ export type BridgeOrder = {
   customerName: string;
   phone: string;
   address: string;
+  instructions?: string;
   items: BridgeOrderItem[];
   total: number;
   deliveryCharge?: number;

@@ -95,6 +95,12 @@ export default function KitchenDisplay() {
                 </div>
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-y-auto">
+                {order.instructions ? (
+                  <div className="border-b border-amber-300 bg-amber-50 px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Instructions</p>
+                    <p className="text-amber-900 font-semibold whitespace-pre-wrap break-words">{order.instructions}</p>
+                  </div>
+                ) : null}
                 <ul className="divide-y divide-border">
                   {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
                     <li key={idx} className="p-4 flex gap-4 hover:bg-slate-50/50 transition-colors">

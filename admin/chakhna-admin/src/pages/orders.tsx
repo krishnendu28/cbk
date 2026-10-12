@@ -205,6 +205,13 @@ export default function Orders() {
                 <p className="font-medium">{selectedOrder.address}</p>
               </div>
 
+              <div className={`rounded-md border p-3 ${selectedOrder.instructions ? "border-amber-300 bg-amber-50" : ""}`}>
+                <p className={`text-sm ${selectedOrder.instructions ? "text-amber-700" : "text-muted-foreground"}`}>Customer Instructions</p>
+                <p className={`font-medium whitespace-pre-wrap break-words ${selectedOrder.instructions ? "text-amber-900" : "text-muted-foreground/40"}`}>
+                  {selectedOrder.instructions || "None"}
+                </p>
+              </div>
+
               <div className="rounded-md border p-3">
                 <p className="text-sm font-semibold mb-2">Items</p>
                 <div className="space-y-2 max-h-52 overflow-auto">

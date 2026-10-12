@@ -21,6 +21,7 @@ type LiveOrder = {
   customerName: string;
   phone: string;
   address: string;
+  instructions?: string;
   items: LiveOrderItem[];
   total: number;
   deliveryCharge?: number;
@@ -123,6 +124,13 @@ export default function LiveOrders() {
               <p><strong>Address:</strong> {order.address}</p>
               <p><strong>Time:</strong> {new Date(order.createdAt).toLocaleString()}</p>
             </div>
+
+            {order.instructions ? (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-semibold">Customer Instructions</p>
+                <p className="whitespace-pre-wrap break-words">{order.instructions}</p>
+              </div>
+            ) : null}
 
             <div className="rounded-md border p-3 space-y-2">
               {order.items.map((item, index) => (

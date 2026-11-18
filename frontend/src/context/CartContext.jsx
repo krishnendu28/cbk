@@ -16,7 +16,7 @@ import {
 import { menuCategories as fallbackMenuCategories } from "../data/menuData";
 import { CartContext } from "./cart-context";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-backend.vercel.app";
 const POLL_INTERVAL_MS = 10000;
 const FIRST_ORDER_KEY = "cbk_ordered_before";
 const FAVORITES_KEY = "cbk_favorites";
@@ -478,7 +478,7 @@ export function CartProvider({ children, userSession }) {
                         <p className="font-medium">{item.name}</p>
                         <p className="text-xs text-[var(--cbk-crimson)]">
                           {item.variant}
-                          {item.portion ? ` · ${item.portion}` : ""}
+                          {item.portion ? ` Â· ${item.portion}` : ""}
                         </p>
                       </div>
                       <p className="text-sm font-semibold text-[var(--cbk-orange)]">{formatINR(item.totalPrice)}</p>
@@ -518,7 +518,7 @@ export function CartProvider({ children, userSession }) {
                   <div className="space-y-1">
                     <span className="inline-flex items-center gap-1 text-xs text-[var(--cbk-text)]">
                       <MapPin size={13} />
-                      Saved addresses — tap to use
+                      Saved addresses â€” tap to use
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {savedAddresses.map((addr, idx) => (

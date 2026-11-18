@@ -9,7 +9,7 @@ import { CartProvider } from "./context/CartContext";
 
 const USER_SESSION_KEY = "cbk_user_session";
 const ADMIN_DASHBOARD_URL = import.meta.env.VITE_ADMIN_DASHBOARD_URL || "/admin";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-backend.vercel.app";
 const OTP_RESEND_SECONDS = 60;
 
 function normalizePhone(value) {

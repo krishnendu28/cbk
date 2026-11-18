@@ -3,7 +3,7 @@ import axios from "axios";
 import { motion as Motion } from "framer-motion";
 import { ArrowLeft, Clock3, PackageCheck, UtensilsCrossed } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-backend.vercel.app";
 const POLL_INTERVAL_MS = 15000;
 const orderSteps = ["Preparing", "Ready", "Delivered"];
 

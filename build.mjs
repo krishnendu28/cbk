@@ -6,7 +6,7 @@ import path from "node:path";
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.join(root, "dist");
 
-const DEFAULT_API = "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const DEFAULT_API = "https://cbk-backend.vercel.app";
 const DEFAULT_ADMIN_URL = "https://cbk-gamma.vercel.app/admin";
 
 function run(script, args, cwd, env = {}) {

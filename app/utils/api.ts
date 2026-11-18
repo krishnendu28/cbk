@@ -1,4 +1,4 @@
-const LAMBDA_BACKEND_URL = "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+const LAMBDA_BACKEND_URL = "https://cbk-backend.vercel.app";
 
 export function getApiBaseUrl() {
   const configured = process.env.EXPO_PUBLIC_API_BASE_URL;

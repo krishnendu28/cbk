@@ -12,12 +12,12 @@ npx serverless deploy --stage prod
 
 The endpoint is printed at the end of the deploy. Current production endpoint:
 
-`https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com`
+`https://cbk-backend.vercel.app`
 
 Verify after deploy:
 
 ```bash
-curl https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com/api/health
+curl https://cbk-backend.vercel.app/api/health
 ```
 
 Expected response: `{"ok":true,...,"database":"mongo"}` (must say `mongo`, not `memory`).
@@ -54,7 +54,7 @@ Pass them when deploying (they are read from your shell environment into `server
 
 - Endpoints: `GET /api/inventory` (public read), `POST /api/inventory`, `PATCH /api/inventory/:id`, `DELETE /api/inventory/:id` (all writes require owner/manager).
 - The inventory is cached in-memory and persisted to Mongo (`InventoryItem` collection) when connected; otherwise it falls back to an in-process seed set. The admin panel polls `GET /api/inventory` every 8s so stock is shared live across all admin/kitchen devices.
-- When an order is placed, `orderService` best-effort decrements matched inventory items (name/keyword mapping in `inventoryService.js`). It never fails an order — extend the `INGREDIENT_USAGE_HINTS` map as ingredients are tagged on menu items.
+- When an order is placed, `orderService` best-effort decrements matched inventory items (name/keyword mapping in `inventoryService.js`). It never fails an order â€” extend the `INGREDIENT_USAGE_HINTS` map as ingredients are tagged on menu items.
 
 ## 6) MongoDB
 

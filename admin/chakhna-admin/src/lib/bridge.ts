@@ -16,7 +16,7 @@ type RawMenuCategory = {
   items: RawMenuItem[];
 };
 
-export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com";
+export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cbk-backend.vercel.app";
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
 const DEMO_ORDERS_KEY = "cbk_demo_orders";
 const DEMO_MENU_KEY = "cbk_demo_menu_groups";
@@ -757,7 +757,7 @@ export async function updateBridgeMenuItem(
 
 export async function uploadMenuItemImage(file: File): Promise<string> {
   if (isDemoSessionActive()) {
-    throw new Error("Picture upload needs a connected admin session — paste an image URL instead.");
+    throw new Error("Picture upload needs a connected admin session â€” paste an image URL instead.");
   }
 
   const dataUrl = await new Promise<string>((resolve, reject) => {

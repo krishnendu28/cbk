@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EXPO_NO_TELEMETRY: "1"
-      EXPO_PUBLIC_API_BASE_URL: "https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com"
+      EXPO_PUBLIC_API_BASE_URL: "https://cbk-backend.vercel.app"
     defaults:
       run:
         working-directory: app

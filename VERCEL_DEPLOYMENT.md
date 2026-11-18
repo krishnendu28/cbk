@@ -9,7 +9,7 @@ This repository has two separate Vite apps you should deploy as two separate Ver
 
 - User web: https://cbk-gamma.vercel.app (live)
 - Admin web: https://cbk-admin.vercel.app
-- Backend API (AWS Lambda): https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com
+- Backend API (AWS Lambda): https://cbk-backend.vercel.app
 
 ## 1) Deploy the user web app
 
@@ -18,7 +18,7 @@ This repository has two separate Vite apps you should deploy as two separate Ver
 3. Build settings are already defined in `frontend/vercel.json`.
 4. Add these exact environment variables in Vercel Project Settings:
 
-   - `VITE_API_BASE_URL=https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com`
+   - `VITE_API_BASE_URL=https://cbk-backend.vercel.app`
    - `VITE_ADMIN_DASHBOARD_URL=https://cbk-admin.vercel.app`
 
 5. Deploy and note the generated user app URL.
@@ -30,7 +30,7 @@ This repository has two separate Vite apps you should deploy as two separate Ver
 3. Build settings are already defined in `admin/chakhna-admin/vercel.json`.
 4. Add these exact environment variables in Vercel Project Settings:
 
-   - `VITE_API_BASE_URL=https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com`
+   - `VITE_API_BASE_URL=https://cbk-backend.vercel.app`
    - `VITE_BRAND_LOGO_URL=https://cbk-gamma.vercel.app/logo.jpeg`
 
 5. Deploy and note the generated admin app URL.
@@ -53,7 +53,7 @@ Note: use `http://localhost:5174` as the origin in local development; `/pos` is 
 4. Set admin env vars exactly as above and deploy.
 5. Backend is deployed on AWS Lambda. Redeploy after any backend change with `cd backend && npx serverless deploy --stage prod`.
 6. Validate user app:
-   - Loads menu from `https://n6dorzvkp2.execute-api.ap-south-1.amazonaws.com/api/menu`
+   - Loads menu from `https://cbk-backend.vercel.app/api/menu`
    - Places order successfully
 7. Validate admin app:
    - Shows live orders

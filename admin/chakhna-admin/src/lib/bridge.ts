@@ -20,6 +20,7 @@ export const USER_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || "https://cb
 const TABIO_SESSION_TOKEN_KEY = "tabio_session_token";
 const DEMO_ORDERS_KEY = "cbk_demo_orders";
 const DEMO_MENU_KEY = "cbk_demo_menu_groups";
+const BACKEND_MENU_CACHE_KEY = "cbk_backend_menu_groups";
 const DEMO_MENU_CHANGED_EVENT = "cbk_demo_menu_changed";
 
 function resolveAdminToken() {
@@ -77,39 +78,52 @@ function saveDemoOrders(orders: BridgeOrder[]) {
   localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(orders));
 }
 
-function readDemoMenuGroups(): BridgeMenuGroup[] {
-  if (typeof localStorage === "undefined") return localFallbackMenuGroups();
+function normalizeMenuGroups(value: unknown): BridgeMenuGroup[] | null {
+  if (!Array.isArray(value)) return null;
+  return value
+    .map((group, groupIndex) => ({
+      id: String(group.id || toGroupId(group.title) || `group-${groupIndex + 1}`),
+      title: String(group.title || "Menu"),
+      items: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
+        id: Number(item.id) || groupIndex * 1000 + itemIndex + 1,
+        name: String(item.name || "Item"),
+        price: Number(item.price) || 0,
+        prices: isPlainObject(item.prices) ? (item.prices as Record<string, number>) : undefined,
+        portions: isPlainObject(item.portions) ? (item.portions as Record<string, string>) : undefined,
+        description: String(item.description || ""),
+        contents: String(item.contents || ""),
+        image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
+        available: item.available !== false,
+      })),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
+function readCachedMenuGroups(key: string): BridgeMenuGroup[] | null {
+  if (typeof localStorage === "undefined") return null;
   try {
-    const raw = localStorage.getItem(DEMO_MENU_KEY);
-    if (!raw) {
-      return localFallbackMenuGroups();
-    }
-
-    const parsed = JSON.parse(raw) as BridgeMenuGroup[];
-    if (!Array.isArray(parsed)) {
-      return localFallbackMenuGroups();
-    }
-
-    return parsed
-      .map((group, groupIndex) => ({
-        id: String(group.id || toGroupId(group.title) || `group-${groupIndex + 1}`),
-        title: String(group.title || "Menu"),
-        items: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
-          id: Number(item.id) || groupIndex * 1000 + itemIndex + 1,
-          name: String(item.name || "Item"),
-          price: Number(item.price) || 0,
-          prices: isPlainObject(item.prices) ? (item.prices as Record<string, number>) : undefined,
-          portions: isPlainObject(item.portions) ? (item.portions as Record<string, string>) : undefined,
-          description: String(item.description || ""),
-          contents: String(item.contents || ""),
-          image: String(item.image || getFoodImageUrl(item.name || "food", `${group.title}-${itemIndex}`)),
-          available: item.available !== false,
-        })),
-      }))
-      .filter((group) => group.items.length > 0);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return normalizeMenuGroups(JSON.parse(raw));
   } catch {
-    return localFallbackMenuGroups();
+    return null;
+  }
+}
+
+function readDemoMenuGroups(): BridgeMenuGroup[] {
+  return readCachedMenuGroups(DEMO_MENU_KEY) || localFallbackMenuGroups();
+}
+
+function readBackendMenuCache(): BridgeMenuGroup[] | null {
+  return readCachedMenuGroups(BACKEND_MENU_CACHE_KEY);
+}
+
+function writeBackendMenuCache(groups: BridgeMenuGroup[]) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(BACKEND_MENU_CACHE_KEY, JSON.stringify(groups));
+  } catch {
+    // Storage unavailable/full is non-fatal - the live fetch is still authoritative.
   }
 }
 
@@ -603,7 +617,10 @@ function mapBackendMenuToBridgeGroups(categories: BackendMenuCategory[]): Bridge
 }
 
 export function getBridgeMenuGroups(): BridgeMenuGroup[] {
-  return isDemoSessionActive() ? readDemoMenuGroups() : localFallbackMenuGroups();
+  if (isDemoSessionActive()) return readDemoMenuGroups();
+  // Seed from the last backend-backed menu so a refresh never flashes the
+  // bundled seed prices before the live fetch resolves.
+  return readBackendMenuCache() || localFallbackMenuGroups();
 }
 
 export async function fetchBridgeMenuGroups(): Promise<BridgeMenuGroup[]> {
@@ -612,12 +629,16 @@ export async function fetchBridgeMenuGroups(): Promise<BridgeMenuGroup[]> {
   }
 
   try {
-    const response = await fetch(`${USER_BACKEND_URL}/api/menu`);
+    const response = await fetch(`${USER_BACKEND_URL}/api/menu`, { cache: "no-store" });
     if (!response.ok) throw new Error("Failed to fetch menu");
     const data = (await response.json()) as BackendMenuCategory[];
-    return mapBackendMenuToBridgeGroups(data);
+    const groups = mapBackendMenuToBridgeGroups(data);
+    if (groups.length > 0) writeBackendMenuCache(groups);
+    return groups;
   } catch {
-    return localFallbackMenuGroups();
+    // Never replace real prices with bundled seed data. Keep the last known
+    // good backend menu on screen if the API is temporarily unreachable.
+    return readBackendMenuCache() || localFallbackMenuGroups();
   }
 }
 

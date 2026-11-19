@@ -22,6 +22,27 @@ const FIRST_ORDER_KEY = "cbk_ordered_before";
 const FAVORITES_KEY = "cbk_favorites";
 const PROMO_CODE_KEY = "cbk_promo_code";
 const SAVED_ADDRESSES_KEY = "cbk_saved_addresses";
+const MENU_CACHE_KEY = "cbk_menu_cache";
+
+function readCachedMenu() {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(MENU_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedMenu(categories) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(categories));
+  } catch {
+    // Storage unavailable/full is non-fatal - the live fetch stays authoritative.
+  }
+}
 
 const defaultSettings = {
   deliveryCharge: 10,
@@ -49,7 +70,7 @@ function normalizePhone(value) {
 }
 
 export function CartProvider({ children, userSession }) {
-  const [menuCategories, setMenuCategories] = useState([]);
+  const [menuCategories, setMenuCategories] = useState(() => readCachedMenu() || []);
   const [cartItems, setCartItems] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -98,10 +119,14 @@ export function CartProvider({ children, userSession }) {
     async function loadMenu() {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/menu`);
-        const categories = Array.isArray(response.data) && response.data.length ? response.data : fallbackMenuCategories;
+        const categories =
+          Array.isArray(response.data) && response.data.length
+            ? response.data
+            : readCachedMenu() || fallbackMenuCategories;
+        writeCachedMenu(categories);
         setMenuCategories(categories);
       } catch {
-        setMenuCategories(fallbackMenuCategories);
+        setMenuCategories(readCachedMenu() || fallbackMenuCategories);
       }
     }
 

@@ -215,6 +215,29 @@ function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+// Showcase item names can drift from the live menu (e.g. "8 pcs" vs "6 pcs",
+// or a renamed item). Normalize pack-size/punctuation so an admin edit still
+// resolves to the same live item instead of showing Rs 0 / a hardcoded price.
+function normalizeDishName(value: string): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function dishTokens(value: string): string[] {
+  return normalizeDishName(value).split(" ").filter(Boolean);
+}
+
+// e.g. "Chicken Lollipop (8 pcs)" -> "8". Used to prefer the right pack size
+// when the live menu has both 6 pcs and 8 pcs versions of a dish.
+function packSizeFrom(value: string): string {
+  const match = String(value || "").match(/\b(\d+)\s*(?:pcs|pieces|pc)\b/i);
+  return match ? match[1] : "";
+}
+
 function normalizeDateOfBirth(value: string): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -312,11 +335,36 @@ export default function MenuScreen() {
   }, [menuCategories]);
 
   const findMenuItemByName = useCallback((itemName: string) => {
+    if (!itemName) return null;
+
     for (const category of menuCategories) {
-      const item = category.items.find((entry) => entry.name === itemName);
-      if (item) {
-        return item;
+      const exact = category.items.find((entry) => entry.name === itemName);
+      if (exact) return exact;
+    }
+
+    const key = normalizeDishName(itemName);
+    const normalizedMatches = menuCategories.flatMap((category) =>
+      category.items.filter((entry) => normalizeDishName(entry.name) === key),
+    );
+    if (normalizedMatches.length) {
+      const wantedPack = packSizeFrom(itemName);
+      if (wantedPack) {
+        const exactPack = normalizedMatches.find((entry) => packSizeFrom(entry.name) === wantedPack);
+        if (exactPack) return exactPack;
       }
+      return normalizedMatches[0];
+    }
+
+    // Last resort: every token of the showcase name must appear in the live
+    // item name (e.g. "Paneer Masala" -> "Paneer Butter Masala (6 pcs)").
+    const tokens = dishTokens(itemName);
+    if (!tokens.length) return null;
+    for (const category of menuCategories) {
+      const tokenMatch = category.items.find((entry) => {
+        const entryTokens = dishTokens(entry.name);
+        return tokens.every((token) => entryTokens.includes(token));
+      });
+      if (tokenMatch) return tokenMatch;
     }
 
     return null;
@@ -654,14 +702,24 @@ export default function MenuScreen() {
               contentContainerStyle={{ paddingHorizontal: horizontalSafePadding, gap: 12, paddingBottom: 4 }}
               decelerationRate="fast">
               {NEW_LAUNCH_PRODUCTS.map((product) => {
-                const item = NEW_LAUNCH_ITEMS.find((entry) => entry.id === product.id);
+                const liveItem = findMenuItemByName(product.name);
+                const item = liveItem || NEW_LAUNCH_ITEMS.find((entry) => entry.id === product.id);
+                const livePrices = liveItem?.prices && Object.keys(liveItem.prices).length ? liveItem.prices : null;
+                const priceFrom = livePrices ? Math.min(...Object.values(livePrices)) : product.priceFrom;
+                const priceLabel = livePrices
+                  ? Object.entries(livePrices)
+                      .map(([variant, value]) => `${variant} Rs ${value}`)
+                      .join(" · ")
+                  : product.priceLabel;
+                const displayName = liveItem?.name || product.name;
+                const displayImage = liveItem?.image || product.imageUrl;
                 const isComingSoon = product.id !== MAKHANA_ITEM_ID;
                 return (
                   <View key={product.id} style={[styles.nlCard, { width: 220 }]}>
                     <View style={styles.nlImageWrap}>
-                      <ResilientImage primarySource={getMenuItemImage(product.name, "Dry-Fruits", product.imageUrl)} secondarySource={FALLBACK_IMAGE} style={styles.nlImage} />
+                      <ResilientImage primarySource={getMenuItemImage(product.name, "Dry-Fruits", displayImage)} secondarySource={FALLBACK_IMAGE} style={styles.nlImage} />
                       <View style={styles.nlPricePill}>
-                        <Text style={styles.nlPriceText}>from Rs {product.priceFrom}</Text>
+                        <Text style={styles.nlPriceText}>from Rs {priceFrom}</Text>
                       </View>
                       {isComingSoon ? (
                         <View style={styles.nlComingSoonPill}>
@@ -670,8 +728,8 @@ export default function MenuScreen() {
                       ) : null}
                     </View>
                     <View style={styles.nlBody}>
-                      <Text style={styles.nlTitle}>{product.name}</Text>
-                      <Text style={styles.nlPriceLabel}>{product.priceLabel}</Text>
+                      <Text style={styles.nlTitle}>{displayName}</Text>
+                      <Text style={styles.nlPriceLabel}>{priceLabel}</Text>
                       <Text style={styles.nlDesc} numberOfLines={2}>{product.description}</Text>
                       {isComingSoon ? (
                         <View style={styles.orderBtnComingSoon}>

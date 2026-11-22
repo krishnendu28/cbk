@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion as Motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -90,6 +90,29 @@ function formatINR(value) {
   return `Rs ${value}`;
 }
 
+// Hardcoded showcase names can drift from the live menu (e.g. "8 pcs" vs
+// "6 pcs"). Normalize away pack-size/punctuation so an admin rename or price
+// change still resolves to the same live item.
+function normalizeDishName(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function dishTokens(value) {
+  return normalizeDishName(value).split(" ").filter(Boolean);
+}
+
+// e.g. "Chicken Lollipop (8 pcs)" -> "8". Used to prefer the right pack size
+// when the live menu has both 6 pcs and 8 pcs versions of a dish.
+function packSizeFrom(value) {
+  const match = String(value || "").match(/\b(\d+)\s*(?:pcs|pieces|pc)\b/i);
+  return match ? match[1] : "";
+}
+
 function priceFrom(variants) {
   const values = Object.values(variants || {});
   return values.length ? Math.min(...values) : 0;
@@ -154,24 +177,62 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
     return () => window.clearInterval(timer);
   }, []);
 
-  const findDish = (itemName) => {
+  const liveDishIndex = useMemo(() => {
+    const byName = new Map();
+    const byNormalized = new Map();
+    const all = [];
     for (const category of menuCategories) {
-      const match = category.items.find((entry) => entry.name === itemName);
-      if (match) return match;
+      for (const entry of category.items || []) {
+        if (!entry?.name) continue;
+        all.push(entry);
+        if (!byName.has(entry.name)) byName.set(entry.name, entry);
+        const key = normalizeDishName(entry.name);
+        if (key) {
+          if (!byNormalized.has(key)) byNormalized.set(key, []);
+          byNormalized.get(key).push(entry);
+        }
+      }
     }
-    return null;
+    return { byName, byNormalized, all };
+  }, [menuCategories]);
+
+  const findDish = (itemName) => {
+    if (!itemName) return null;
+    if (liveDishIndex.byName.has(itemName)) return liveDishIndex.byName.get(itemName);
+
+    const key = normalizeDishName(itemName);
+    const candidates = liveDishIndex.byNormalized.get(key) || [];
+    if (candidates.length) {
+      const wantedPack = packSizeFrom(itemName);
+      if (wantedPack) {
+        const exactPack = candidates.find((entry) => packSizeFrom(entry.name) === wantedPack);
+        if (exactPack) return exactPack;
+      }
+      return candidates[0];
+    }
+
+    // Last resort: every token of the showcase name must appear in the live
+    // item name (e.g. "Paneer Masala" -> "Paneer Butter Masala (6 pcs)").
+    const tokens = dishTokens(itemName);
+    if (!tokens.length) return null;
+    return (
+      liveDishIndex.all.find((entry) => {
+        const entryTokens = dishTokens(entry.name);
+        return tokens.every((token) => entryTokens.includes(token));
+      }) || null
+    );
   };
 
   const sellerWithLiveData = (seller) => {
     const live = findDish(seller.itemName);
     return {
       ...seller,
-      name: seller.itemName,
+      name: live?.name || seller.itemName,
       prices: live?.prices || seller.prices,
       description: live?.description || "",
       portions: live?.portions || {},
       available: live ? live.available !== false : true,
-      image: live?.image || getFoodImage(seller.itemName, "Main Course"),
+      image: live?.image || seller.image || getFoodImage(seller.itemName, "Main Course"),
     };
   };
 
@@ -432,6 +493,16 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
           <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
             {NEW_LAUNCH_PRODUCTS.map((product) => {
               const isComingSoon = product.key !== "makhana";
+              const live = findDish(product.name);
+              const view = live
+                ? {
+                    ...product,
+                    name: live.name,
+                    prices: live.prices && Object.keys(live.prices).length ? live.prices : product.prices,
+                    image: live.image || product.image,
+                    available: live.available !== false,
+                  }
+                : product;
               return (
                 <div
                   key={product.key}
@@ -439,8 +510,8 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                 >
                   <div className="relative h-24 overflow-hidden rounded-xl">
                     <img
-                      src={product.image}
-                      alt={product.name}
+                      src={view.image}
+                      alt={view.name}
                       className="h-full w-full object-cover"
                       loading="lazy"
                       onError={(e) => {
@@ -448,7 +519,7 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                       }}
                     />
                     <span className="absolute bottom-1.5 left-1.5 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[var(--cbk-crimson)] shadow">
-                      {formatINR(priceFrom(product.prices))}+
+                      {formatINR(priceFrom(view.prices))}+
                     </span>
                     {isComingSoon && (
                       <span className="absolute right-1.5 top-1.5 rounded-full bg-[var(--cbk-crimson)] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow">
@@ -456,9 +527,9 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                       </span>
                     )}
                   </div>
-                  <h5 className="mt-2 truncate text-xs font-bold text-[var(--cbk-text)]">{product.name}</h5>
+                  <h5 className="mt-2 truncate text-xs font-bold text-[var(--cbk-text)]">{view.name}</h5>
                   <p className="mt-0.5 truncate text-[10px] text-[var(--cbk-text)]/70">
-                    {Object.values(product.prices).map((value) => `₹${value}`).join(" · ")}
+                    {Object.values(view.prices).map((value) => `₹${value}`).join(" · ")}
                   </p>
                   {isComingSoon ? (
                     <span className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-[var(--cbk-bg)] px-3 py-1.5 text-[11px] font-bold text-[var(--cbk-text)]/55">
@@ -468,14 +539,14 @@ function Home({ userSession, onLogout, onOpenMenu, onOpenHistory }) {
                   ) : (
                     <button
                       type="button"
-                      disabled={!isOrderingOpen}
+                      disabled={!isOrderingOpen || view.available === false}
                       onClick={() => {
-                        if (!isOrderingOpen) {
-                          toast.error("Ordering is closed right now.");
+                        if (!isOrderingOpen || view.available === false) {
+                          toast.error(view.available === false ? "This item is currently unavailable." : "Ordering is closed right now.");
                           return;
                         }
-                        setLaunchVariant(Object.keys(product.prices)[0]);
-                        setLaunchProduct(product);
+                        setLaunchVariant(Object.keys(view.prices)[0]);
+                        setLaunchProduct(view);
                       }}
                       className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-[var(--cbk-crimson)] to-[var(--cbk-orange)] px-3 py-1.5 text-[11px] font-bold text-white shadow disabled:opacity-50"
                     >

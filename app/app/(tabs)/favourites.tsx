@@ -53,6 +53,8 @@ export default function FavouritesScreen() {
 
   useEffect(() => {
     loadMenu();
+    const interval = setInterval(loadMenu, 10000);
+    return () => clearInterval(interval);
   }, [loadMenu]);
 
   const allItems = categories.flatMap((category) => category.items);

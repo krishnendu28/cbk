@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -30,10 +31,6 @@ export default function CategoryScreen() {
 
   const category = categories.find((entry) => entry.id === id);
 
-  useEffect(() => {
-    setCategoryFilter("All");
-  }, [id]);
-
   const visibleItems = useMemo(() => {
     const items = category?.items || [];
     if (categoryFilter === "Veg") return items.filter((entry) => isVegItem(entry.name));
@@ -41,32 +38,48 @@ export default function CategoryScreen() {
     return items;
   }, [category, categoryFilter]);
 
+  const loadMenu = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/menu`);
+      const list = Array.isArray(response.data) ? response.data : [];
+      setCategories(list);
+      setLoading(false);
+    } catch {
+      setError("Failed to load menu. Please check your internet connection.");
+      setLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    setCategoryFilter("All");
+    loadMenu();
+  }, [id, loadMenu]);
+
+  // Keep this screen in sync with admin edits while it is open, and refresh
+  // immediately when the app comes back to the foreground.
   useEffect(() => {
     if (!session) return;
-
-    let cancelled = false;
-
-    const loadMenu = async () => {
-      setLoading(true);
-      setError("");
+    const refresh = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/api/menu`);
-        const list = Array.isArray(response.data) ? response.data : [];
-        if (cancelled) return;
-        setCategories(list);
-        setLoading(false);
+        if (Array.isArray(response.data)) setCategories(response.data);
       } catch {
-        if (cancelled) return;
-        setError("Failed to load menu. Please check your internet connection.");
-        setLoading(false);
+        // Keep the last good menu on transient failures.
       }
     };
-
-    loadMenu();
-    return () => {
-      cancelled = true;
+    const interval = setInterval(refresh, 10000);
+    const onAppState = (state: string) => {
+      if (state === "active") refresh();
     };
-  }, [id, session]);
+    const subscription = AppState.addEventListener("change", onAppState);
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [session]);
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -105,7 +118,7 @@ export default function CategoryScreen() {
           <Ionicons name="warning-outline" size={40} color={Palette.crimson} />
           <Text style={styles.stateTitle}>Oops!</Text>
           <Text style={styles.stateText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => setLoading(true)} activeOpacity={0.88}>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadMenu} activeOpacity={0.88}>
             <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
